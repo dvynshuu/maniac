@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
-import { Search, FileText, Database, Plus } from 'lucide-react';
+import { db } from '../../db/database';
+import { Search, FileText, Plus, Star, Type, Hash } from 'lucide-react';
 
 export default function CommandPalette({ onClose }) {
     const pages = usePageStore(s => s.pages);
     const addPage = usePageStore(s => s.addPage);
     const setCurrentPage = usePageStore(s => s.setCurrentPage);
-    const setSidebarOpen = useUIStore(s => s.setSidebarOpen);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [blockResults, setBlockResults] = useState([]);
     const inputRef = useRef(null);
     const navigate = useNavigate();
 
@@ -18,13 +19,59 @@ export default function CommandPalette({ onClose }) {
         if (inputRef.current) inputRef.current.focus();
     }, []);
 
-    // Simple fuzzy filter
     const lowerQuery = query.toLowerCase();
     
-    const pageResults = pages
-        .filter(p => !p.isArchived && (p.title || 'Untitled').toLowerCase().includes(lowerQuery))
-        .map(p => ({ ...p, resultType: 'page' }))
-        .slice(0, 5);
+    // Page results
+    const pageResults = useMemo(() => 
+        pages
+            .filter(p => !p.isArchived && (p.title || 'Untitled').toLowerCase().includes(lowerQuery))
+            .map(p => ({ ...p, resultType: 'page' }))
+            .slice(0, 6),
+        [pages, lowerQuery]
+    );
+
+    // Full-text block content search (async, debounced)
+    useEffect(() => {
+        if (query.length < 2) {
+            setBlockResults([]);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            try {
+                const allBlocks = await db.blocks.toArray();
+                const matches = allBlocks
+                    .filter(b => {
+                        const text = (b.content || '').replace(/<[^>]*>/g, '').toLowerCase();
+                        return text.includes(lowerQuery);
+                    })
+                    .slice(0, 5);
+
+                // Enrich with page info
+                const enriched = await Promise.all(matches.map(async (b) => {
+                    const page = await db.pages.get(b.pageId);
+                    const plainText = (b.content || '').replace(/<[^>]*>/g, '');
+                    const idx = plainText.toLowerCase().indexOf(lowerQuery);
+                    const start = Math.max(0, idx - 30);
+                    const end = Math.min(plainText.length, idx + lowerQuery.length + 30);
+                    const snippet = (start > 0 ? '...' : '') + plainText.slice(start, end) + (end < plainText.length ? '...' : '');
+                    
+                    return {
+                        id: b.id,
+                        pageId: b.pageId,
+                        pageTitle: page?.title || 'Untitled',
+                        pageIcon: page?.icon || '📄',
+                        blockType: b.type,
+                        snippet,
+                        resultType: 'block',
+                    };
+                }));
+                setBlockResults(enriched);
+            } catch {
+                setBlockResults([]);
+            }
+        }, 200);
+        return () => clearTimeout(timer);
+    }, [query, lowerQuery]);
         
     const cmds = [
         { id: 'cmd-new-page', title: 'Create new page', icon: Plus, run: async () => {
@@ -39,7 +86,7 @@ export default function CommandPalette({ onClose }) {
         }}
     ].filter(c => c.title.toLowerCase().includes(lowerQuery));
 
-    const results = [...pageResults, ...cmds];
+    const results = [...pageResults, ...blockResults, ...cmds];
 
     useEffect(() => {
         setSelectedIndex(0);
@@ -60,6 +107,10 @@ export default function CommandPalette({ onClose }) {
                     setCurrentPage(item.id);
                     navigate(`/page/${item.id}`);
                     onClose();
+                } else if (item.resultType === 'block') {
+                    setCurrentPage(item.pageId);
+                    navigate(`/page/${item.pageId}`);
+                    onClose();
                 } else if (item.run) {
                     item.run();
                 }
@@ -75,7 +126,7 @@ export default function CommandPalette({ onClose }) {
                     <input
                         ref={inputRef}
                         className="command-palette-input"
-                        placeholder="Search or type a command..."
+                        placeholder="Search pages, content, or type a command..."
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
@@ -103,8 +154,36 @@ export default function CommandPalette({ onClose }) {
                                         <div className="command-palette-item-icon">
                                             {item.icon === '📝' ? <FileText size={16} /> : <span>{item.icon}</span>}
                                         </div>
-                                        <span className="command-palette-item-label">{item.title || 'Untitled'}</span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <span className="command-palette-item-label">{item.title || 'Untitled'}</span>
+                                        </div>
                                         <span className="command-palette-item-kbd">Page</span>
+                                    </div>
+                                )
+                            } else if (item.resultType === 'block') {
+                                return (
+                                    <div 
+                                        key={item.id} 
+                                        className={`command-palette-item ${isSelected ? 'active' : ''}`}
+                                        onMouseEnter={() => setSelectedIndex(idx)}
+                                        onClick={() => {
+                                            setCurrentPage(item.pageId);
+                                            navigate(`/page/${item.pageId}`);
+                                            onClose();
+                                        }}
+                                    >
+                                        <div className="command-palette-item-icon">
+                                            <Type size={14} />
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                          <span className="command-palette-item-label" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                            {item.pageIcon} {item.pageTitle}
+                                          </span>
+                                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {item.snippet}
+                                          </span>
+                                        </div>
+                                        <span className="command-palette-item-kbd">Block</span>
                                     </div>
                                 )
                             } else {

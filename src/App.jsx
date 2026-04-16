@@ -1,14 +1,27 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, lazy, Suspense } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { seedDefaultData } from './db/database';
 import { usePageStore } from './stores/pageStore';
 import { useTrackerStore } from './stores/trackerStore';
 import { useUIStore } from './stores/uiStore';
 import AppLayout from './components/Layout/AppLayout';
-import PageEditor from './components/Editor/PageEditor';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 
-import Dashboard from './components/Dashboard/Dashboard';
+// Lazy load heavy components
+const PageEditor = lazy(() => import('./components/Editor/PageEditor'));
+const Dashboard = lazy(() => import('./components/Dashboard/Dashboard'));
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+        <div className="loading-spinner" />
+        <span style={{ fontSize: '13px' }}>Loading...</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const loadPages = usePageStore((s) => s.loadPages);
   const loadTrackers = useTrackerStore((s) => s.loadTrackers);
@@ -43,10 +56,12 @@ function App() {
   return (
     <>
       <AppLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/page/:pageId" element={<PageEditor />} />
-        </Routes>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/page/:pageId" element={<PageEditor />} />
+          </Routes>
+        </Suspense>
       </AppLayout>
       {commandPaletteOpen && <CommandPalette onClose={closeCommandPalette} />}
     </>

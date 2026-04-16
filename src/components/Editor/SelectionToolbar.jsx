@@ -23,6 +23,9 @@ function SelectionToolbar() {
     italic: false,
     underline: false,
   });
+  const [savedRange, setSavedRange] = useState(null);
+  const [isLink, setIsLink] = useState(false);
+  const [currentLinkHref, setCurrentLinkHref] = useState('');
 
   const toolbarRef = useRef(null);
 
@@ -30,32 +33,54 @@ function SelectionToolbar() {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
       
-      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      if (!selection || selection.rangeCount === 0) {
         if (!showLinkInput) setShow(false);
         return;
       }
 
+      const isCollapsed = selection.isCollapsed;
       const range = selection.getRangeAt(0);
+      
+      // If user makes a new non-collapsed selection while link input is open, update savedRange
+      if (!isCollapsed && showLinkInput) {
+        setSavedRange(range.cloneRange());
+      }
+
+      // Detect if cursor/selection is inside a link
+      let link = null;
+      if (selection.anchorNode) {
+        link = selection.anchorNode.nodeType === 3 
+          ? selection.anchorNode.parentElement?.closest('a')
+          : selection.anchorNode.closest?.('a');
+      }
+      
       const container = range.commonAncestorContainer;
       
-      // Ensure selection is within an editable block
-      const editableParent = container.nodeType === 3 
-        ? container.parentElement?.closest('[contenteditable="true"]')
-        : container.closest?.('[contenteditable="true"]');
+      if (!link && container) {
+        link = container.nodeType === 3 
+          ? container.parentElement?.closest('a')
+          : container.closest?.('a');
+      }
 
-      if (!editableParent) {
-        setShow(false);
+      if (isCollapsed && !link) {
+        if (!showLinkInput) setShow(false);
         return;
       }
 
       const rect = range.getBoundingClientRect();
       setPos({
-        top: rect.top + window.scrollY - 48, // 48px above the selection
+        top: rect.top + window.scrollY - 48,
         left: rect.left + rect.width / 2
       });
       setShow(true);
       
-      // Update active states (simplified)
+      if (link) {
+        setIsLink(true);
+        setCurrentLinkHref(link.getAttribute('href') || '');
+      } else {
+        setIsLink(false);
+      }
+
       setActiveFormats({
         bold: document.queryCommandState('bold'),
         italic: document.queryCommandState('italic'),
@@ -128,12 +153,49 @@ function SelectionToolbar() {
     syncChanges();
   };
 
+  const handleLinkClick = () => {
+    if (!showLinkInput) {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        setSavedRange(selection.getRangeAt(0).cloneRange());
+      }
+    } else {
+      setSavedRange(null);
+    }
+    setShowLinkInput(!showLinkInput);
+  };
+
   const addLink = () => {
-    if (!linkUrl) return;
-    exec('createLink', linkUrl);
+    let url = linkUrl.trim();
+    if (!url) return;
+
+    // Normalize URL
+    if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url) && !/^tel:/i.test(url) && !url.startsWith('/') && !url.startsWith('#')) {
+      url = 'https://' + url;
+    }
+
+    if (savedRange) {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+    }
+
+    exec('createLink', url);
+
+    // After creation, ensure target="_blank"
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const linkEl = selection.anchorNode.parentElement?.closest('a') || selection.focusNode.parentElement?.closest('a');
+      if (linkEl) {
+        linkEl.setAttribute('target', '_blank');
+        linkEl.setAttribute('rel', 'noopener noreferrer');
+        syncChanges(); // Sync the manual attribute change
+      }
+    }
+
     setShowLinkInput(false);
     setLinkUrl('');
-    setShow(false);
+    setSavedRange(null);
   };
 
   if (!show) return null;
@@ -146,25 +208,25 @@ function SelectionToolbar() {
       <div className="selection-toolbar" ref={toolbarRef}>
         <button 
           className={`st-btn ${activeFormats.bold ? 'active' : ''}`}
-          onClick={() => exec('bold')}
+          onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
         >
           <Bold size={16} />
         </button>
         <button 
           className={`st-btn ${activeFormats.italic ? 'active' : ''}`}
-          onClick={() => exec('italic')}
+          onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
         >
           <Italic size={16} />
         </button>
         <button 
           className={`st-btn ${activeFormats.strikethrough ? 'active' : ''}`}
-          onClick={() => exec('strikeThrough')}
+          onMouseDown={(e) => { e.preventDefault(); exec('strikeThrough'); }}
         >
           <Strikethrough size={16} />
         </button>
         <button 
           className="st-btn"
-          onClick={() => exec('formatBlock', '<code>')}
+          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<code>'); }}
         >
           <Code size={16} />
         </button>
@@ -172,11 +234,24 @@ function SelectionToolbar() {
         <div className="st-divider" />
 
         <button 
-          className="st-btn"
-          onClick={() => setShowLinkInput(!showLinkInput)}
+          className={`st-btn ${showLinkInput ? 'active' : ''}`}
+          onClick={handleLinkClick}
         >
           <LinkIcon size={16} />
         </button>
+
+        {isLink && (
+          <>
+            <div className="st-divider" />
+            <button 
+              className="st-btn"
+              onClick={() => window.open(currentLinkHref, '_blank')}
+              title="Open link"
+            >
+              <ExternalLink size={16} />
+            </button>
+          </>
+        )}
 
         <div className="st-divider" />
 

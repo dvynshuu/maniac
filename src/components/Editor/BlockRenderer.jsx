@@ -1,4 +1,5 @@
-import { GripVertical } from 'lucide-react';
+import React, { useState, memo } from 'react';
+import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
 import TextBlock from './blocks/TextBlock';
 import HeadingBlock from './blocks/HeadingBlock';
@@ -11,13 +12,13 @@ import CodeBlock from './blocks/CodeBlock';
 import BulletBlock from './blocks/BulletBlock';
 import NumberedBlock from './blocks/NumberedBlock';
 import TableBlock from './blocks/TableBlock';
+import ToggleBlock from './blocks/ToggleBlock';
+import DatabaseBlock from '../Database/DatabaseBlock';
 import TrackerBlock from '../Tracker/TrackerBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
-import { useState } from 'react';
-import { Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
-function BlockRenderer({ block, index }) {
+const BlockRenderer = memo(({ block, index }) => {
   const renderBlockContent = () => {
     switch (block.type) {
       case BLOCK_TYPES.TEXT:
@@ -51,10 +52,13 @@ function BlockRenderer({ block, index }) {
         return <TrackerBlock block={block} index={index} />;
         
       case BLOCK_TYPES.TABLE:
-        return <TableBlock block={block} index={index} />;
+      case BLOCK_TYPES.DATABASE:
+        return <DatabaseBlock block={block} index={index} />;
+
+      case BLOCK_TYPES.TOGGLE:
+        return <ToggleBlock block={block} index={index} />;
         
       default:
-        // Fallback for unimplemented types
         return <TextBlock block={block} index={index} />;
     }
   };
@@ -62,6 +66,7 @@ function BlockRenderer({ block, index }) {
   const moveBlockUp = useBlockStore(s => s.moveBlockUp);
   const moveBlockDown = useBlockStore(s => s.moveBlockDown);
   const deleteBlock = useBlockStore(s => s.deleteBlock);
+  const addBlock = useBlockStore(s => s.addBlock);
   const [isDragOver, setIsDragOver] = useState(false);
   const [menuPos, setMenuPos] = useState(null);
 
@@ -71,9 +76,19 @@ function BlockRenderer({ block, index }) {
     setMenuPos({ x: e.clientX, y: e.clientY });
   };
 
+  const handleDuplicate = async () => {
+    const { db } = await import('../../db/database');
+    const { createId } = await import('../../utils/helpers');
+    const newBlock = { ...block, id: createId(), sortOrder: block.sortOrder + 0.5, createdAt: Date.now(), updatedAt: Date.now() };
+    await db.blocks.add(newBlock);
+    useBlockStore.getState().loadBlocks(block.pageId);
+  };
+
   const menuItems = [
     { label: 'Move Up', icon: ArrowUp, action: () => moveBlockUp(block.id) },
     { label: 'Move Down', icon: ArrowDown, action: () => moveBlockDown(block.id) },
+    'divider',
+    { label: 'Duplicate', icon: Copy, action: handleDuplicate },
     'divider',
     { label: 'Delete', icon: Trash2, action: () => deleteBlock(block.id), danger: true },
   ];
@@ -98,9 +113,6 @@ function BlockRenderer({ block, index }) {
     setIsDragOver(false);
     const draggedBlockId = e.dataTransfer.getData('text/plain');
     if (draggedBlockId && draggedBlockId !== block.id) {
-       // Basic manual reordering without complex layout changes (just moving up/down one spot iteratively)
-       // For a robust system we'd set sortOrder explicitly, but store just has moveBlockUp/Down out of the box right now.
-       // Let's implement a real swap instead.
        const { db } = await import('../../db/database');
        const draggedBlock = await db.blocks.get(draggedBlockId);
        if (draggedBlock) {
@@ -144,6 +156,14 @@ function BlockRenderer({ block, index }) {
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+    return (
+        prevProps.index === nextProps.index &&
+        prevProps.block.id === nextProps.block.id &&
+        prevProps.block.type === nextProps.block.type &&
+        prevProps.block.content === nextProps.block.content &&
+        prevProps.block.updatedAt === nextProps.block.updatedAt
+    );
+});
 
 export default BlockRenderer;

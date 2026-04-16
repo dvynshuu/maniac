@@ -131,3 +131,35 @@ export function getPlainText(html) {
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || '';
 }
+
+export function createProperty(overrides = {}) {
+  return {
+    id: createId(),
+    name: 'Untitled',
+    type: 'text',
+    width: 200,
+    config: {},
+    ...overrides,
+  };
+}
+
+export function createDatabaseRow(schema = [], overrides = {}) {
+  const now = Date.now();
+  const values = {};
+  schema.forEach(prop => {
+    if (prop.type === 'created_at') {
+      values[prop.id] = now;
+    } else if (prop.type === 'checkbox') {
+      values[prop.id] = false;
+    } else {
+      values[prop.id] = '';
+    }
+  });
+  return {
+    id: createId(),
+    values,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
-import { ChevronRight, Plus, MoreHorizontal, Trash2, Copy, Archive } from 'lucide-react';
+import { ChevronRight, Plus, MoreHorizontal, Trash2, Copy, Archive, Star } from 'lucide-react';
 
 function SidebarPageItem({ page, depth }) {
   const currentPageId = usePageStore((s) => s.currentPageId);
@@ -10,6 +10,8 @@ function SidebarPageItem({ page, depth }) {
   const addPage = usePageStore((s) => s.addPage);
   const deletePage = usePageStore((s) => s.deletePage);
   const archivePage = usePageStore((s) => s.archivePage);
+  const duplicatePage = usePageStore((s) => s.duplicatePage);
+  const toggleFavorite = usePageStore((s) => s.toggleFavorite);
   const expandedPages = useUIStore((s) => s.expandedPages);
   const togglePageExpanded = useUIStore((s) => s.togglePageExpanded);
   const setPageExpanded = useUIStore((s) => s.setPageExpanded);
@@ -19,6 +21,7 @@ function SidebarPageItem({ page, depth }) {
   const isActive = currentPageId === page.id;
   const isExpanded = expandedPages[page.id] || false;
   const hasChildren = page.children && page.children.length > 0;
+  const isFav = page.isFavorite || false;
 
   const handleClick = () => {
     setCurrentPage(page.id);
@@ -55,6 +58,22 @@ function SidebarPageItem({ page, depth }) {
       navigate('/');
     }
     await archivePage(page.id);
+  };
+
+  const handleDuplicate = async (e) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    const newPage = await duplicatePage(page.id);
+    if (newPage) {
+      setCurrentPage(newPage.id);
+      navigate(`/page/${newPage.id}`);
+    }
+  };
+
+  const handleToggleFavorite = (e) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    toggleFavorite(page.id);
   };
 
   return (
@@ -97,6 +116,14 @@ function SidebarPageItem({ page, depth }) {
             style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100 }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button className="context-menu-item" onClick={handleToggleFavorite}>
+              <Star size={14} style={isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {}} />
+              {isFav ? 'Remove from Favorites' : 'Add to Favorites'}
+            </button>
+            <button className="context-menu-item" onClick={handleDuplicate}>
+              <Copy size={14} />
+              Duplicate
+            </button>
             <button className="context-menu-item" onClick={handleArchive}>
               <Archive size={14} />
               Archive

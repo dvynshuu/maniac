@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { db } from '../db/database';
-import { createBlock } from '../utils/helpers';
+import { createBlock, createId, debounce } from '../utils/helpers';
+
+// Helper for debouncing Dexie writes per block ID
+const debouncedWrites = new Map();
 
 export const useBlockStore = create((set, get) => ({
   blocks: [],
@@ -27,43 +30,63 @@ export const useBlockStore = create((set, get) => ({
       const afterIndex = blocks.findIndex((b) => b.id === afterBlockId);
       if (afterIndex !== -1) {
         sortOrder = afterIndex + 1;
-        // Shift subsequent blocks
-        const toUpdate = blocks.filter((b) => b.sortOrder >= sortOrder);
-        for (const b of toUpdate) {
-          await db.blocks.update(b.id, { sortOrder: b.sortOrder + 1 });
-        }
+        // Shift subsequent blocks optimistically
+        const updatedBlocks = blocks.map(b => {
+          if (b.sortOrder >= sortOrder) {
+            return { ...b, sortOrder: b.sortOrder + 1 };
+          }
+          return b;
+        });
+        
+        // Background batch update for shifted blocks
+        const shifted = updatedBlocks.filter(b => b.sortOrder > sortOrder);
+        db.blocks.bulkPut(JSON.parse(JSON.stringify(shifted)));
+        
+        set({ blocks: updatedBlocks });
       }
     }
 
     const block = createBlock(pageId, type, { content, properties, sortOrder });
+    
+    // Optimistic insert
+    const currentBlocks = get().blocks;
+    const newBlocks = [...currentBlocks, block].sort((a, b) => a.sortOrder - b.sortOrder);
+    set({ blocks: newBlocks, focusBlockId: block.id });
+    
     await db.blocks.add(block);
-    await get().loadBlocks(pageId);
-    set({ focusBlockId: block.id });
     return block;
   },
 
   updateBlock: async (blockId, updates) => {
-    await db.blocks.update(blockId, { ...updates, updatedAt: Date.now() });
-    const { blocks } = get();
-    if (blocks.length > 0) {
-      await get().loadBlocks(blocks[0].pageId);
+    const now = Date.now();
+    // Optimistic update
+    set(s => ({
+      blocks: s.blocks.map(b => b.id === blockId ? { ...b, ...updates, updatedAt: now } : b),
+    }));
+
+    // Debounced persistence
+    let debouncedFn = debouncedWrites.get(blockId);
+    if (!debouncedFn) {
+        debouncedFn = debounce((id, upd) => {
+            db.blocks.update(id, { ...upd, updatedAt: Date.now() });
+        }, 1000);
+        debouncedWrites.set(blockId, debouncedFn);
     }
+    debouncedFn(blockId, updates);
   },
 
   deleteBlock: async (blockId) => {
     const { blocks } = get();
-    const block = blocks.find((b) => b.id === blockId);
-    if (!block) return;
-
     const blockIndex = blocks.findIndex((b) => b.id === blockId);
+    if (blockIndex === -1) return;
+
+    // Optimistic remove
+    const newBlocks = blocks.filter(b => b.id !== blockId);
+    const newFocus = blockIndex > 0 ? blocks[blockIndex - 1].id : null;
+    set({ blocks: newBlocks, focusBlockId: newFocus });
+
     await db.blocks.delete(blockId);
-
-    // Focus previous block
-    if (blockIndex > 0) {
-      set({ focusBlockId: blocks[blockIndex - 1].id });
-    }
-
-    await get().loadBlocks(block.pageId);
+    debouncedWrites.delete(blockId);
   },
 
   moveBlockUp: async (blockId) => {
@@ -73,10 +96,16 @@ export const useBlockStore = create((set, get) => ({
 
     const current = blocks[index];
     const prev = blocks[index - 1];
+    const now = Date.now();
 
-    await db.blocks.update(current.id, { sortOrder: prev.sortOrder });
-    await db.blocks.update(prev.id, { sortOrder: current.sortOrder });
-    await get().loadBlocks(current.pageId);
+    const newBlocks = [...blocks];
+    newBlocks[index] = { ...prev, sortOrder: current.sortOrder, updatedAt: now };
+    newBlocks[index - 1] = { ...current, sortOrder: prev.sortOrder, updatedAt: now };
+    newBlocks.sort((a, b) => a.sortOrder - b.sortOrder);
+    set({ blocks: newBlocks });
+
+    await db.blocks.update(current.id, { sortOrder: prev.sortOrder, updatedAt: now });
+    await db.blocks.update(prev.id, { sortOrder: current.sortOrder, updatedAt: now });
   },
 
   moveBlockDown: async (blockId) => {
@@ -86,28 +115,37 @@ export const useBlockStore = create((set, get) => ({
 
     const current = blocks[index];
     const next = blocks[index + 1];
+    const now = Date.now();
 
-    await db.blocks.update(current.id, { sortOrder: next.sortOrder });
-    await db.blocks.update(next.id, { sortOrder: current.sortOrder });
-    await get().loadBlocks(current.pageId);
+    const newBlocks = [...blocks];
+    newBlocks[index] = { ...next, sortOrder: current.sortOrder, updatedAt: now };
+    newBlocks[index + 1] = { ...current, sortOrder: next.sortOrder, updatedAt: now };
+    newBlocks.sort((a, b) => a.sortOrder - b.sortOrder);
+    set({ blocks: newBlocks });
+
+    await db.blocks.update(current.id, { sortOrder: next.sortOrder, updatedAt: now });
+    await db.blocks.update(next.id, { sortOrder: current.sortOrder, updatedAt: now });
   },
 
   changeBlockType: async (blockId, newType) => {
-    const block = await db.blocks.get(blockId);
+    const { blocks } = get();
+    const block = blocks.find(b => b.id === blockId);
     if (!block) return;
 
     const properties = { ...block.properties };
-    if (newType === 'todo') {
-      properties.checked = properties.checked ?? false;
-    }
-    if (newType === 'code') {
-      properties.language = properties.language ?? 'javascript';
-    }
-    if (newType === 'callout') {
-      properties.emoji = properties.emoji ?? '💡';
+    if (newType === 'todo') properties.checked = properties.checked ?? false;
+    if (newType === 'code') properties.language = properties.language ?? 'javascript';
+    if (newType === 'callout') properties.emoji = properties.emoji ?? '💡';
+    if (newType === 'toggle') {
+      properties.expanded = properties.expanded ?? true;
+      properties.childContent = properties.childContent ?? '';
     }
 
-    await db.blocks.update(blockId, { type: newType, properties, updatedAt: Date.now() });
-    await get().loadBlocks(block.pageId);
+    const now = Date.now();
+    set(s => ({
+      blocks: s.blocks.map(b => b.id === blockId ? { ...b, type: newType, properties, updatedAt: now } : b),
+    }));
+    
+    await db.blocks.update(blockId, { type: newType, properties, updatedAt: now });
   },
 }));

@@ -1,30 +1,36 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
+import { useUndoStore } from '../../../stores/undoStore';
 import { BLOCK_TYPES } from '../../../utils/constants';
 import SlashMenu from '../SlashMenu';
+import MentionMenu from '../MentionMenu';
+import { debounce } from '../../../utils/helpers';
 
 export default function TextBlock({ block, index }) {
   const [content, setContent] = useState(block.content);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
   
   const contentRef = useRef(null);
+  const lastPushedContent = useRef(block.content);
   
   const updateBlock = useBlockStore((s) => s.updateBlock);
   const addBlock = useBlockStore((s) => s.addBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const focusBlockId = useBlockStore((s) => s.focusBlockId);
+  const pushUndo = useUndoStore((s) => s.pushUndo);
 
   useEffect(() => {
     if (contentRef.current && contentRef.current.innerHTML !== block.content) {
       contentRef.current.innerHTML = block.content;
     }
-  }, [block.id]); // only re-sync if the block itself changes
+  }, [block.id]);
 
   useEffect(() => {
     if (focusBlockId === block.id && contentRef.current) {
       contentRef.current.focus();
-      // Move cursor to end
       const selection = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(contentRef.current);
@@ -34,25 +40,59 @@ export default function TextBlock({ block, index }) {
     }
   }, [focusBlockId, block.id]);
 
+  // Debounced save to store
+  const debouncedSave = useCallback(
+    debounce((html) => {
+      if (html !== block.content) {
+        updateBlock(block.id, { content: html });
+      }
+    }, 1000),
+    [block.id, block.content, updateBlock]
+  );
+
   const handleInput = (e) => {
     const html = e.currentTarget.innerHTML;
     const text = e.currentTarget.textContent;
-    // We update local content state for logic (like slash menu)
     setContent(html);
     
-    // Check for slash menu using text content to avoid HTML tags interference
+    // Undo tracking: push snapshot if this is the first stroke or after a pause
+    if (html !== lastPushedContent.current) {
+        // Simple logic: push if it's been a while or length change is significant
+        // For now, let's just push when it starts changing from the initial load
+        if (lastPushedContent.current === block.content) {
+            pushUndo({ blockId: block.id, oldContent: block.content, newContent: html });
+        }
+        lastPushedContent.current = html;
+    }
+
+    // Check for slash menu
     if (text.includes('/')) {
         const lastSlashIndex = text.lastIndexOf('/');
         const query = text.substring(lastSlashIndex + 1);
         if (!query.includes(' ')) {
              setSlashQuery(query);
              setShowSlashMenu(true);
+             setShowMentionMenu(false);
         } else {
              setShowSlashMenu(false);
         }
+    } else if (text.includes('@') || text.includes('[[')) {
+        const trigger = text.includes('@') ? '@' : '[[';
+        const lastTriggerIndex = text.lastIndexOf(trigger);
+        const query = text.substring(lastTriggerIndex + trigger.length);
+        if (!query.includes(' ')) {
+            setMentionQuery(query);
+            setShowMentionMenu(true);
+            setShowSlashMenu(false);
+        } else {
+            setShowMentionMenu(false);
+        }
     } else {
         setShowSlashMenu(false);
+        setShowMentionMenu(false);
     }
+
+    debouncedSave(html);
   };
 
   const handleBlur = () => {
@@ -61,18 +101,15 @@ export default function TextBlock({ block, index }) {
       updateBlock(block.id, { content: currentHTML });
     }
     setTimeout(() => {
-        if (!document.activeElement.closest('.slash-menu')) {
-            setShowSlashMenu(false);
-        }
-    }, 150);
+        setShowSlashMenu(false);
+        setShowMentionMenu(false);
+    }, 200);
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (showSlashMenu || showMentionMenu) return; // let the menu handle it
       e.preventDefault();
-      if (showSlashMenu) return;
-
-      // Sync before adding new block
       updateBlock(block.id, { content: contentRef.current.innerHTML });
       addBlock(block.pageId, 'text', block.id);
     } else if (e.key === 'Backspace' && contentRef.current.textContent === '') {
@@ -84,13 +121,38 @@ export default function TextBlock({ block, index }) {
   const handleSelectSlashItem = (type) => {
       const currentHTML = contentRef.current.innerHTML;
       const lastSlashIndex = currentHTML.lastIndexOf('/');
-      const htmlWithoutSlash = currentHTML.substring(0, lastSlashIndex);
+      const htmlWithoutTrigger = currentHTML.substring(0, lastSlashIndex);
       
-      contentRef.current.innerHTML = htmlWithoutSlash;
-      updateBlock(block.id, { content: htmlWithoutSlash });
-      
+      contentRef.current.innerHTML = htmlWithoutTrigger;
+      updateBlock(block.id, { content: htmlWithoutTrigger });
       useBlockStore.getState().changeBlockType(block.id, type);
       setShowSlashMenu(false);
+  };
+
+  const handleSelectMention = (page) => {
+      const currentHTML = contentRef.current.innerHTML;
+      const trigger = currentHTML.includes('@') ? '@' : '[[';
+      const lastTriggerIndex = currentHTML.lastIndexOf(trigger);
+      const htmlBefore = currentHTML.substring(0, lastTriggerIndex);
+      
+      const mentionHtml = `<a class="page-mention" href="/page/${page.id}" data-page-id="${page.id}" contenteditable="false">
+        <span class="mention-icon">${page.icon || '📄'}</span>
+        <span class="mention-label">${page.title || 'Untitled'}</span>
+      </a> `;
+      
+      const newHtml = htmlBefore + mentionHtml;
+      contentRef.current.innerHTML = newHtml;
+      updateBlock(block.id, { content: newHtml });
+      setShowMentionMenu(false);
+      
+      // Focus back and move to end
+      contentRef.current.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(contentRef.current);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
   };
 
   const renderFormatting = () => {
@@ -145,13 +207,20 @@ export default function TextBlock({ block, index }) {
                 onInput={handleInput}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
-                data-placeholder="Type '/' for commands"
+                data-placeholder="Type '/' for commands or '@' to mention"
             ></div>
             {showSlashMenu && (
                 <SlashMenu 
                    query={slashQuery} 
                    onSelect={handleSelectSlashItem} 
                    onClose={() => setShowSlashMenu(false)} 
+                />
+            )}
+            {showMentionMenu && (
+                <MentionMenu
+                   query={mentionQuery}
+                   onSelect={handleSelectMention}
+                   onClose={() => setShowMentionMenu(false)}
                 />
             )}
         </div>

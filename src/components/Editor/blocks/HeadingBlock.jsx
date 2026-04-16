@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
+import { useUndoStore } from '../../../stores/undoStore';
 import { BLOCK_TYPES } from '../../../utils/constants';
 
 export default function HeadingBlock({ block }) {
   const [content, setContent] = useState(block.content);
   const contentRef = useRef(null);
+  const lastPushedContent = useRef(block.content);
   
   const updateBlock = useBlockStore((s) => s.updateBlock);
   const addBlock = useBlockStore((s) => s.addBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const focusBlockId = useBlockStore((s) => s.focusBlockId);
+  const pushUndo = useUndoStore((s) => s.pushUndo);
 
   useEffect(() => {
     if (contentRef.current && contentRef.current.innerHTML !== block.content) {
@@ -29,7 +32,17 @@ export default function HeadingBlock({ block }) {
     }
   }, [focusBlockId, block.id]);
 
-  const handleInput = (e) => setContent(e.currentTarget.innerHTML);
+  const handleInput = (e) => {
+    const html = e.currentTarget.innerHTML;
+    setContent(html);
+    
+    if (html !== lastPushedContent.current) {
+        if (lastPushedContent.current === block.content) {
+            pushUndo({ blockId: block.id, oldContent: block.content, newContent: html });
+        }
+        lastPushedContent.current = html;
+    }
+  };
 
   const handleBlur = () => {
     const currentHTML = contentRef.current?.innerHTML || "";
