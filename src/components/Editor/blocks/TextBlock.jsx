@@ -5,6 +5,7 @@ import { BLOCK_TYPES } from '../../../utils/constants';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
 import { debounce } from '../../../utils/helpers';
+import { sanitize } from '../../../utils/sanitizer';
 
 export default function TextBlock({ block, index }) {
   const [content, setContent] = useState(block.content);
@@ -24,7 +25,7 @@ export default function TextBlock({ block, index }) {
 
   useEffect(() => {
     if (contentRef.current && contentRef.current.innerHTML !== block.content) {
-      contentRef.current.innerHTML = block.content;
+      contentRef.current.innerHTML = sanitize(block.content);
     }
   }, [block.id]);
 
@@ -52,8 +53,9 @@ export default function TextBlock({ block, index }) {
 
   const handleInput = (e) => {
     const html = e.currentTarget.innerHTML;
+    const sanitizedHtml = sanitize(html);
     const text = e.currentTarget.textContent;
-    setContent(html);
+    setContent(sanitizedHtml);
     
     // Undo tracking: push snapshot if this is the first stroke or after a pause
     if (html !== lastPushedContent.current) {
@@ -92,7 +94,7 @@ export default function TextBlock({ block, index }) {
         setShowMentionMenu(false);
     }
 
-    debouncedSave(html);
+    debouncedSave(sanitizedHtml);
   };
 
   const handleBlur = () => {

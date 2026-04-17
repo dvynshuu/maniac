@@ -4,6 +4,7 @@ import {
   ChevronDown, Type, Palette, ExternalLink 
 } from 'lucide-react';
 import { useBlockStore } from '../../stores/blockStore';
+import { sanitizeUrl } from '../../utils/sanitizer';
 
 const COLORS = [
   { label: 'Default', class: '' },
@@ -173,6 +174,10 @@ function SelectionToolbar() {
     if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url) && !/^tel:/i.test(url) && !url.startsWith('/') && !url.startsWith('#')) {
       url = 'https://' + url;
     }
+    
+    // Sanitize to prevent malicious protocols
+    url = sanitizeUrl(url);
+    if (url === '#') return;
 
     if (savedRange) {
       const selection = window.getSelection();
@@ -245,7 +250,12 @@ function SelectionToolbar() {
             <div className="st-divider" />
             <button 
               className="st-btn"
-              onClick={() => window.open(currentLinkHref, '_blank')}
+              onClick={() => {
+                const safeUrl = sanitizeUrl(currentLinkHref);
+                if (safeUrl !== '#') {
+                  window.open(safeUrl, '_blank', 'noopener,noreferrer');
+                }
+              }}
               title="Open link"
             >
               <ExternalLink size={16} />

@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
 import { buildPageTree } from '../../utils/helpers';
+import { sanitize } from '../../utils/sanitizer';
+import { validateBackupData } from '../../utils/validator';
 import SidebarPageItem from './SidebarPageItem';
 import { PanelLeftClose, PanelLeft, Plus, Settings, Download, Upload, Clock, Star, Home, Search } from 'lucide-react';
 import { db } from '../../db/database';
@@ -56,12 +58,19 @@ function Sidebar() {
     if (!file) return;
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Invalid JSON format.');
+      }
       
-      if (data.pages) await db.pages.bulkPut(data.pages);
-      if (data.blocks) await db.blocks.bulkPut(data.blocks);
-      if (data.trackers) await db.trackers.bulkPut(data.trackers);
-      if (data.entries) await db.tracker_entries.bulkPut(data.entries);
+      const validatedData = validateBackupData(file, data);
+      
+      if (validatedData.pages.length > 0) await db.pages.bulkPut(validatedData.pages);
+      if (validatedData.blocks.length > 0) await db.blocks.bulkPut(validatedData.blocks);
+      if (validatedData.trackers.length > 0) await db.trackers.bulkPut(validatedData.trackers);
+      if (validatedData.entries.length > 0) await db.tracker_entries.bulkPut(validatedData.entries);
       
       // Reload everything
       await usePageStore.getState().loadPages();

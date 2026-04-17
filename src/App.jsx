@@ -4,8 +4,10 @@ import { seedDefaultData } from './db/database';
 import { usePageStore } from './stores/pageStore';
 import { useTrackerStore } from './stores/trackerStore';
 import { useUIStore } from './stores/uiStore';
+import { useSecurityStore } from './stores/securityStore';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
+import UnlockScreen from './components/Layout/UnlockScreen';
 
 // Lazy load heavy components
 const PageEditor = lazy(() => import('./components/Editor/PageEditor'));
@@ -28,14 +30,19 @@ function App() {
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
   const closeCommandPalette = useUIStore((s) => s.closeCommandPalette);
 
+  const isLocked = useSecurityStore(s => s.isLocked);
+  const masterPassword = useSecurityStore(s => s.masterPassword);
+
   useEffect(() => {
     const init = async () => {
       await seedDefaultData();
-      await loadPages();
-      await loadTrackers();
+      if (!isLocked) {
+        await loadPages();
+        await loadTrackers();
+      }
     };
     init();
-  }, []);
+  }, [isLocked]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -52,6 +59,10 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  if (isLocked) {
+    return <UnlockScreen />;
+  }
 
   return (
     <>

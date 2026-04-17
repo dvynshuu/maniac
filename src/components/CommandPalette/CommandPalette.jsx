@@ -38,13 +38,14 @@ export default function CommandPalette({ onClose }) {
         }
         const timer = setTimeout(async () => {
             try {
-                const allBlocks = await db.blocks.toArray();
-                const matches = allBlocks
+                const matches = await db.blocks
                     .filter(b => {
                         const text = (b.content || '').replace(/<[^>]*>/g, '').toLowerCase();
                         return text.includes(lowerQuery);
                     })
-                    .slice(0, 5);
+                    .limit(5)
+                    .toArray();
+
 
                 // Enrich with page info
                 const enriched = await Promise.all(matches.map(async (b) => {

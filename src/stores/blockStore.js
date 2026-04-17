@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { db } from '../db/database';
-import { createBlock, createId, debounce } from '../utils/helpers';
+import { createBlock, createId, debounce, generateLexicalOrder } from '../utils/helpers';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from './securityStore';
 
 // Helper for debouncing Dexie writes per block ID
 const debouncedWrites = new Map();
@@ -14,7 +16,29 @@ export const useBlockStore = create((set, get) => ({
       set({ blocks: [] });
       return;
     }
-    const blocks = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
+    const password = useSecurityStore.getState().masterPassword;
+    const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
+    
+    const blocks = await Promise.all(blocksRaw.map(async b => {
+      if (password && b._isEncrypted) {
+        let content = b.content;
+        let properties = b.properties;
+        
+        if (b.content) content = await SecurityService.decrypt(b.content, password) || '🔒 Decryption Failed';
+        if (b.properties && typeof b.properties === 'string') {
+          const decryptedProps = await SecurityService.decrypt(b.properties, password);
+          try {
+            properties = JSON.parse(decryptedProps);
+          } catch (e) {
+            properties = {};
+          }
+        }
+        
+        return { ...b, content, properties };
+      }
+      return b;
+    }));
+
     set({ blocks });
   },
 
@@ -24,26 +48,25 @@ export const useBlockStore = create((set, get) => ({
 
   addBlock: async (pageId, type = 'text', afterBlockId = null, content = '', properties = {}) => {
     const { blocks } = get();
-    let sortOrder = blocks.length;
+    let sortOrder;
 
     if (afterBlockId) {
       const afterIndex = blocks.findIndex((b) => b.id === afterBlockId);
       if (afterIndex !== -1) {
-        sortOrder = afterIndex + 1;
-        // Shift subsequent blocks optimistically
-        const updatedBlocks = blocks.map(b => {
-          if (b.sortOrder >= sortOrder) {
-            return { ...b, sortOrder: b.sortOrder + 1 };
-          }
-          return b;
-        });
-        
-        // Background batch update for shifted blocks
-        const shifted = updatedBlocks.filter(b => b.sortOrder > sortOrder);
-        db.blocks.bulkPut(JSON.parse(JSON.stringify(shifted)));
-        
-        set({ blocks: updatedBlocks });
+        const prev = blocks[afterIndex].sortOrder;
+        const next = blocks[afterIndex + 1]?.sortOrder || null;
+        sortOrder = generateLexicalOrder(prev, next);
       }
+    } else {
+        // Add to beginning
+        const next = blocks[0]?.sortOrder || null;
+        sortOrder = generateLexicalOrder(null, next);
+    }
+
+    if (sortOrder === undefined) {
+        // Fallback to end
+        const last = blocks[blocks.length - 1]?.sortOrder || null;
+        sortOrder = generateLexicalOrder(last, null);
     }
 
     const block = createBlock(pageId, type, { content, properties, sortOrder });
@@ -95,17 +118,18 @@ export const useBlockStore = create((set, get) => ({
     if (index <= 0) return;
 
     const current = blocks[index];
-    const prev = blocks[index - 1];
+    const prevBlock = blocks[index - 1];
+    const prevPrev = blocks[index - 2]?.sortOrder || null;
+    
+    const newSortOrder = generateLexicalOrder(prevPrev, prevBlock.sortOrder);
     const now = Date.now();
 
     const newBlocks = [...blocks];
-    newBlocks[index] = { ...prev, sortOrder: current.sortOrder, updatedAt: now };
-    newBlocks[index - 1] = { ...current, sortOrder: prev.sortOrder, updatedAt: now };
-    newBlocks.sort((a, b) => a.sortOrder - b.sortOrder);
+    newBlocks[index] = { ...current, sortOrder: newSortOrder, updatedAt: now };
+    newBlocks.sort((a, b) => a.sortOrder.localeCompare(b.sortOrder));
     set({ blocks: newBlocks });
 
-    await db.blocks.update(current.id, { sortOrder: prev.sortOrder, updatedAt: now });
-    await db.blocks.update(prev.id, { sortOrder: current.sortOrder, updatedAt: now });
+    await db.blocks.update(current.id, { sortOrder: newSortOrder, updatedAt: now });
   },
 
   moveBlockDown: async (blockId) => {
@@ -114,17 +138,18 @@ export const useBlockStore = create((set, get) => ({
     if (index >= blocks.length - 1) return;
 
     const current = blocks[index];
-    const next = blocks[index + 1];
+    const nextBlock = blocks[index + 1];
+    const nextNext = blocks[index + 2]?.sortOrder || null;
+    
+    const newSortOrder = generateLexicalOrder(nextBlock.sortOrder, nextNext);
     const now = Date.now();
 
     const newBlocks = [...blocks];
-    newBlocks[index] = { ...next, sortOrder: current.sortOrder, updatedAt: now };
-    newBlocks[index + 1] = { ...current, sortOrder: next.sortOrder, updatedAt: now };
-    newBlocks.sort((a, b) => a.sortOrder - b.sortOrder);
+    newBlocks[index] = { ...current, sortOrder: newSortOrder, updatedAt: now };
+    newBlocks.sort((a, b) => a.sortOrder.localeCompare(b.sortOrder));
     set({ blocks: newBlocks });
 
-    await db.blocks.update(current.id, { sortOrder: next.sortOrder, updatedAt: now });
-    await db.blocks.update(next.id, { sortOrder: current.sortOrder, updatedAt: now });
+    await db.blocks.update(current.id, { sortOrder: newSortOrder, updatedAt: now });
   },
 
   changeBlockType: async (blockId, newType) => {

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import { db } from '../db/database';
 import { useBlockStore } from './blockStore';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from './securityStore';
 import { createProperty, createDatabaseRow, createId, debounce } from '../utils/helpers';
 
 export const useDatabaseStore = create((set, get) => ({
@@ -8,8 +11,36 @@ export const useDatabaseStore = create((set, get) => ({
   databases: {},
 
   // Initializes local state from block properties
-  initializeDatabase: (blockId, schema, rows) => {
-    // Only initialize if not already present or force update
+  initializeDatabase: async (blockId, schema, legacyRows) => {
+    if (get().databases[blockId]?.initialized) return;
+
+    if (legacyRows && legacyRows.length > 0) {
+      const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
+      await db.database_rows.bulkPut(rowsToInsert);
+      
+      const block = useBlockStore.getState().blocks.find(b => b.id === blockId);
+      if (block) {
+        const newProps = { ...block.properties };
+        delete newProps.rows;
+        await useBlockStore.getState().updateBlock(blockId, { properties: newProps });
+      }
+    }
+
+    const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+    const password = useSecurityStore.getState().masterPassword;
+    
+    const rows = await Promise.all(rowsRaw.map(async r => {
+       if (password && r._isEncrypted && typeof r.values === 'string') {
+           const decrypted = await SecurityService.decrypt(r.values, password);
+           try {
+             return { ...r, values: JSON.parse(decrypted) };
+           } catch {
+             return { ...r, values: {} };
+           }
+       }
+       return r;
+    }));
+
     set(state => ({
       databases: {
         ...state.databases,
@@ -36,6 +67,7 @@ export const useDatabaseStore = create((set, get) => ({
   debouncedSaves: {},
   
   _saveToBlockStore: (blockId, updates) => {
+    // This now only handles schema updates
     const state = get();
     if (!state.debouncedSaves[blockId]) {
       state.debouncedSaves[blockId] = debounce((id, data) => {
@@ -84,9 +116,11 @@ export const useDatabaseStore = create((set, get) => ({
 
     const newSchema = [...schema, newProp];
     
-    // Update local immediately then Dexie
     get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
-    await get()._immediateSave(blockId, { schema: newSchema, rows: updatedRows });
+    await get()._immediateSave(blockId, { schema: newSchema });
+    
+    // Update all rows in Dexie concurrently
+    await Promise.all(updatedRows.map(r => db.database_rows.update(r.id, { values: r.values })));
     return newProp;
   },
 
@@ -109,7 +143,9 @@ export const useDatabaseStore = create((set, get) => ({
     });
 
     get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
-    await get()._immediateSave(blockId, { schema: newSchema, rows: updatedRows });
+    await get()._immediateSave(blockId, { schema: newSchema });
+    
+    await Promise.all(updatedRows.map(r => db.database_rows.update(r.id, { values: r.values })));
   },
 
   reorderProperties: async (blockId, sourceIndex, destinationIndex) => {
@@ -127,49 +163,56 @@ export const useDatabaseStore = create((set, get) => ({
 
   addRow: async (blockId, overrides = {}) => {
     const { schema, rows } = get().getDatabaseData(blockId);
-    const newRow = createDatabaseRow(schema, overrides);
+    const newRow = createDatabaseRow(schema, { ...overrides, blockId });
     const newRows = [...rows, newRow];
     
     get()._updateLocal(blockId, { rows: newRows });
-    await get()._immediateSave(blockId, { rows: newRows });
+    await db.database_rows.add(newRow);
     return newRow;
   },
 
   updateCell: (blockId, rowId, propertyId, value) => {
     const { rows } = get().getDatabaseData(blockId);
+    let updatedRow = null;
     const newRows = rows.map(row => {
       if (row.id === rowId) {
-        return {
+        updatedRow = {
           ...row,
           updatedAt: Date.now(),
           values: { ...row.values, [propertyId]: value }
         };
+        return updatedRow;
       }
       return row;
     });
 
-    // Update local immediately for 0ms lag
     get()._updateLocal(blockId, { rows: newRows });
     
-    // Background save
-    get()._saveToBlockStore(blockId, { rows: newRows });
+    // Background save to isolated table
+    if (updatedRow) {
+      db.database_rows.update(rowId, { values: updatedRow.values, updatedAt: updatedRow.updatedAt });
+    }
   },
   
   updateCellImmediate: async (blockId, rowId, propertyId, value) => {
       const { rows } = get().getDatabaseData(blockId);
+      let updatedRow = null;
       const newRows = rows.map(row => {
         if (row.id === rowId) {
-          return {
+          updatedRow = {
             ...row,
             updatedAt: Date.now(),
             values: { ...row.values, [propertyId]: value }
           };
+          return updatedRow;
         }
         return row;
       });
       
       get()._updateLocal(blockId, { rows: newRows });
-      await get()._immediateSave(blockId, { rows: newRows });
+      if (updatedRow) {
+        await db.database_rows.update(rowId, { values: updatedRow.values, updatedAt: updatedRow.updatedAt });
+      }
   },
 
   deleteRow: async (blockId, rowId) => {
@@ -177,7 +220,7 @@ export const useDatabaseStore = create((set, get) => ({
     const newRows = rows.filter(r => r.id !== rowId);
     
     get()._updateLocal(blockId, { rows: newRows });
-    await get()._immediateSave(blockId, { rows: newRows });
+    await db.database_rows.delete(rowId);
   },
 
   duplicateRow: async (blockId, rowId) => {
@@ -189,7 +232,8 @@ export const useDatabaseStore = create((set, get) => ({
       ...rowToDuplicate,
       id: createId(),
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      blockId // Ensure blockId is set correctly
     };
     
     const index = rows.findIndex(r => r.id === rowId);
@@ -197,6 +241,6 @@ export const useDatabaseStore = create((set, get) => ({
     newRows.splice(index + 1, 0, newRow);
     
     get()._updateLocal(blockId, { rows: newRows });
-    await get()._immediateSave(blockId, { rows: newRows });
+    await db.database_rows.add(newRow);
   }
 }));

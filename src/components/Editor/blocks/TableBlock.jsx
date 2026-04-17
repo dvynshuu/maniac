@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
+import { sanitize } from '../../../utils/sanitizer';
 import { Plus, Minus, Layout, GripVertical } from 'lucide-react';
 
 export default function TableBlock({ block }) {
@@ -50,7 +51,7 @@ export default function TableBlock({ block }) {
   const handleCellBlur = (rowIndex, colIndex, html) => {
     const newCells = [...cells];
     newCells[rowIndex] = [...newCells[rowIndex]];
-    newCells[rowIndex][colIndex] = html;
+    newCells[rowIndex][colIndex] = sanitize(html);
     setCells(newCells);
     save(newCells);
   };

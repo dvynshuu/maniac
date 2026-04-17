@@ -73,26 +73,40 @@ export const useTrackerStore = create((set, get) => ({
 
   addEntry: async (trackerId, data = {}) => {
     const entry = createTrackerEntry(trackerId, data);
+    
+    // Optimistic update
+    set(s => ({
+      entries: [entry, ...s.entries].sort((a, b) => b.createdAt - a.createdAt)
+    }));
+    
     await db.tracker_entries.add(entry);
-    await get().loadEntries(trackerId);
     return entry;
   },
 
   updateEntry: async (entryId, data) => {
+    // Optimistic update
+    set(s => ({
+      entries: s.entries.map(e => 
+        e.id === entryId 
+          ? { ...e, data: { ...e.data, ...data }, updatedAt: Date.now() } 
+          : e
+      )
+    }));
+    
     const entry = await db.tracker_entries.get(entryId);
     if (!entry) return;
     await db.tracker_entries.update(entryId, {
       data: { ...entry.data, ...data },
       updatedAt: Date.now(),
     });
-    await get().loadEntries(entry.trackerId);
   },
 
   deleteEntry: async (entryId) => {
-    const entry = await db.tracker_entries.get(entryId);
-    if (!entry) return;
-    const trackerId = entry.trackerId;
+    // Optimistic update
+    set(s => ({
+      entries: s.entries.filter(e => e.id !== entryId)
+    }));
+    
     await db.tracker_entries.delete(entryId);
-    await get().loadEntries(trackerId);
   },
 }));

@@ -12,7 +12,7 @@ export function createPage(overrides = {}) {
     title: '',
     icon: '📝',
     coverImage: null,
-    sortOrder: 0,
+    sortOrder: 'm',
     isArchived: false,
     createdAt: now,
     updatedAt: now,
@@ -28,7 +28,7 @@ export function createBlock(pageId, type = 'text', overrides = {}) {
     type,
     content: '',
     properties: {},
-    sortOrder: 0,
+    sortOrder: 'm',
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -162,4 +162,51 @@ export function createDatabaseRow(schema = [], overrides = {}) {
     updatedAt: now,
     ...overrides,
   };
+}
+
+/**
+ * Generates a lexical sort string between two other strings.
+ * This allows O(1) insertions without re-ordering existing items.
+ */
+export function generateLexicalOrder(prev = null, next = null) {
+  const BASE = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  
+  if (!prev && !next) return 'm';
+  if (!prev) {
+    const firstChar = next[0] || 'm';
+    const index = BASE.indexOf(firstChar);
+    return index > 0 ? BASE[index - 1] : '0' + next;
+  }
+  if (!next) {
+    const lastChar = prev[prev.length - 1];
+    const index = BASE.indexOf(lastChar);
+    return index < BASE.length - 1 ? prev.slice(0, -1) + BASE[index + 1] : prev + 'm';
+  }
+
+  // Find the first character that differs
+  let i = 0;
+  while (i < Math.max(prev.length, next.length)) {
+    const charA = prev[i] || BASE[0];
+    const charB = next[i] || BASE[BASE.length - 1];
+    
+    if (charA === charB) {
+      i++;
+      continue;
+    }
+
+    const indexA = BASE.indexOf(charA);
+    const indexB = BASE.indexOf(charB);
+
+    if (indexB - indexA > 1) {
+      // There's a character in between at this position
+      return prev.slice(0, i) + BASE[Math.floor((indexA + indexB) / 2)];
+    } else {
+      // Characters are adjacent or one is prefix of other
+      // Continue to next position
+      i++;
+    }
+  }
+  
+  // Fallback
+  return prev + 'm';
 }

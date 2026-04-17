@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { db } from '../db/database';
-import { createPage, createId, debounce } from '../utils/helpers';
+import { createPage, createId, debounce, generateLexicalOrder } from '../utils/helpers';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from './securityStore';
 
 export const usePageStore = create((set, get) => ({
   pages: [],
@@ -9,7 +11,17 @@ export const usePageStore = create((set, get) => ({
 
   // Full load — only on app init & page navigation
   loadPages: async () => {
-    const allPages = await db.pages.toArray();
+    const password = useSecurityStore.getState().masterPassword;
+    const allPagesRaw = await db.pages.toArray();
+    
+    const allPages = await Promise.all(allPagesRaw.map(async p => {
+      if (password && p._isEncrypted && p.title) {
+        const decrypted = await SecurityService.decrypt(p.title, password);
+        return { ...p, title: decrypted || '🔒 Decryption Failed' };
+      }
+      return p;
+    }));
+
     set({ 
       pages: allPages.filter(p => !p.isArchived),
       archivedPages: allPages.filter(p => p.isArchived)
@@ -22,10 +34,13 @@ export const usePageStore = create((set, get) => ({
 
   addPage: async (parentId = null) => {
     const { pages } = get();
-    const siblings = pages.filter((p) => p.parentId === parentId);
+    const siblings = pages.filter((p) => p.parentId === parentId).sort((a, b) => (a.sortOrder || '').localeCompare(b.sortOrder || ''));
+    const lastSibling = siblings[siblings.length - 1];
+    const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
+    
     const page = createPage({
       parentId,
-      sortOrder: siblings.length,
+      sortOrder,
     });
     // Optimistic update
     set(s => ({ pages: [...s.pages, page] }));

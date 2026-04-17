@@ -1,12 +1,105 @@
 import Dexie from 'dexie';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from '../stores/securityStore';
 
 export const db = new Dexie('ManiacDB');
 
 db.version(1).stores({
   pages: 'id, parentId, title, sortOrder, isArchived, createdAt, updatedAt',
   blocks: 'id, pageId, type, sortOrder, createdAt, updatedAt',
+  database_rows: 'id, blockId, createdAt, updatedAt',
   trackers: 'id, name, createdAt, updatedAt',
   tracker_entries: 'id, trackerId, createdAt, updatedAt',
+});
+
+// Encryption Hooks
+db.pages.hook('creating', (primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password && obj.title) {
+    return SecurityService.encrypt(obj.title, password).then(encrypted => {
+       obj.title = encrypted;
+       obj._isEncrypted = true;
+    });
+  }
+});
+
+db.pages.hook('updating', (mods, primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password && mods.title) {
+    return SecurityService.encrypt(mods.title, password).then(encrypted => {
+       mods.title = encrypted;
+       mods._isEncrypted = true;
+    });
+  }
+});
+
+db.pages.hook('reading', (obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password && obj.title && obj._isEncrypted) {
+    // Note: read hooks are synchronous in Dexie v3/v4 for most things, 
+    // but we can't easily do async decryption here without blocking the UI.
+    // We'll handle decryption in the UI layer or stores instead for better UX,
+    // OR we use a proxy. 
+    // Actually, Dexie reading hooks don't support async well.
+    // I'll skip the reading hook and decrypt in the store.
+  }
+  return obj;
+});
+
+// Blocks
+db.blocks.hook('creating', (primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password) {
+    const promises = [];
+    if (obj.content) {
+        promises.push(SecurityService.encrypt(obj.content, password).then(e => obj.content = e));
+    }
+    if (obj.properties) {
+        promises.push(SecurityService.encrypt(JSON.stringify(obj.properties), password).then(e => obj.properties = e));
+    }
+    if (promises.length > 0) {
+        obj._isEncrypted = true;
+        return Promise.all(promises);
+    }
+  }
+});
+
+db.blocks.hook('updating', (mods, primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password) {
+    const promises = [];
+    if (mods.content) {
+        promises.push(SecurityService.encrypt(mods.content, password).then(e => mods.content = e));
+    }
+    if (mods.properties) {
+        promises.push(SecurityService.encrypt(JSON.stringify(mods.properties), password).then(e => mods.properties = e));
+    }
+    if (promises.length > 0) {
+        mods._isEncrypted = true;
+        return Promise.all(promises);
+    }
+  }
+});
+
+// Database Rows
+db.database_rows.hook('creating', (primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password && obj.values) {
+    return SecurityService.encrypt(JSON.stringify(obj.values), password).then(encrypted => {
+       obj.values = encrypted;
+       obj._isEncrypted = true;
+    });
+  }
+});
+
+db.database_rows.hook('updating', (mods, primKey, obj) => {
+  const password = useSecurityStore.getState().masterPassword;
+  if (password && mods.values) {
+    return SecurityService.encrypt(JSON.stringify(mods.values), password).then(encrypted => {
+       mods.values = encrypted;
+       mods._isEncrypted = true;
+    });
+  }
 });
 
 // Seed default data on first launch
