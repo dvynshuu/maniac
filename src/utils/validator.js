@@ -1,4 +1,4 @@
-import { sanitize } from './sanitizer';
+import { sanitize, sanitizeObject } from './sanitizer';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -38,34 +38,14 @@ function validateBlock(block) {
   if (!isValidString(block.id)) return null;
   if (!isValidString(block.pageId)) return null;
   
-  // Recursively sanitize properties
-  const sanitizeProperties = (props) => {
-    if (!props || typeof props !== 'object') return {};
-    try {
-      const cleanProps = {};
-      for (const key in props) {
-        if (typeof props[key] === 'string') {
-          cleanProps[key] = sanitize(props[key]);
-        } else if (Array.isArray(props[key])) {
-           cleanProps[key] = props[key].map(item => 
-              typeof item === 'string' ? sanitize(item) : (Array.isArray(item) ? item.map(sub => typeof sub === 'string' ? sanitize(sub) : sub) : item)
-           );
-        } else if (typeof props[key] === 'boolean' || typeof props[key] === 'number') {
-           cleanProps[key] = props[key];
-        }
-      }
-      return cleanProps;
-    } catch {
-      return {};
-    }
-  };
+  const cleanProperties = sanitizeObject(block.properties) || {};
 
   return {
     id: block.id,
     pageId: block.pageId,
     type: isValidString(block.type) ? sanitize(block.type) : 'text',
     content: isValidString(block.content) ? sanitize(block.content) : '',
-    properties: sanitizeProperties(block.properties),
+    properties: cleanProperties,
     sortOrder: isValidString(block.sortOrder) ? block.sortOrder : 'm',
     createdAt: isValidNumber(block.createdAt) ? block.createdAt : Date.now(),
     updatedAt: isValidNumber(block.updatedAt) ? block.updatedAt : Date.now(),
@@ -112,22 +92,50 @@ export function validateBackupData(file, data) {
     throw new Error('Invalid backup format: root must be an object.');
   }
 
-  const result = { pages: [], blocks: [], trackers: [], entries: [] };
+  // Schema Versioning & Limits
+  if (data.version && data.version > 1) {
+    throw new Error(`Unsupported schema version: ${data.version}. Please upgrade your application.`);
+  }
+
+  const MAX_RECORDS = 50000;
+  if (
+    (data.pages?.length || 0) + (data.blocks?.length || 0) + (data.trackers?.length || 0) > MAX_RECORDS
+  ) {
+    throw new Error(`Payload exceeds maximum record limit of ${MAX_RECORDS}.`);
+  }
+
+  const result = { pages: [], blocks: [], trackers: [], entries: [], quarantined: [] };
 
   if (Array.isArray(data.pages)) {
-    result.pages = data.pages.map(validatePage).filter(Boolean);
+    for (const p of data.pages) {
+      const parsed = validatePage(p);
+      if (parsed) result.pages.push(parsed);
+      else result.quarantined.push({ type: 'page', raw: p });
+    }
   }
   
   if (Array.isArray(data.blocks)) {
-    result.blocks = data.blocks.map(validateBlock).filter(Boolean);
+    for (const b of data.blocks) {
+      const parsed = validateBlock(b);
+      if (parsed) result.blocks.push(parsed);
+      else result.quarantined.push({ type: 'block', raw: b });
+    }
   }
 
   if (Array.isArray(data.trackers)) {
-    result.trackers = data.trackers.map(validateTracker).filter(Boolean);
+    for (const t of data.trackers) {
+      const parsed = validateTracker(t);
+      if (parsed) result.trackers.push(parsed);
+      else result.quarantined.push({ type: 'tracker', raw: t });
+    }
   }
 
   if (Array.isArray(data.entries)) {
-    result.entries = data.entries.map(validateTrackerEntry).filter(Boolean);
+    for (const e of data.entries) {
+      const parsed = validateTrackerEntry(e);
+      if (parsed) result.entries.push(parsed);
+      else result.quarantined.push({ type: 'entry', raw: e });
+    }
   }
 
   return result;

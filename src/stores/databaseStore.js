@@ -27,18 +27,40 @@ export const useDatabaseStore = create((set, get) => ({
     }
 
     const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+    const cellsRaw = await db.database_cells.where('blockId').equals(blockId).toArray();
+    
     const password = useSecurityStore.getState().masterPassword;
     
+    const cellsByRow = {};
+    for (const cell of cellsRaw) {
+        if (!cellsByRow[cell.rowId]) cellsByRow[cell.rowId] = {};
+        let val = cell.value;
+        if (password && cell._isEncrypted && typeof val === 'string') {
+            try { val = JSON.parse(await SecurityService.decrypt(val, password)); } catch { val = ''; }
+        }
+        cellsByRow[cell.rowId][cell.propertyId] = val;
+    }
+
     const rows = await Promise.all(rowsRaw.map(async r => {
-       if (password && r._isEncrypted && typeof r.values === 'string') {
-           const decrypted = await SecurityService.decrypt(r.values, password);
-           try {
-             return { ...r, values: JSON.parse(decrypted) };
-           } catch {
-             return { ...r, values: {} };
+       let values = cellsByRow[r.id] || {};
+       
+       if (r.values !== undefined) {
+           let oldVals = r.values;
+           if (password && r._isEncrypted && typeof oldVals === 'string') {
+               try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, password)); } catch { oldVals = {}; }
            }
+           if (typeof oldVals === 'object' && oldVals !== null) {
+               values = { ...values, ...oldVals };
+               const cellsToInsert = Object.entries(oldVals).map(([propId, val]) => ({
+                   id: `${r.id}_${propId}`, rowId: r.id, blockId, propertyId: propId, value: val, createdAt: Date.now(), updatedAt: Date.now()
+               }));
+               if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
+           }
+           delete r.values;
+           delete r._isEncrypted;
+           await db.database_rows.put(r);
        }
-       return r;
+       return { ...r, values };
     }));
 
     set(state => ({
@@ -120,7 +142,10 @@ export const useDatabaseStore = create((set, get) => ({
     await get()._immediateSave(blockId, { schema: newSchema });
     
     // Update all rows in Dexie concurrently
-    await Promise.all(updatedRows.map(r => db.database_rows.update(r.id, { values: r.values })));
+    const cellsToInsert = updatedRows.map(r => ({
+      id: `${r.id}_${newProp.id}`, rowId: r.id, blockId, propertyId: newProp.id, value: newProp.type === 'checkbox' ? false : '', createdAt: Date.now(), updatedAt: Date.now()
+    }));
+    if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
     return newProp;
   },
 
@@ -145,7 +170,7 @@ export const useDatabaseStore = create((set, get) => ({
     get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
     await get()._immediateSave(blockId, { schema: newSchema });
     
-    await Promise.all(updatedRows.map(r => db.database_rows.update(r.id, { values: r.values })));
+    await db.database_cells.where('propertyId').equals(propertyId).delete();
   },
 
   reorderProperties: async (blockId, sourceIndex, destinationIndex) => {
@@ -167,7 +192,16 @@ export const useDatabaseStore = create((set, get) => ({
     const newRows = [...rows, newRow];
     
     get()._updateLocal(blockId, { rows: newRows });
-    await db.database_rows.add(newRow);
+    
+    const cellsToInsert = Object.entries(newRow.values).map(([propId, value]) => ({
+       id: `${newRow.id}_${propId}`, rowId: newRow.id, blockId, propertyId: propId, value, createdAt: Date.now(), updatedAt: Date.now()
+    }));
+    const rowToInsert = { ...newRow };
+    delete rowToInsert.values;
+    
+    await db.database_rows.add(rowToInsert);
+    if (cellsToInsert.length > 0) await db.database_cells.bulkAdd(cellsToInsert);
+    
     return newRow;
   },
 
@@ -190,7 +224,7 @@ export const useDatabaseStore = create((set, get) => ({
     
     // Background save to isolated table
     if (updatedRow) {
-      db.database_rows.update(rowId, { values: updatedRow.values, updatedAt: updatedRow.updatedAt });
+      db.database_cells.put({ id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt });
     }
   },
   
@@ -211,7 +245,7 @@ export const useDatabaseStore = create((set, get) => ({
       
       get()._updateLocal(blockId, { rows: newRows });
       if (updatedRow) {
-        await db.database_rows.update(rowId, { values: updatedRow.values, updatedAt: updatedRow.updatedAt });
+        await db.database_cells.put({ id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt });
       }
   },
 
@@ -221,6 +255,7 @@ export const useDatabaseStore = create((set, get) => ({
     
     get()._updateLocal(blockId, { rows: newRows });
     await db.database_rows.delete(rowId);
+    await db.database_cells.where('rowId').equals(rowId).delete();
   },
 
   duplicateRow: async (blockId, rowId) => {
@@ -241,6 +276,14 @@ export const useDatabaseStore = create((set, get) => ({
     newRows.splice(index + 1, 0, newRow);
     
     get()._updateLocal(blockId, { rows: newRows });
-    await db.database_rows.add(newRow);
+    
+    const cellsToInsert = Object.entries(newRow.values).map(([propId, value]) => ({
+       id: `${newRow.id}_${propId}`, rowId: newRow.id, blockId, propertyId: propId, value, createdAt: Date.now(), updatedAt: Date.now()
+    }));
+    const rowToInsert = { ...newRow };
+    delete rowToInsert.values;
+    
+    await db.database_rows.add(rowToInsert);
+    if (cellsToInsert.length > 0) await db.database_cells.bulkAdd(cellsToInsert);
   }
 }));

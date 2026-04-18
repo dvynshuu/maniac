@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { db } from '../db/database';
 import { createTracker, createTrackerEntry, createTrackerField } from '../utils/helpers';
+import { useUIStore } from './uiStore';
 
 export const useTrackerStore = create((set, get) => ({
   trackers: [],
@@ -29,6 +30,7 @@ export const useTrackerStore = create((set, get) => ({
     const tracker = createTracker(overrides);
     await db.trackers.add(tracker);
     await get().loadTrackers();
+    useUIStore.getState().updateOnboarding('trackersAdded');
     return tracker;
   },
 

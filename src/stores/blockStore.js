@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { db } from '../db/database';
 import { createBlock, createId, debounce, generateLexicalOrder } from '../utils/helpers';
+import { content_sanitizer, sanitizeObject } from '../utils/sanitizer';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
+import { useUIStore } from './uiStore';
+import { useUndoStore } from './undoStore';
 
 // Helper for debouncing Dexie writes per block ID
 const debouncedWrites = new Map();
@@ -69,7 +72,10 @@ export const useBlockStore = create((set, get) => ({
         sortOrder = generateLexicalOrder(last, null);
     }
 
-    const block = createBlock(pageId, type, { content, properties, sortOrder });
+    const safeContent = content_sanitizer(content);
+    const safeProperties = sanitizeObject(properties) || {};
+
+    const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder });
     
     // Optimistic insert
     const currentBlocks = get().blocks;
@@ -77,31 +83,47 @@ export const useBlockStore = create((set, get) => ({
     set({ blocks: newBlocks, focusBlockId: block.id });
     
     await db.blocks.add(block);
+    useUIStore.getState().updateOnboarding('blocksCreated');
     return block;
   },
 
   updateBlock: async (blockId, updates) => {
+    const safeUpdates = { ...updates };
+    if (safeUpdates.content !== undefined) safeUpdates.content = content_sanitizer(safeUpdates.content);
+    if (safeUpdates.properties !== undefined) safeUpdates.properties = sanitizeObject(safeUpdates.properties);
+
     const now = Date.now();
     // Optimistic update
     set(s => ({
-      blocks: s.blocks.map(b => b.id === blockId ? { ...b, ...updates, updatedAt: now } : b),
+      blocks: s.blocks.map(b => b.id === blockId ? { ...b, ...safeUpdates, updatedAt: now } : b),
     }));
 
     // Debounced persistence
     let debouncedFn = debouncedWrites.get(blockId);
     if (!debouncedFn) {
-        debouncedFn = debounce((id, upd) => {
-            db.blocks.update(id, { ...upd, updatedAt: Date.now() });
+        debouncedFn = debounce(async (id, upd) => {
+            useUIStore.getState().setIsSaving(true);
+            await db.blocks.update(id, { ...upd, updatedAt: Date.now() });
+            useUIStore.getState().setIsSaving(false);
         }, 1000);
         debouncedWrites.set(blockId, debouncedFn);
     }
-    debouncedFn(blockId, updates);
+    debouncedFn(blockId, safeUpdates);
   },
 
   deleteBlock: async (blockId) => {
     const { blocks } = get();
     const blockIndex = blocks.findIndex((b) => b.id === blockId);
     if (blockIndex === -1) return;
+
+    const blockToDelete = blocks[blockIndex];
+
+    // Snapshot for undo
+    useUndoStore.getState().pushUndo({
+       type: 'DELETE_BLOCK',
+       block: blockToDelete,
+       index: blockIndex
+    });
 
     // Optimistic remove
     const newBlocks = blocks.filter(b => b.id !== blockId);
@@ -110,6 +132,17 @@ export const useBlockStore = create((set, get) => ({
 
     await db.blocks.delete(blockId);
     debouncedWrites.delete(blockId);
+
+    useUIStore.getState().addToast('Block deleted', 'info', {
+      label: 'UNDO',
+      onClick: async () => {
+        const snapshot = useUndoStore.getState().undo();
+        if (snapshot && snapshot.block) {
+          await db.blocks.add(snapshot.block);
+          get().loadBlocks(snapshot.block.pageId);
+        }
+      }
+    });
   },
 
   moveBlockUp: async (blockId) => {

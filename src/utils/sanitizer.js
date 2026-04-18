@@ -20,6 +20,31 @@ export const sanitize = (html) => {
   });
 };
 
+export const content_sanitizer = sanitize;
+
+/**
+ * Recursively sanitizes object properties and arrays.
+ * @param {any} obj - The object to sanitize
+ * @returns {any} - The sanitized object
+ */
+export const sanitizeObject = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => (typeof item === 'string' ? sanitize(item) : (typeof item === 'object' ? sanitizeObject(item) : item)));
+  }
+  const cleanProps = {};
+  for (const key in obj) {
+    if (typeof obj[key] === 'string') {
+      cleanProps[key] = sanitize(obj[key]);
+    } else if (typeof obj[key] === 'object') {
+      cleanProps[key] = sanitizeObject(obj[key]);
+    } else if (typeof obj[key] === 'boolean' || typeof obj[key] === 'number') {
+      cleanProps[key] = obj[key];
+    }
+  }
+  return cleanProps;
+};
+
 /**
  * Sanitizes URLs to prevent javascript:/data:/vbscript: execution.
  * @param {string} url - The raw URL string.

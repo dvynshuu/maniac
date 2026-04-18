@@ -3,6 +3,7 @@ import { db } from '../db/database';
 import { createPage, createId, debounce, generateLexicalOrder } from '../utils/helpers';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
+import { useUIStore } from './uiStore';
 
 export const usePageStore = create((set, get) => ({
   pages: [],
@@ -45,6 +46,7 @@ export const usePageStore = create((set, get) => ({
     // Optimistic update
     set(s => ({ pages: [...s.pages, page] }));
     await db.pages.add(page);
+    useUIStore.getState().updateOnboarding('pagesCreated');
     return page;
   },
 

@@ -1,12 +1,48 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-export const useUIStore = create((set, get) => ({
-  sidebarOpen: true,
+export const useUIStore = create(
+  persist(
+    (set, get) => ({
+      sidebarOpen: true,
   sidebarWidth: 280,
   commandPaletteOpen: false,
   contextMenu: null,
   modal: null,
   expandedPages: {},
+  lastVisitedPageId: null,
+  onboardingStatus: {
+    pagesCreated: false,
+    blocksCreated: false,
+    trackersAdded: false,
+    isComplete: false,
+  },
+  pendingRestoreData: null,
+  toasts: [],
+  isSaving: false,
+
+  setLastVisitedPageId: (id) => set({ lastVisitedPageId: id }),
+  
+  addToast: (message, type = 'info', action = null) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    set(s => ({ toasts: [...s.toasts, { id, message, type, action }] }));
+    setTimeout(() => get().removeToast(id), 5000);
+  },
+
+  removeToast: (id) => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
+
+  setIsSaving: (isSaving) => set({ isSaving }),
+  
+  updateOnboarding: (milestone) => set((s) => {
+    const newStatus = { ...s.onboardingStatus, [milestone]: true };
+    if (newStatus.pagesCreated && newStatus.blocksCreated && newStatus.trackersAdded) {
+      newStatus.isComplete = true;
+    }
+    return { onboardingStatus: newStatus };
+  }),
+
+  setPendingRestoreData: (data) => set({ pendingRestoreData: data }),
+  clearPendingRestoreData: () => set({ pendingRestoreData: null }),
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -37,4 +73,16 @@ export const useUIStore = create((set, get) => ({
         [pageId]: expanded,
       },
     })),
-}));
+    }),
+    {
+      name: 'maniac-ui-store',
+      partialize: (state) => ({ 
+        sidebarOpen: state.sidebarOpen, 
+        sidebarWidth: state.sidebarWidth, 
+        expandedPages: state.expandedPages,
+        lastVisitedPageId: state.lastVisitedPageId,
+        onboardingStatus: state.onboardingStatus
+      })
+    }
+  )
+);

@@ -12,6 +12,26 @@ db.version(1).stores({
   tracker_entries: 'id, trackerId, createdAt, updatedAt',
 });
 
+db.version(2).stores({
+  blocks: 'id, pageId, type, sortOrder, createdAt, updatedAt, *words',
+  database_cells: 'id, rowId, propertyId, blockId, createdAt, updatedAt',
+}).upgrade(tx => {
+  return tx.blocks.toCollection().modify(block => {
+    if (!block._isEncrypted && block.content) {
+      const text = block.content.replace(/<[^>]*>/g, ' ').toLowerCase();
+      block.words = [...new Set(text.split(/[\s\W]+/).filter(w => w.length > 1))];
+    } else {
+      block.words = [];
+    }
+  });
+});
+
+const extractWords = (content) => {
+  if (!content) return [];
+  const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';
+  return [...new Set(text.split(/[\s\W]+/).filter(w => w.length > 1))];
+};
+
 // Encryption Hooks
 db.pages.hook('creating', (primKey, obj) => {
   const password = useSecurityStore.getState().masterPassword;
@@ -49,7 +69,11 @@ db.pages.hook('reading', (obj) => {
 // Blocks
 db.blocks.hook('creating', (primKey, obj) => {
   const password = useSecurityStore.getState().masterPassword;
-  if (password) {
+  
+  if (!password && obj.content) {
+    obj.words = extractWords(obj.content);
+  } else if (password) {
+    obj.words = [];
     const promises = [];
     if (obj.content) {
         promises.push(SecurityService.encrypt(obj.content, password).then(e => obj.content = e));
@@ -66,7 +90,13 @@ db.blocks.hook('creating', (primKey, obj) => {
 
 db.blocks.hook('updating', (mods, primKey, obj) => {
   const password = useSecurityStore.getState().masterPassword;
+  
+  if (!password && mods.content !== undefined) {
+    mods.words = extractWords(mods.content);
+  }
+
   if (password) {
+    mods.words = [];
     const promises = [];
     if (mods.content) {
         promises.push(SecurityService.encrypt(mods.content, password).then(e => mods.content = e));
@@ -81,22 +111,22 @@ db.blocks.hook('updating', (mods, primKey, obj) => {
   }
 });
 
-// Database Rows
-db.database_rows.hook('creating', (primKey, obj) => {
+// Database Cells
+db.database_cells.hook('creating', (primKey, obj) => {
   const password = useSecurityStore.getState().masterPassword;
-  if (password && obj.values) {
-    return SecurityService.encrypt(JSON.stringify(obj.values), password).then(encrypted => {
-       obj.values = encrypted;
+  if (password && obj.value !== undefined) {
+    return SecurityService.encrypt(JSON.stringify(obj.value), password).then(encrypted => {
+       obj.value = encrypted;
        obj._isEncrypted = true;
     });
   }
 });
 
-db.database_rows.hook('updating', (mods, primKey, obj) => {
+db.database_cells.hook('updating', (mods, primKey, obj) => {
   const password = useSecurityStore.getState().masterPassword;
-  if (password && mods.values) {
-    return SecurityService.encrypt(JSON.stringify(mods.values), password).then(encrypted => {
-       mods.values = encrypted;
+  if (password && mods.value !== undefined) {
+    return SecurityService.encrypt(JSON.stringify(mods.value), password).then(encrypted => {
+       mods.value = encrypted;
        mods._isEncrypted = true;
     });
   }

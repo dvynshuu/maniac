@@ -38,13 +38,27 @@ export default function CommandPalette({ onClose }) {
         }
         const timer = setTimeout(async () => {
             try {
-                const matches = await db.blocks
-                    .filter(b => {
-                        const text = (b.content || '').replace(/<[^>]*>/g, '').toLowerCase();
-                        return text.includes(lowerQuery);
-                    })
-                    .limit(5)
-                    .toArray();
+                const queryWords = lowerQuery.split(/[\s\W]+/).filter(w => w.length > 1);
+                let matches = [];
+                
+                if (queryWords.length > 0) {
+                    const rawMatches = await db.blocks
+                        .where('words')
+                        .startsWithAnyOfIgnoreCase(queryWords)
+                        .limit(10)
+                        .toArray();
+                        
+                    const uniqueMatches = [];
+                    const seen = new Set();
+                    for (const m of rawMatches) {
+                        if (!seen.has(m.id)) {
+                            seen.add(m.id);
+                            uniqueMatches.push(m);
+                        }
+                    }
+                    matches = uniqueMatches.slice(0, 5);
+                }
+
 
 
                 // Enrich with page info

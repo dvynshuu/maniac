@@ -8,6 +8,8 @@ import { useSecurityStore } from './stores/securityStore';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
+import RestorePreviewModal from './components/Settings/RestorePreviewModal';
+import ToastContainer from './components/Common/ToastContainer';
 
 // Lazy load heavy components
 const PageEditor = lazy(() => import('./components/Editor/PageEditor'));
@@ -75,6 +77,8 @@ function App() {
         </Suspense>
       </AppLayout>
       {commandPaletteOpen && <CommandPalette onClose={closeCommandPalette} />}
+      <RestorePreviewModal />
+      <ToastContainer />
     </>
   );
 }

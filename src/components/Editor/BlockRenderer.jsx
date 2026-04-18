@@ -18,7 +18,11 @@ import TrackerBlock from '../Tracker/TrackerBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 
-const BlockRenderer = memo(({ block, index }) => {
+const BlockRenderer = memo(({ blockId, index }) => {
+  const block = useBlockStore(s => s.blocks.find(b => b.id === blockId));
+
+  if (!block) return null;
+
   const renderBlockContent = () => {
     switch (block.type) {
       case BLOCK_TYPES.TEXT:
@@ -156,14 +160,6 @@ const BlockRenderer = memo(({ block, index }) => {
       </div>
     </div>
   );
-}, (prevProps, nextProps) => {
-    return (
-        prevProps.index === nextProps.index &&
-        prevProps.block.id === nextProps.block.id &&
-        prevProps.block.type === nextProps.block.type &&
-        prevProps.block.content === nextProps.block.content &&
-        prevProps.block.updatedAt === nextProps.block.updatedAt
-    );
 });
 
 export default BlockRenderer;

@@ -2,22 +2,25 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useBlockStore } from '../../stores/blockStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useUndoStore } from '../../stores/undoStore';
+import { useUIStore } from '../../stores/uiStore';
 import BlockRenderer from './BlockRenderer';
 import SelectionToolbar from './SelectionToolbar';
 import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
 import { debounce } from '../../utils/helpers';
-import { ImageIcon, X } from 'lucide-react';
+import { ImageIcon, X, Cloud, CloudCheck } from 'lucide-react';
 
 function PageEditor() {
   const { pageId } = useParams();
   const pages = usePageStore((s) => s.pages);
   const updatePage = usePageStore((s) => s.updatePage);
-  const blocks = useBlockStore((s) => s.blocks);
+  const blockIds = useBlockStore(useShallow((s) => s.blocks.map(b => b.id)));
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const addBlock = useBlockStore((s) => s.addBlock);
   const updateBlock = useBlockStore((s) => s.updateBlock);
+  const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
 
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -36,8 +39,9 @@ function PageEditor() {
   useEffect(() => {
     if (pageId) {
       loadBlocks(pageId);
+      setLastVisitedPageId(pageId);
     }
-  }, [pageId, loadBlocks]);
+  }, [pageId, loadBlocks, setLastVisitedPageId]);
 
   useEffect(() => {
     const handleGlobalClick = (e) => {
@@ -105,10 +109,10 @@ function PageEditor() {
   const handleTitleKeyDown = async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (blocks.length === 0) {
+      if (blockIds.length === 0) {
         await addBlock(pageId, 'text');
       } else {
-        const firstBlockEl = document.querySelector(`[data-block-id="${blocks[0].id}"] .block-content [contenteditable="true"]`);
+        const firstBlockEl = document.querySelector(`[data-block-id="${blockIds[0]}"] .block-content [contenteditable="true"]`);
         if (firstBlockEl) {
            firstBlockEl.focus();
            const selection = window.getSelection();
@@ -143,7 +147,22 @@ function PageEditor() {
 
   return (
     <div className="editor-scroll">
-      <Breadcrumb />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px' }}>
+        <Breadcrumb />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
+          {useUIStore(s => s.isSaving) ? (
+            <>
+              <Cloud size={14} className="animate-pulse" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Cloud size={14} style={{ color: 'var(--success)' }} />
+              <span>Saved</span>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Cover Image */}
       {page.coverImage ? (
@@ -202,7 +221,7 @@ function PageEditor() {
         />
 
         <div className="page-blocks">
-          {blocks.length === 0 ? (
+          {blockIds.length === 0 ? (
             <div 
               className="block-text text-placeholder" 
               style={{ padding: '4px 0', cursor: 'text', color: 'var(--text-placeholder)' }}
@@ -211,10 +230,10 @@ function PageEditor() {
               Click here or press Enter to add a block...
             </div>
           ) : (
-            blocks.map((block, index) => (
+            blockIds.map((id, index) => (
               <BlockRenderer 
-                key={block.id} 
-                block={block} 
+                key={id} 
+                blockId={id} 
                 index={index}
               />
             ))
@@ -225,9 +244,9 @@ function PageEditor() {
         <div 
           style={{ height: '20vh', cursor: 'text' }} 
           onClick={(e) => {
-             if (e.target === e.currentTarget && blocks.length > 0) {
-                 const lastBlock = blocks[blocks.length - 1];
-                 addBlock(pageId, 'text', lastBlock.id);
+             if (e.target === e.currentTarget && blockIds.length > 0) {
+                 const lastId = blockIds[blockIds.length - 1];
+                 addBlock(pageId, 'text', lastId);
              }
           }}
         />

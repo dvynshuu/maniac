@@ -66,17 +66,9 @@ function Sidebar() {
       }
       
       const validatedData = validateBackupData(file, data);
-      
-      if (validatedData.pages.length > 0) await db.pages.bulkPut(validatedData.pages);
-      if (validatedData.blocks.length > 0) await db.blocks.bulkPut(validatedData.blocks);
-      if (validatedData.trackers.length > 0) await db.trackers.bulkPut(validatedData.trackers);
-      if (validatedData.entries.length > 0) await db.tracker_entries.bulkPut(validatedData.entries);
-      
-      // Reload everything
-      await usePageStore.getState().loadPages();
-      alert('Import successful!');
+      useUIStore.getState().setPendingRestoreData(validatedData);
     } catch (err) {
-      alert('Import failed: ' + err.message);
+      useUIStore.getState().addToast('Import failed: ' + err.message, 'error');
     }
     e.target.value = '';
   };

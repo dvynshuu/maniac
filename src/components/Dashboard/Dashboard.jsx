@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
-import { Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useUIStore } from '../../stores/uiStore';
+import { useSecurityStore } from '../../stores/securityStore';
+import { db } from '../../db/database';
+import { SecurityService } from '../../utils/securityService';
+import { Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -17,37 +21,161 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 32px', borderBottom: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Maniac OS</div>
-          <div style={{ display: 'flex', gap: '24px', fontSize: '14px', fontWeight: 500 }}>
-            {['Workspace', 'Calendar', 'Archives'].map(tab => (
-              <div 
+          <div style={{ display: 'flex', gap: '24px', fontSize: '14px', fontWeight: 500 }} role="tablist">
+            {['Workspace', 'Daily Review', 'Calendar', 'Archives'].map(tab => (
+              <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
+                role="tab"
+                aria-selected={activeTab === tab}
                 style={{ 
+                  background: 'none', border: 'none', outline: 'none',
                   color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)', 
                   borderBottom: activeTab === tab ? '2px solid var(--accent-primary)' : '2px solid transparent', 
                   paddingBottom: '4px', 
                   cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
+                  transition: 'all var(--transition-fast)',
+                  fontSize: 'inherit', fontWeight: 'inherit'
                 }}
               >
                 {tab}
-              </div>
+              </button>
             ))}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-secondary)' }}>
-          <Settings size={18} style={{ cursor: 'pointer' }} />
-          <Bell size={18} style={{ cursor: 'pointer' }} />
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-            <User size={16} />
-          </div>
+          <button aria-label="Settings" className="icon-btn"><Settings size={18} /></button>
+          <button aria-label="Notifications" className="icon-btn"><Bell size={18} /></button>
+          <button aria-label="Profile" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', borderRadius: '50%', outline: 'none' }} className="interactive-card">
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
+              <User size={16} />
+            </div>
+          </button>
         </div>
       </div>
 
       <div className="editor-container" style={{ maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
         {activeTab === 'Workspace' && <WorkspaceTab pages={pages} navigate={navigate} />}
+        {activeTab === 'Daily Review' && <DailyReviewTab navigate={navigate} />}
         {activeTab === 'Calendar' && <CalendarTab pages={pages} navigate={navigate} />}
         {activeTab === 'Archives' && <ArchivesTab archivedPages={archivedPages} restore={restorePage} permaDelete={deletePage} />}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// Daily Review Tab
+// ==========================================
+function DailyReviewTab({ navigate }) {
+  const [unfinishedBlocks, setUnfinishedBlocks] = useState([]);
+  const [trackerTrends, setTrackerTrends] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const password = useSecurityStore(s => s.masterPassword);
+
+  useEffect(() => {
+    const fetchReviewData = async () => {
+      try {
+        setLoading(true);
+        // Fetch unfinished todos
+        const allTodos = await db.blocks.where('type').equals('todo').reverse().sortBy('updatedAt');
+        
+        const reviewTodos = [];
+        for (const todo of allTodos) {
+          if (reviewTodos.length >= 100) break; // Limit
+          
+          let props = todo.properties || {};
+          let content = todo.content || '';
+          if (password && todo._isEncrypted) {
+             try {
+                if (typeof props === 'string') props = JSON.parse(await SecurityService.decrypt(props, password));
+                if (typeof content === 'string') content = await SecurityService.decrypt(content, password);
+             } catch {
+                props = {};
+                content = 'Encrypted...';
+             }
+          }
+          if (props.checked === false) {
+             reviewTodos.push({ ...todo, properties: props, content });
+          }
+        }
+        setUnfinishedBlocks(reviewTodos);
+
+        // Fetch tracker trends
+        const trackers = await db.trackers.toArray();
+        const trends = await Promise.all(trackers.map(async (t) => {
+           const entries = await db.tracker_entries.where('trackerId').equals(t.id).toArray();
+           return { ...t, entryCount: entries.length };
+        }));
+        setTrackerTrends(trends);
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReviewData();
+  }, [password]);
+
+  if (loading) return <div style={{ padding: '32px', color: 'var(--text-tertiary)' }}>Loading review data...</div>;
+
+  return (
+    <div>
+      <div style={{ marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '8px' }}>Daily Review</h2>
+        <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>Review unfinished tasks and recent trends.</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>Unfinished Tasks</h3>
+          {unfinishedBlocks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {unfinishedBlocks.map(block => (
+                <div 
+                  key={block.id} 
+                  onClick={() => navigate(`/page/${block.pageId}`)}
+                  className="interactive-card"
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: '2px solid var(--border-strong)' }}></div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.content || 'Empty task'}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '48px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>Inbox Zero</div>
+              <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>You're all caught up! Enjoy your focused momentum.</p>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>Tracker Overview</h3>
+          {trackerTrends.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {trackerTrends.map(t => (
+                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ position: 'relative', width: '32px', height: '32px' }}>
+                      <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border-subtle)" strokeWidth="3" />
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-primary)" strokeWidth="3" strokeDasharray={`${Math.min(100, (t.entryCount / 30) * 100)}, 100`} strokeLinecap="round" style={{ transition: 'stroke-dasharray 0.5s ease' }} />
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{t.title || 'Untitled'}</span>
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t.entryCount} total</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>No trackers found.</div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -59,9 +187,63 @@ function Dashboard() {
 function WorkspaceTab({ pages, navigate }) {
   const recentPages = [...pages].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4);
   const pinnedPages = [...pages].sort((a, b) => a.createdAt - b.createdAt).slice(0, 3); // mock pinned
+  const lastVisitedPageId = useUIStore(s => s.lastVisitedPageId);
+  const onboardingStatus = useUIStore(s => s.onboardingStatus);
+  const lastVisitedPage = lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId) : null;
 
   return (
     <>
+      {/* Smart Resurfacing */}
+      {lastVisitedPage && (
+        <div 
+          className="interactive-card"
+          onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
+          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px 24px', marginBottom: '24px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <RotateCcw size={18} color="var(--accent-primary)" />
+            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Continue where you left off</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{lastVisitedPage.icon || '📄'} {lastVisitedPage.title || 'Untitled'}</span>
+            <ChevronRight size={16} color="var(--text-tertiary)" />
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding Widget */}
+      {!onboardingStatus?.isComplete && (
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={20} color="var(--accent-primary)" />
+            Activation Milestones
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.pagesCreated ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.pagesCreated ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.pagesCreated ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {onboardingStatus?.pagesCreated && <Check size={12} color="var(--bg-primary)" />}
+              </div>
+              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.pagesCreated ? 'line-through' : 'none' }}>Create your first page</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.blocksCreated ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.blocksCreated ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.blocksCreated ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {onboardingStatus?.blocksCreated && <Check size={12} color="var(--bg-primary)" />}
+              </div>
+              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.blocksCreated ? 'line-through' : 'none' }}>Add a block to a page</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.trackersAdded ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.trackersAdded ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.trackersAdded ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {onboardingStatus?.trackersAdded && <Check size={12} color="var(--bg-primary)" />}
+              </div>
+              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.trackersAdded ? 'line-through' : 'none' }}>Initialize a tracker database</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div style={{ marginBottom: '8px' }}>
         <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>CURATOR SYSTEM V1.0</div>
@@ -97,14 +279,18 @@ function WorkspaceTab({ pages, navigate }) {
               <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '4px' }}>Pinned Pages</h3>
               <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>Your immediate priority nodes</p>
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 500 }}>View Workspace</div>
+            <button className="text-link-btn">View Workspace</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {pinnedPages.map(page => (
+            {pinnedPages.length > 0 ? pinnedPages.map(page => (
               <div 
                 key={page.id} 
                 onClick={() => navigate(`/page/${page.id}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                className="interactive-card"
                 style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all var(--transition-fast)' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)' }}
@@ -117,7 +303,13 @@ function WorkspaceTab({ pages, navigate }) {
                   {page.title || 'Untitled'}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="empty-state-container" style={{ gridColumn: '1 / -1', padding: '24px' }}>
+                <Pin className="empty-state-icon" size={24} style={{ marginBottom: '8px' }} />
+                <div className="empty-state-title" style={{ fontSize: '14px', marginBottom: '4px' }}>No pinned pages</div>
+                <div className="empty-state-desc" style={{ fontSize: '12px' }}>Important nodes will appear here.</div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -128,7 +320,7 @@ function WorkspaceTab({ pages, navigate }) {
               <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '4px' }}>Graph View</h3>
               <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: 0, fontWeight: 'bold', letterSpacing: '0.05em' }}>{pages.length} NODES DETECTED</p>
             </div>
-            <Maximize2 size={16} color="var(--text-tertiary)" style={{ cursor: 'pointer' }} />
+            <button aria-label="Maximize Graph" className="icon-btn-subtle"><Maximize2 size={16} /></button>
           </div>
 
           <div style={{ flex: 1, background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -148,10 +340,17 @@ function WorkspaceTab({ pages, navigate }) {
       <div style={{ marginTop: '8px', paddingBottom: '32px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>Recent Activity</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {recentPages.map(page => (
-                <div key={page.id} onClick={() => navigate(`/page/${page.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-tertiary)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-secondary)' }}
+            {recentPages.length > 0 ? recentPages.map(page => (
+                <div 
+                  key={page.id} 
+                  onClick={() => navigate(`/page/${page.id}`)} 
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                  className="interactive-card"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-tertiary)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-secondary)' }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ fontSize: '18px' }}>{page.icon || '📄'}</div>
@@ -159,10 +358,11 @@ function WorkspaceTab({ pages, navigate }) {
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{new Date(page.updatedAt).toLocaleDateString()}</div>
                 </div>
-            ))}
-            {recentPages.length === 0 && (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-strong)' }}>
-                No recent workspace activity
+            )) : (
+              <div className="empty-state-container" style={{ padding: '24px' }}>
+                <Clock className="empty-state-icon" size={32} style={{ marginBottom: '12px' }} />
+                <div className="empty-state-title" style={{ fontSize: '16px', marginBottom: '4px' }}>No recent activity</div>
+                <div className="empty-state-desc">Workspace nodes you view or edit will appear here.</div>
               </div>
             )}
           </div>
@@ -252,14 +452,14 @@ function CalendarTab({ pages, navigate }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
                 {activities.map(a => (
-                  <div 
+                  <button 
                     key={a.id} 
                     onClick={() => navigate(`/page/${a.id}`)}
-                    style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    className="calendar-event-btn"
                     title={a.title || 'Untitled'}
                   >
                     {a.icon || '📄'} {a.title || 'Untitled'}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -274,12 +474,21 @@ function CalendarTab({ pages, navigate }) {
 // Archives Tab
 // ==========================================
 function ArchivesTab({ archivedPages, restore, permaDelete }) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  useEffect(() => {
+    if (confirmDeleteId) {
+      const timer = setTimeout(() => setConfirmDeleteId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteId]);
+
   if (archivedPages.length === 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: 'var(--text-tertiary)' }}>
-        <Trash2 size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '20px' }}>Archives are empty</h3>
-        <p style={{ marginTop: '8px' }}>Archived pages will appear here. You can permanently delete them or restore them to the workspace.</p>
+      <div className="empty-state-container" style={{ margin: '64px auto', maxWidth: '400px', background: 'transparent', border: 'none' }}>
+        <Trash2 size={48} className="empty-state-icon" />
+        <h3 className="empty-state-title" style={{ fontSize: '20px' }}>Archives are empty</h3>
+        <p className="empty-state-desc">Archived pages will appear here. You can permanently delete them or restore them to the workspace.</p>
       </div>
     );
   }
@@ -318,10 +527,29 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
                 <RotateCcw size={14} /> Restore
               </button>
               <button 
-                onClick={() => { if(window.confirm('Delete this page permanently? This cannot be undone.')) permaDelete(page.id) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--error-subtle)', border: '1px solid transparent', color: 'var(--error)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+                onClick={() => {
+                  if (confirmDeleteId === page.id) {
+                    permaDelete(page.id);
+                    setConfirmDeleteId(null);
+                  } else {
+                    setConfirmDeleteId(page.id);
+                  }
+                }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  background: confirmDeleteId === page.id ? 'var(--error)' : 'var(--error-subtle)', 
+                  border: '1px solid transparent', 
+                  color: confirmDeleteId === page.id ? 'white' : 'var(--error)', 
+                  padding: '6px 12px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '13px',
+                  transition: 'all 0.2s ease'
+                }}
               >
-                <Trash2 size={14} /> Delete
+                <Trash2 size={14} /> {confirmDeleteId === page.id ? 'Confirm?' : 'Delete'}
               </button>
             </div>
           </div>

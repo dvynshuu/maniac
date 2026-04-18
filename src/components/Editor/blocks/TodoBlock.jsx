@@ -60,7 +60,7 @@ export default function TodoBlock({ block }) {
   return (
     <div className="block-todo">
       <button 
-        className={`block-todo-checkbox ${checked ? 'checked' : ''}`}
+        className={`block-todo-checkbox ${checked ? 'checked animate-ping' : ''}`}
         onClick={toggleChecked}
         contentEditable={false}
       >

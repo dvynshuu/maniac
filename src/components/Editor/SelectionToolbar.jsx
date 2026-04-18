@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Strikethrough, Code, Link as LinkIcon, 
-  ChevronDown, Type, Palette, ExternalLink 
+  ChevronDown, Type, Palette, ExternalLink,
+  AlignLeft, AlignCenter, AlignRight, Heading3, Eraser,
+  Sparkles, List, ListOrdered, Quote
 } from 'lucide-react';
 import { useBlockStore } from '../../stores/blockStore';
+import { useUIStore } from '../../stores/uiStore';
 import { sanitizeUrl } from '../../utils/sanitizer';
 
 const COLORS = [
@@ -22,8 +25,12 @@ function SelectionToolbar() {
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
     italic: false,
-    underline: false,
+    strikethrough: false,
+    alignLeft: false,
+    alignCenter: false,
+    alignRight: false,
   });
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [savedRange, setSavedRange] = useState(null);
   const [isLink, setIsLink] = useState(false);
   const [currentLinkHref, setCurrentLinkHref] = useState('');
@@ -86,6 +93,9 @@ function SelectionToolbar() {
         bold: document.queryCommandState('bold'),
         italic: document.queryCommandState('italic'),
         strikethrough: document.queryCommandState('strikethrough'),
+        alignLeft: document.queryCommandState('justifyLeft'),
+        alignCenter: document.queryCommandState('justifyCenter'),
+        alignRight: document.queryCommandState('justifyRight'),
       });
     };
 
@@ -265,15 +275,93 @@ function SelectionToolbar() {
 
         <div className="st-divider" />
 
-        {COLORS.map(c => (
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('justifyLeft'); }}
+          title="Align Left"
+        >
+          <AlignLeft size={16} />
+        </button>
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('justifyCenter'); }}
+          title="Align Center"
+        >
+          <AlignCenter size={16} />
+        </button>
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('justifyRight'); }}
+          title="Align Right"
+        >
+          <AlignRight size={16} />
+        </button>
+
+        <div className="st-divider" />
+
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<h3>'); }}
+          title="Heading 3"
+        >
+          <Heading3 size={16} />
+        </button>
+
+        <div className="st-divider" />
+
+        <div style={{ position: 'relative' }}>
           <button 
-            key={c.label}
-            className={`st-btn ${c.class}`}
-            style={{ width: 20, height: 20, margin: '0 2px' }}
-            onClick={() => applyHighlight(c.class)}
-            title={c.label}
-          />
-        ))}
+            className="st-btn"
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            title="Highlight"
+          >
+            <Palette size={16} />
+          </button>
+          
+          {showColorPicker && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: '8px', padding: '8px', display: 'flex', gap: '4px', zIndex: 1000 }}>
+              {COLORS.map(c => (
+                <button 
+                  key={c.label}
+                  className={`st-btn ${c.class}`}
+                  style={{ width: 24, height: 24, borderRadius: '4px' }}
+                  onClick={() => { applyHighlight(c.class); setShowColorPicker(false); }}
+                  title={c.label}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="st-divider" />
+
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }}
+          title="Bullet List"
+        >
+          <List size={16} />
+        </button>
+        <button 
+          className="st-btn"
+          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<blockquote>'); }}
+          title="Quote"
+        >
+          <Quote size={16} />
+        </button>
+
+        <div className="st-divider" />
+
+        <button 
+          className="st-btn"
+          onClick={() => {
+            useUIStore.getState().addToast('AI Magic is coming soon!', 'info');
+          }}
+          title="AI Magic"
+          style={{ color: 'var(--accent-secondary)' }}
+        >
+          <Sparkles size={16} />
+        </button>
 
         {showLinkInput && (
           <div className="st-link-popover" onMouseDown={e => e.stopPropagation()}>
