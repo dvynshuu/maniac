@@ -18,7 +18,7 @@ export const useDatabaseStore = create((set, get) => ({
       const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
       await db.database_rows.bulkPut(rowsToInsert);
       
-      const block = useBlockStore.getState().blocks.find(b => b.id === blockId);
+      const block = useBlockStore.getState().getBlock(blockId);
       if (block) {
         const newProps = { ...block.properties };
         delete newProps.rows;
@@ -29,14 +29,14 @@ export const useDatabaseStore = create((set, get) => ({
     const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
     const cellsRaw = await db.database_cells.where('blockId').equals(blockId).toArray();
     
-    const password = useSecurityStore.getState().masterPassword;
+    const key = useSecurityStore.getState().derivedKey;
     
     const cellsByRow = {};
     for (const cell of cellsRaw) {
         if (!cellsByRow[cell.rowId]) cellsByRow[cell.rowId] = {};
         let val = cell.value;
-        if (password && cell._isEncrypted && typeof val === 'string') {
-            try { val = JSON.parse(await SecurityService.decrypt(val, password)); } catch { val = ''; }
+        if (key && cell._isEncrypted && typeof val === 'string') {
+            try { val = JSON.parse(await SecurityService.decrypt(val, key)); } catch { val = ''; }
         }
         cellsByRow[cell.rowId][cell.propertyId] = val;
     }
@@ -46,8 +46,8 @@ export const useDatabaseStore = create((set, get) => ({
        
        if (r.values !== undefined) {
            let oldVals = r.values;
-           if (password && r._isEncrypted && typeof oldVals === 'string') {
-               try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, password)); } catch { oldVals = {}; }
+           if (key && r._isEncrypted && typeof oldVals === 'string') {
+               try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, key)); } catch { oldVals = {}; }
            }
            if (typeof oldVals === 'object' && oldVals !== null) {
                values = { ...values, ...oldVals };
@@ -76,7 +76,7 @@ export const useDatabaseStore = create((set, get) => ({
     const local = get().databases[blockId];
     if (local && local.initialized) return { schema: local.schema, rows: local.rows };
 
-    const block = useBlockStore.getState().blocks.find(b => b.id === blockId);
+    const block = useBlockStore.getState().getBlock(blockId);
     if (!block || !block.properties) return { schema: [], rows: [] };
     
     return {
@@ -93,7 +93,7 @@ export const useDatabaseStore = create((set, get) => ({
     const state = get();
     if (!state.debouncedSaves[blockId]) {
       state.debouncedSaves[blockId] = debounce((id, data) => {
-        const block = useBlockStore.getState().blocks.find(b => b.id === id);
+        const block = useBlockStore.getState().getBlock(id);
         if (block) {
           useBlockStore.getState().updateBlock(id, {
             properties: { ...block.properties, ...data }
@@ -106,7 +106,7 @@ export const useDatabaseStore = create((set, get) => ({
 
   // Immediate save for structural changes to Dexie (via blockStore)
   _immediateSave: async (blockId, updates) => {
-    const block = useBlockStore.getState().blocks.find(b => b.id === blockId);
+    const block = useBlockStore.getState().getBlock(blockId);
     if (block) {
       await useBlockStore.getState().updateBlock(blockId, {
         properties: { ...block.properties, ...updates }

@@ -40,8 +40,19 @@ function Sidebar() {
     const blocks = await db.blocks.toArray();
     const trackers = await db.trackers.toArray();
     const entries = await db.tracker_entries.toArray();
+    const blobsRaw = await db.blobs.toArray();
+    
+    // Convert Blobs to base64 strings for the JSON export
+    const serializedBlobs = await Promise.all(blobsRaw.map(async (b) => {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(b.blob);
+      });
+      return { hash: b.hash, base64, mimeType: b.mimeType, createdAt: b.createdAt };
+    }));
 
-    const data = { pages: allPages, blocks, trackers, entries };
+    const data = { pages: allPages, blocks, trackers, entries, blobs: serializedBlobs };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

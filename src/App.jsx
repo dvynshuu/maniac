@@ -33,7 +33,7 @@ function App() {
   const closeCommandPalette = useUIStore((s) => s.closeCommandPalette);
 
   const isLocked = useSecurityStore(s => s.isLocked);
-  const masterPassword = useSecurityStore(s => s.masterPassword);
+  const derivedKey = useSecurityStore(s => s.derivedKey);
 
   useEffect(() => {
     const init = async () => {

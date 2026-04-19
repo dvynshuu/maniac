@@ -11,12 +11,13 @@ import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
 import { debounce } from '../../utils/helpers';
 import { ImageIcon, X, Cloud, CloudCheck } from 'lucide-react';
+import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 
 function PageEditor() {
   const { pageId } = useParams();
   const pages = usePageStore((s) => s.pages);
   const updatePage = usePageStore((s) => s.updatePage);
-  const blockIds = useBlockStore(useShallow((s) => s.blocks.map(b => b.id)));
+  const blockIds = useBlockStore(useShallow((s) => s.blockOrder));
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const addBlock = useBlockStore((s) => s.addBlock);
   const updateBlock = useBlockStore((s) => s.updateBlock);
@@ -25,6 +26,7 @@ function PageEditor() {
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showCoverHover, setShowCoverHover] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(null);
   const titleInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
@@ -68,6 +70,23 @@ function PageEditor() {
       }
     }
   }, [page]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const src = page?.coverImage;
+    if (!src) {
+      setCoverUrl(null);
+      return;
+    }
+    if (isBlobRef(src)) {
+      loadBlobUrl(src).then(url => {
+        if (!cancelled) setCoverUrl(url);
+      });
+    } else {
+      setCoverUrl(src);
+    }
+    return () => { cancelled = true; };
+  }, [page?.coverImage]);
 
   // Undo/Redo keyboard shortcuts
   useEffect(() => {
@@ -131,14 +150,11 @@ function PageEditor() {
     setShowIconPicker(false);
   };
 
-  const handleCoverUpload = (e) => {
+  const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      updatePage(pageId, { coverImage: event.target.result });
-    };
-    reader.readAsDataURL(file);
+    const ref = await storeBlob(file);
+    updatePage(pageId, { coverImage: ref });
   };
 
   const removeCover = () => {
@@ -171,7 +187,7 @@ function PageEditor() {
           onMouseEnter={() => setShowCoverHover(true)}
           onMouseLeave={() => setShowCoverHover(false)}
         >
-          <img src={page.coverImage} alt="Page cover" className="page-cover-img" />
+          {coverUrl && <img src={coverUrl} alt="Page cover" className="page-cover-img" />}
           {showCoverHover && (
             <div className="page-cover-actions">
               <button className="page-cover-btn" onClick={() => coverInputRef.current?.click()}>

@@ -19,7 +19,7 @@ import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 
 const BlockRenderer = memo(({ blockId, index }) => {
-  const block = useBlockStore(s => s.blocks.find(b => b.id === blockId));
+  const block = useBlockStore(s => s.blockMap[blockId]);
 
   if (!block) return null;
 
@@ -82,8 +82,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
   const handleDuplicate = async () => {
     const { db } = await import('../../db/database');
-    const { createId } = await import('../../utils/helpers');
-    const newBlock = { ...block, id: createId(), sortOrder: block.sortOrder + 0.5, createdAt: Date.now(), updatedAt: Date.now() };
+    const { createId, generateLexicalOrder } = await import('../../utils/helpers');
+    const newSortOrder = generateLexicalOrder(block.sortOrder, null);
+    const newBlock = { ...block, id: createId(), sortOrder: newSortOrder, createdAt: Date.now(), updatedAt: Date.now() };
     await db.blocks.add(newBlock);
     useBlockStore.getState().loadBlocks(block.pageId);
   };

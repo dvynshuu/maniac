@@ -12,12 +12,12 @@ export const usePageStore = create((set, get) => ({
 
   // Full load — only on app init & page navigation
   loadPages: async () => {
-    const password = useSecurityStore.getState().masterPassword;
+    const key = useSecurityStore.getState().derivedKey;
     const allPagesRaw = await db.pages.toArray();
     
     const allPages = await Promise.all(allPagesRaw.map(async p => {
-      if (password && p._isEncrypted && p.title) {
-        const decrypted = await SecurityService.decrypt(p.title, password);
+      if (key && p._isEncrypted && p.title) {
+        const decrypted = await SecurityService.decrypt(p.title, key);
         return { ...p, title: decrypted || '🔒 Decryption Failed' };
       }
       return p;

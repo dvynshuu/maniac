@@ -2,7 +2,8 @@ import React from 'react';
 import { useUIStore } from '../../stores/uiStore';
 import { usePageStore } from '../../stores/pageStore';
 import { db } from '../../db/database';
-import { AlertTriangle, HardDrive, Check, X } from 'lucide-react';
+import { validateBackupData } from '../../utils/validator';
+import { AlertTriangle, HardDrive, Check, X, ShieldAlert } from 'lucide-react';
 
 function RestorePreviewModal() {
   const pendingRestoreData = useUIStore(s => s.pendingRestoreData);
@@ -10,18 +11,37 @@ function RestorePreviewModal() {
 
   if (!pendingRestoreData) return null;
 
-  const { pages = [], blocks = [], trackers = [], entries = [] } = pendingRestoreData;
+  const { pages = [], blocks = [], trackers = [], entries = [], quarantined = [] } = pendingRestoreData;
 
   const handleConfirm = async () => {
     try {
-      if (pages.length > 0) await db.pages.bulkPut(pages);
-      if (blocks.length > 0) await db.blocks.bulkPut(blocks);
-      if (trackers.length > 0) await db.trackers.bulkPut(trackers);
-      if (entries.length > 0) await db.tracker_entries.bulkPut(entries);
+      // Defense-in-depth: re-validate through the sanitizer before writing to DB.
+      // If upstream already validated, this is a cheap no-op that guarantees safety.
+      const safe = pendingRestoreData._validated
+        ? pendingRestoreData
+        : validateBackupData({ size: 0, name: 'restore' }, pendingRestoreData);
+
+      if (safe.pages.length > 0) await db.pages.bulkPut(safe.pages);
+      if (safe.blocks.length > 0) await db.blocks.bulkPut(safe.blocks);
+      if (safe.trackers.length > 0) await db.trackers.bulkPut(safe.trackers);
+      if (safe.entries.length > 0) await db.tracker_entries.bulkPut(safe.entries);
+      if (safe.blobs && safe.blobs.length > 0) {
+        const blobsToPut = await Promise.all(safe.blobs.map(async b => {
+           const res = await fetch(b.base64);
+           const blob = await res.blob();
+           return { hash: b.hash, blob, mimeType: b.mimeType, size: blob.size, createdAt: b.createdAt || Date.now() };
+        }));
+        await db.blobs.bulkPut(blobsToPut);
+      }
       
       await usePageStore.getState().loadPages();
       clearPendingRestoreData();
-      useUIStore.getState().addToast('Restore completed successfully.', 'success');
+
+      const quarantinedCount = safe.quarantined?.length || 0;
+      const msg = quarantinedCount > 0
+        ? `Restore completed. ${quarantinedCount} record(s) were rejected due to invalid data.`
+        : 'Restore completed successfully.';
+      useUIStore.getState().addToast(msg, quarantinedCount > 0 ? 'warning' : 'success');
     } catch (err) {
       useUIStore.getState().addToast('Restore failed: ' + err.message, 'error');
     }
@@ -75,6 +95,13 @@ function RestorePreviewModal() {
              <HardDrive size={16} color="var(--text-tertiary)" />
              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>All data remains strictly local to this device.</span>
           </div>
+
+          {quarantined.length > 0 && (
+            <div style={{ background: 'var(--warning-subtle)', border: '1px solid var(--warning)', padding: '12px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+              <ShieldAlert size={16} color="var(--warning)" />
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{quarantined.length} record(s) were quarantined due to invalid or malformed data and will not be imported.</span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

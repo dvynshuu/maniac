@@ -1,14 +1,40 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { Image as ImageIcon } from 'lucide-react';
+import { storeBlob, loadBlobUrl, isBlobRef } from '../../../utils/blobService';
 
 export default function ImageBlock({ block }) {
-  const [src, setSrc] = useState(block.properties?.src);
+  const [renderUrl, setRenderUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const blobRefRef = useRef(block.properties?.src); // track current blob ref for cleanup
   
   const updateBlock = useBlockStore((s) => s.updateBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const focusBlockId = useBlockStore((s) => s.focusBlockId);
+
+  const src = block.properties?.src;
+
+  // Resolve blob references (or pass through legacy data: URLs) to a renderable URL
+  useEffect(() => {
+    let cancelled = false;
+    blobRefRef.current = src;
+
+    if (!src) {
+      setRenderUrl(null);
+      return;
+    }
+
+    if (isBlobRef(src)) {
+      loadBlobUrl(src).then(url => {
+        if (!cancelled) setRenderUrl(url);
+      });
+    } else {
+      // Legacy data: URL or external URL — render directly
+      setRenderUrl(src);
+    }
+
+    return () => { cancelled = true; };
+  }, [src]);
 
   useEffect(() => {
     if (focusBlockId === block.id && fileInputRef.current && !src) {
@@ -16,17 +42,15 @@ export default function ImageBlock({ block }) {
     }
   }, [focusBlockId, block.id, src]);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target.result;
-      setSrc(base64);
-      updateBlock(block.id, { properties: { ...block.properties, src: base64 } });
-    };
-    reader.readAsDataURL(file);
+    // Store as blob, get a lightweight reference
+    const ref = await storeBlob(file);
+    setRenderUrl(null); // will be resolved by the useEffect
+
+    updateBlock(block.id, { properties: { ...block.properties, src: ref } });
   };
 
   const handleKeyDown = (e) => {
@@ -36,7 +60,7 @@ export default function ImageBlock({ block }) {
     }
   };
 
-  if (src) {
+  if (renderUrl) {
     return (
       <div 
         className="block-image-wrapper" 
@@ -44,7 +68,7 @@ export default function ImageBlock({ block }) {
         onKeyDown={handleKeyDown}
         style={{ outline: focusBlockId === block.id ? '2px solid var(--accent-primary)' : 'none' }}
       >
-        <img src={src} alt="User uploaded" />
+        <img src={renderUrl} alt="User uploaded" />
       </div>
     );
   }

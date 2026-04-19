@@ -6,6 +6,7 @@ import { useSecurityStore } from '../../stores/securityStore';
 import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
 import { Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { batchDecrypt } from '../../utils/cryptoWorker';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -71,34 +72,41 @@ function DailyReviewTab({ navigate }) {
   const [unfinishedBlocks, setUnfinishedBlocks] = useState([]);
   const [trackerTrends, setTrackerTrends] = useState([]);
   const [loading, setLoading] = useState(true);
-  const password = useSecurityStore(s => s.masterPassword);
+  const key = useSecurityStore(s => s.derivedKey);
 
   useEffect(() => {
     const fetchReviewData = async () => {
       try {
         setLoading(true);
-        // Fetch unfinished todos
-        const allTodos = await db.blocks.where('type').equals('todo').reverse().sortBy('updatedAt');
+        // Fetch unfinished todos — limit to 500 max to bound the decrypt cost
+        const allTodosRaw = await db.blocks.where('type').equals('todo').reverse().sortBy('updatedAt');
+        const allTodos = allTodosRaw.slice(0, 500);
         
-        const reviewTodos = [];
-        for (const todo of allTodos) {
-          if (reviewTodos.length >= 100) break; // Limit
-          
+        const decryptFn = async (todo, k) => {
           let props = todo.properties || {};
           let content = todo.content || '';
-          if (password && todo._isEncrypted) {
+          if (k && todo._isEncrypted) {
              try {
-                if (typeof props === 'string') props = JSON.parse(await SecurityService.decrypt(props, password));
-                if (typeof content === 'string') content = await SecurityService.decrypt(content, password);
+                if (typeof props === 'string') props = JSON.parse(await SecurityService.decrypt(props, k));
+                if (typeof content === 'string') content = await SecurityService.decrypt(content, k);
              } catch {
                 props = {};
                 content = 'Encrypted...';
              }
           }
-          if (props.checked === false) {
-             reviewTodos.push({ ...todo, properties: props, content });
-          }
-        }
+          return { ...todo, properties: props, content };
+        };
+
+        // Stream decrypted items into the UI as batches finish
+        const onProgress = (currentDecrypted) => {
+           const unfinished = currentDecrypted.filter(t => t.properties?.checked === false).slice(0, 100);
+           setUnfinishedBlocks(unfinished);
+        };
+
+        const decryptedTodos = await batchDecrypt(allTodos, key, decryptFn, 20, onProgress);
+        
+        // Final pass
+        const reviewTodos = decryptedTodos.filter(t => t.properties?.checked === false).slice(0, 100);
         setUnfinishedBlocks(reviewTodos);
 
         // Fetch tracker trends
@@ -116,7 +124,7 @@ function DailyReviewTab({ navigate }) {
       }
     };
     fetchReviewData();
-  }, [password]);
+  }, [key]);
 
   if (loading) return <div style={{ padding: '32px', color: 'var(--text-tertiary)' }}>Loading review data...</div>;
 

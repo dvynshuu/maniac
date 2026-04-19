@@ -24,7 +24,9 @@ function validatePage(page) {
     title: isValidString(page.title) ? sanitize(page.title) : '',
     icon: isValidString(page.icon) ? sanitize(page.icon) : '📝',
     coverImage: isValidString(page.coverImage) ? sanitize(page.coverImage) : null,
-    sortOrder: isValidString(page.sortOrder) ? page.sortOrder : 'm',
+    sortOrder: isValidString(page.sortOrder) ? page.sortOrder
+             : isValidNumber(page.sortOrder) ? String(page.sortOrder)
+             : 'm',
     isArchived: isValidBoolean(page.isArchived) ? page.isArchived : false,
     isFavorite: isValidBoolean(page.isFavorite) ? page.isFavorite : false,
     createdAt: isValidNumber(page.createdAt) ? page.createdAt : Date.now(),
@@ -46,7 +48,9 @@ function validateBlock(block) {
     type: isValidString(block.type) ? sanitize(block.type) : 'text',
     content: isValidString(block.content) ? sanitize(block.content) : '',
     properties: cleanProperties,
-    sortOrder: isValidString(block.sortOrder) ? block.sortOrder : 'm',
+    sortOrder: isValidString(block.sortOrder) ? block.sortOrder
+             : isValidNumber(block.sortOrder) ? String(block.sortOrder)
+             : 'm',
     createdAt: isValidNumber(block.createdAt) ? block.createdAt : Date.now(),
     updatedAt: isValidNumber(block.updatedAt) ? block.updatedAt : Date.now(),
     _isEncrypted: isValidBoolean(block._isEncrypted) ? block._isEncrypted : false
@@ -104,7 +108,7 @@ export function validateBackupData(file, data) {
     throw new Error(`Payload exceeds maximum record limit of ${MAX_RECORDS}.`);
   }
 
-  const result = { pages: [], blocks: [], trackers: [], entries: [], quarantined: [] };
+  const result = { pages: [], blocks: [], trackers: [], entries: [], blobs: [], quarantined: [] };
 
   if (Array.isArray(data.pages)) {
     for (const p of data.pages) {
@@ -138,5 +142,21 @@ export function validateBackupData(file, data) {
     }
   }
 
+  if (Array.isArray(data.blobs)) {
+    for (const b of data.blobs) {
+      if (b && typeof b.hash === 'string' && typeof b.base64 === 'string') {
+        result.blobs.push({
+          hash: b.hash,
+          base64: b.base64,
+          mimeType: typeof b.mimeType === 'string' ? b.mimeType : 'application/octet-stream',
+          createdAt: typeof b.createdAt === 'number' ? b.createdAt : Date.now()
+        });
+      } else {
+        result.quarantined.push({ type: 'blob', raw: b });
+      }
+    }
+  }
+
+  result._validated = true;
   return result;
 }

@@ -90,7 +90,7 @@ export function buildPageTree(pages) {
 
   // Sort children by sortOrder
   const sortChildren = (nodes) => {
-    nodes.sort((a, b) => a.sortOrder - b.sortOrder);
+    nodes.sort((a, b) => (a.sortOrder || '').localeCompare(b.sortOrder || ''));
     nodes.forEach((n) => sortChildren(n.children));
   };
   sortChildren(roots);

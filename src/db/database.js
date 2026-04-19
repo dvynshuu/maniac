@@ -26,6 +26,10 @@ db.version(2).stores({
   });
 });
 
+db.version(3).stores({
+  blobs: 'hash, createdAt',
+});
+
 const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';
@@ -34,9 +38,9 @@ const extractWords = (content) => {
 
 // Encryption Hooks
 db.pages.hook('creating', (primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
-  if (password && obj.title) {
-    return SecurityService.encrypt(obj.title, password).then(encrypted => {
+  const key = useSecurityStore.getState().derivedKey;
+  if (key && obj.title) {
+    return SecurityService.encrypt(obj.title, key).then(encrypted => {
        obj.title = encrypted;
        obj._isEncrypted = true;
     });
@@ -44,9 +48,9 @@ db.pages.hook('creating', (primKey, obj) => {
 });
 
 db.pages.hook('updating', (mods, primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
-  if (password && mods.title) {
-    return SecurityService.encrypt(mods.title, password).then(encrypted => {
+  const key = useSecurityStore.getState().derivedKey;
+  if (key && mods.title) {
+    return SecurityService.encrypt(mods.title, key).then(encrypted => {
        mods.title = encrypted;
        mods._isEncrypted = true;
     });
@@ -54,8 +58,8 @@ db.pages.hook('updating', (mods, primKey, obj) => {
 });
 
 db.pages.hook('reading', (obj) => {
-  const password = useSecurityStore.getState().masterPassword;
-  if (password && obj.title && obj._isEncrypted) {
+  const key = useSecurityStore.getState().derivedKey;
+  if (key && obj.title && obj._isEncrypted) {
     // Note: read hooks are synchronous in Dexie v3/v4 for most things, 
     // but we can't easily do async decryption here without blocking the UI.
     // We'll handle decryption in the UI layer or stores instead for better UX,
@@ -68,18 +72,18 @@ db.pages.hook('reading', (obj) => {
 
 // Blocks
 db.blocks.hook('creating', (primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
+  const key = useSecurityStore.getState().derivedKey;
   
-  if (!password && obj.content) {
+  if (!key && obj.content) {
     obj.words = extractWords(obj.content);
-  } else if (password) {
+  } else if (key) {
     obj.words = [];
     const promises = [];
     if (obj.content) {
-        promises.push(SecurityService.encrypt(obj.content, password).then(e => obj.content = e));
+        promises.push(SecurityService.encrypt(obj.content, key).then(e => obj.content = e));
     }
     if (obj.properties) {
-        promises.push(SecurityService.encrypt(JSON.stringify(obj.properties), password).then(e => obj.properties = e));
+        promises.push(SecurityService.encrypt(JSON.stringify(obj.properties), key).then(e => obj.properties = e));
     }
     if (promises.length > 0) {
         obj._isEncrypted = true;
@@ -89,20 +93,20 @@ db.blocks.hook('creating', (primKey, obj) => {
 });
 
 db.blocks.hook('updating', (mods, primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
+  const key = useSecurityStore.getState().derivedKey;
   
-  if (!password && mods.content !== undefined) {
+  if (!key && mods.content !== undefined) {
     mods.words = extractWords(mods.content);
   }
 
-  if (password) {
+  if (key) {
     mods.words = [];
     const promises = [];
     if (mods.content) {
-        promises.push(SecurityService.encrypt(mods.content, password).then(e => mods.content = e));
+        promises.push(SecurityService.encrypt(mods.content, key).then(e => mods.content = e));
     }
     if (mods.properties) {
-        promises.push(SecurityService.encrypt(JSON.stringify(mods.properties), password).then(e => mods.properties = e));
+        promises.push(SecurityService.encrypt(JSON.stringify(mods.properties), key).then(e => mods.properties = e));
     }
     if (promises.length > 0) {
         mods._isEncrypted = true;
@@ -113,9 +117,9 @@ db.blocks.hook('updating', (mods, primKey, obj) => {
 
 // Database Cells
 db.database_cells.hook('creating', (primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
-  if (password && obj.value !== undefined) {
-    return SecurityService.encrypt(JSON.stringify(obj.value), password).then(encrypted => {
+  const key = useSecurityStore.getState().derivedKey;
+  if (key && obj.value !== undefined) {
+    return SecurityService.encrypt(JSON.stringify(obj.value), key).then(encrypted => {
        obj.value = encrypted;
        obj._isEncrypted = true;
     });
@@ -123,9 +127,9 @@ db.database_cells.hook('creating', (primKey, obj) => {
 });
 
 db.database_cells.hook('updating', (mods, primKey, obj) => {
-  const password = useSecurityStore.getState().masterPassword;
-  if (password && mods.value !== undefined) {
-    return SecurityService.encrypt(JSON.stringify(mods.value), password).then(encrypted => {
+  const key = useSecurityStore.getState().derivedKey;
+  if (key && mods.value !== undefined) {
+    return SecurityService.encrypt(JSON.stringify(mods.value), key).then(encrypted => {
        mods.value = encrypted;
        mods._isEncrypted = true;
     });
@@ -148,7 +152,7 @@ export async function seedDefaultData() {
         title: 'Welcome to Maniac',
         icon: '🧠',
         coverImage: null,
-        sortOrder: 0,
+        sortOrder: 'a',
         isArchived: false,
         createdAt: now,
         updatedAt: now,
@@ -159,7 +163,7 @@ export async function seedDefaultData() {
         title: 'Getting Started',
         icon: '🚀',
         coverImage: null,
-        sortOrder: 0,
+        sortOrder: 'a',
         isArchived: false,
         createdAt: now,
         updatedAt: now,
@@ -173,7 +177,7 @@ export async function seedDefaultData() {
         type: 'heading1',
         content: 'Welcome to Maniac 🧠',
         properties: {},
-        sortOrder: 0,
+        sortOrder: 'a',
         createdAt: now,
         updatedAt: now,
       },
@@ -183,7 +187,7 @@ export async function seedDefaultData() {
         type: 'text',
         content: 'Your personal operating system for thoughts, tasks, and tracking.',
         properties: {},
-        sortOrder: 1,
+        sortOrder: 'b',
         createdAt: now,
         updatedAt: now,
       },
@@ -193,7 +197,7 @@ export async function seedDefaultData() {
         type: 'callout',
         content: 'Type / to insert different block types. Use the sidebar to create pages.',
         properties: { emoji: '💡' },
-        sortOrder: 2,
+        sortOrder: 'c',
         createdAt: now,
         updatedAt: now,
       },
@@ -203,7 +207,7 @@ export async function seedDefaultData() {
         type: 'heading2',
         content: 'Features',
         properties: {},
-        sortOrder: 3,
+        sortOrder: 'd',
         createdAt: now,
         updatedAt: now,
       },
@@ -213,7 +217,7 @@ export async function seedDefaultData() {
         type: 'todo',
         content: 'Create nested pages for organizing your thoughts',
         properties: { checked: false },
-        sortOrder: 4,
+        sortOrder: 'e',
         createdAt: now,
         updatedAt: now,
       },
@@ -223,7 +227,7 @@ export async function seedDefaultData() {
         type: 'todo',
         content: 'Use custom trackers to build mini-databases',
         properties: { checked: false },
-        sortOrder: 5,
+        sortOrder: 'f',
         createdAt: now,
         updatedAt: now,
       },
@@ -233,7 +237,7 @@ export async function seedDefaultData() {
         type: 'todo',
         content: 'Press Cmd+K to open the command palette',
         properties: { checked: false },
-        sortOrder: 6,
+        sortOrder: 'g',
         createdAt: now,
         updatedAt: now,
       },
@@ -243,7 +247,7 @@ export async function seedDefaultData() {
         type: 'heading1',
         content: 'Getting Started 🚀',
         properties: {},
-        sortOrder: 0,
+        sortOrder: 'a',
         createdAt: now,
         updatedAt: now,
       },
@@ -253,7 +257,7 @@ export async function seedDefaultData() {
         type: 'text',
         content: 'Start by creating a new page from the sidebar, then add blocks using the / command.',
         properties: {},
-        sortOrder: 1,
+        sortOrder: 'b',
         createdAt: now,
         updatedAt: now,
       },
@@ -263,7 +267,7 @@ export async function seedDefaultData() {
         type: 'quote',
         content: 'The best way to predict the future is to create it.',
         properties: {},
-        sortOrder: 2,
+        sortOrder: 'c',
         createdAt: now,
         updatedAt: now,
       },

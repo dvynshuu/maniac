@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
 import { db } from '../../db/database';
-import { Search, FileText, Plus, Star, Type, Hash } from 'lucide-react';
+import { Search, FileText, Plus, Star, Type, Hash, Lock } from 'lucide-react';
+import { useSecurityStore } from '../../stores/securityStore';
 
 export default function CommandPalette({ onClose }) {
     const pages = usePageStore(s => s.pages);
@@ -14,6 +15,7 @@ export default function CommandPalette({ onClose }) {
     const [blockResults, setBlockResults] = useState([]);
     const inputRef = useRef(null);
     const navigate = useNavigate();
+    const isEncrypted = useSecurityStore(s => !!s.derivedKey);
 
     useEffect(() => {
         if (inputRef.current) inputRef.current.focus();
@@ -31,8 +33,9 @@ export default function CommandPalette({ onClose }) {
     );
 
     // Full-text block content search (async, debounced)
+    // Skipped when encryption is active — word index is empty.
     useEffect(() => {
-        if (query.length < 2) {
+        if (isEncrypted || query.length < 2) {
             setBlockResults([]);
             return;
         }
@@ -149,6 +152,12 @@ export default function CommandPalette({ onClose }) {
                 </div>
                 
                 <div className="command-palette-results">
+                    {isEncrypted && query.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '12px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+                            <Lock size={12} />
+                            <span>Block content search unavailable in encrypted mode. Page titles are still searchable.</span>
+                        </div>
+                    )}
                     {results.length === 0 ? (
                         <div className="command-palette-empty">No results found</div>
                     ) : (

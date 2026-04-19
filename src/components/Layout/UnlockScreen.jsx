@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useSecurityStore } from '../../stores/securityStore';
-import { Lock, Unlock, ShieldAlert } from 'lucide-react';
+import { SecurityService } from '../../utils/securityService';
+import { Lock, Unlock, ShieldAlert, Loader } from 'lucide-react';
 
 export default function UnlockScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   
   const isInitialized = useSecurityStore(s => s.isInitialized);
   const unlock = useSecurityStore(s => s.unlock);
   const setInitialized = useSecurityStore(s => s.setInitialized);
 
   useEffect(() => {
-    // Check if a master password exists (we'll store a "canary" in localStorage or DB)
+    // Check if a master password has been set before
     const hasMaster = localStorage.getItem('maniac_initialized') === 'true';
     setInitialized(hasMaster);
     if (!hasMaster) {
@@ -21,17 +23,42 @@ export default function UnlockScreen() {
     }
   }, []);
 
-  const handleUnlock = (e) => {
+  const handleUnlock = async (e) => {
     e.preventDefault();
-    if (!password) return;
-    
-    // In a real app, we'd verify the password against a stored hash or try to decrypt a canary block.
-    // For now, we'll just accept it and see if decryption works later.
-    unlock(password);
+    if (!password || isVerifying) return;
+
+    setIsVerifying(true);
+    setError('');
+
+    try {
+      const verifier = localStorage.getItem('maniac_verifier');
+      if (!verifier) {
+        // Edge case: initialized flag exists but verifier is missing (old install).
+        // Fall through — derive key and unlock (data may or may not decrypt).
+        const key = await SecurityService.deriveKeyFromPassword(password);
+        unlock(key);
+        return;
+      }
+
+      const valid = await SecurityService.verifyPassword(password, verifier);
+      if (!valid) {
+        setError('Incorrect password. Please try again.');
+        setIsVerifying(false);
+        return;
+      }
+
+      const key = await SecurityService.deriveKeyFromPassword(password);
+      unlock(key);
+    } catch (err) {
+      setError('Verification failed. Please try again.');
+      setIsVerifying(false);
+    }
   };
 
-  const handleSetup = (e) => {
+  const handleSetup = async (e) => {
     e.preventDefault();
+    if (isVerifying) return;
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -40,10 +67,24 @@ export default function UnlockScreen() {
       setError('Password must be at least 8 characters');
       return;
     }
-    
-    localStorage.setItem('maniac_initialized', 'true');
-    setInitialized(true);
-    unlock(password);
+
+    setIsVerifying(true);
+    setError('');
+
+    try {
+      // Create and store a verifier (encrypted canary)
+      const verifier = await SecurityService.createVerifier(password);
+      localStorage.setItem('maniac_verifier', verifier);
+      localStorage.setItem('maniac_initialized', 'true');
+
+      // Derive the long-lived CryptoKey and unlock
+      const key = await SecurityService.deriveKeyFromPassword(password);
+      setInitialized(true);
+      unlock(key);
+    } catch (err) {
+      setError('Setup failed: ' + err.message);
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -66,8 +107,9 @@ export default function UnlockScreen() {
               type="password"
               placeholder="Master Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
               autoFocus
+              disabled={isVerifying}
             />
           </div>
           
@@ -77,15 +119,23 @@ export default function UnlockScreen() {
                 type="password"
                 placeholder="Confirm Password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                disabled={isVerifying}
               />
             </div>
           )}
 
           {error && <div className="unlock-error">{error}</div>}
 
-          <button type="submit" className="unlock-btn">
-            {isSettingUp ? 'Set Password & Initialize' : 'Unlock System'}
+          <button type="submit" className="unlock-btn" disabled={isVerifying}>
+            {isVerifying ? (
+              <>
+                <Loader size={16} className="spin-animation" />
+                {isSettingUp ? 'Initializing...' : 'Verifying...'}
+              </>
+            ) : (
+              isSettingUp ? 'Set Password & Initialize' : 'Unlock System'
+            )}
           </button>
         </form>
         
