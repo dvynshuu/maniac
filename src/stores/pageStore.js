@@ -14,7 +14,7 @@ export const usePageStore = create((set, get) => ({
   loadPages: async () => {
     const key = useSecurityStore.getState().derivedKey;
     const allPagesRaw = await db.pages.toArray();
-    
+
     const allPages = await Promise.all(allPagesRaw.map(async p => {
       if (key && p._isEncrypted && p.title) {
         const decrypted = await SecurityService.decrypt(p.title, key);
@@ -23,7 +23,7 @@ export const usePageStore = create((set, get) => ({
       return p;
     }));
 
-    set({ 
+    set({
       pages: allPages.filter(p => !p.isArchived),
       archivedPages: allPages.filter(p => p.isArchived)
     });
@@ -35,10 +35,10 @@ export const usePageStore = create((set, get) => ({
 
   addPage: async (parentId = null) => {
     const { pages } = get();
-    const siblings = pages.filter((p) => p.parentId === parentId).sort((a, b) => (a.sortOrder || '').localeCompare(b.sortOrder || ''));
+    const siblings = pages.filter((p) => p.parentId === parentId).sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
     const lastSibling = siblings[siblings.length - 1];
     const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
-    
+
     const page = createPage({
       parentId,
       sortOrder,
@@ -71,13 +71,13 @@ export const usePageStore = create((set, get) => ({
       return ids;
     };
     const idsToDelete = collectIds(id);
-    
+
     // Optimistic update
     set(s => ({
       pages: s.pages.filter(p => !idsToDelete.includes(p.id)),
       archivedPages: s.archivedPages.filter(p => !idsToDelete.includes(p.id)),
     }));
-    
+
     // Background Dexie cleanup
     for (const delId of idsToDelete) {
       await db.blocks.where('pageId').equals(delId).delete();
@@ -89,15 +89,15 @@ export const usePageStore = create((set, get) => ({
     const now = Date.now();
     const page = get().pages.find(p => p.id === id);
     if (!page) return;
-    
+
     const archivedPage = { ...page, isArchived: true, updatedAt: now };
-    
+
     set(s => ({
       pages: s.pages.filter(p => p.id !== id),
       archivedPages: [...s.archivedPages, archivedPage],
       currentPageId: s.currentPageId === id ? null : s.currentPageId,
     }));
-    
+
     await db.pages.update(id, { isArchived: true, updatedAt: now });
   },
 
@@ -105,14 +105,14 @@ export const usePageStore = create((set, get) => ({
     const now = Date.now();
     const page = get().archivedPages.find(p => p.id === id);
     if (!page) return;
-    
+
     const restoredPage = { ...page, isArchived: false, updatedAt: now };
-    
+
     set(s => ({
       archivedPages: s.archivedPages.filter(p => p.id !== id),
       pages: [...s.pages, restoredPage],
     }));
-    
+
     await db.pages.update(id, { isArchived: false, updatedAt: now });
   },
 
@@ -149,7 +149,7 @@ export const usePageStore = create((set, get) => ({
   duplicatePage: async (id) => {
     const page = get().pages.find(p => p.id === id);
     if (!page) return null;
-    
+
     const newPageId = createId();
     const now = Date.now();
     const newPage = {
@@ -160,7 +160,7 @@ export const usePageStore = create((set, get) => ({
       updatedAt: now,
       isFavorite: false,
     };
-    
+
     // Copy all blocks
     const blocks = await db.blocks.where('pageId').equals(id).toArray();
     const newBlocks = blocks.map(b => ({
@@ -173,12 +173,12 @@ export const usePageStore = create((set, get) => ({
 
     // Optimistic update
     set(s => ({ pages: [...s.pages, newPage] }));
-    
+
     await db.pages.add(newPage);
     if (newBlocks.length > 0) {
       await db.blocks.bulkAdd(newBlocks);
     }
-    
+
     return newPage;
   },
 }));

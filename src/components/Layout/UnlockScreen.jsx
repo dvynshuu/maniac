@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSecurityStore } from '../../stores/securityStore';
 import { SecurityService } from '../../utils/securityService';
+import { db } from '../../db/database';
 import { Lock, Unlock, ShieldAlert, Loader } from 'lucide-react';
 
 export default function UnlockScreen() {
@@ -32,22 +33,32 @@ export default function UnlockScreen() {
 
     try {
       const verifier = localStorage.getItem('maniac_verifier');
+      let key;
       if (!verifier) {
-        // Edge case: initialized flag exists but verifier is missing (old install).
-        // Fall through — derive key and unlock (data may or may not decrypt).
-        const key = await SecurityService.deriveKeyFromPassword(password);
-        unlock(key);
-        return;
+        // Fallback: verify password by attempting to decrypt a known block/page
+        key = await SecurityService.deriveKeyFromPassword(password);
+        const testPage = await db.pages.toCollection().filter(p => p._isEncrypted).first();
+        if (testPage && testPage.title) {
+           const decryptedContent = await SecurityService.decrypt(testPage.title, key);
+           if (!decryptedContent) {
+               setError('Incorrect password. Please try again.');
+               setIsVerifying(false);
+               return;
+           }
+        }
+        // If decryption succeeded or DB is empty, generate and store a new verifier
+        const newVerifier = await SecurityService.createVerifier(password);
+        localStorage.setItem('maniac_verifier', newVerifier);
+      } else {
+        const valid = await SecurityService.verifyPassword(password, verifier);
+        if (!valid) {
+          setError('Incorrect password. Please try again.');
+          setIsVerifying(false);
+          return;
+        }
+        key = await SecurityService.deriveKeyFromPassword(password);
       }
 
-      const valid = await SecurityService.verifyPassword(password, verifier);
-      if (!valid) {
-        setError('Incorrect password. Please try again.');
-        setIsVerifying(false);
-        return;
-      }
-
-      const key = await SecurityService.deriveKeyFromPassword(password);
       unlock(key);
     } catch (err) {
       setError('Verification failed. Please try again.');

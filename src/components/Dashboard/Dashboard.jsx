@@ -7,6 +7,11 @@ import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
 import { Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { batchDecrypt } from '../../utils/cryptoWorker';
+import './Dashboard.css';
+import { ProfilePopover } from './ProfilePopover';
+import { NotificationsPopover } from './NotificationsPopover';
+import { SettingsModal } from '../Settings/SettingsModal';
+import { OnboardingNarrative } from './OnboardingNarrative';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -15,43 +20,57 @@ function Dashboard() {
   const deletePage = usePageStore((s) => s.deletePage);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Workspace');
+  const [activePopover, setActivePopover] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const togglePopover = (popover) => {
+    if (activePopover === popover) setActivePopover(null);
+    else setActivePopover(popover);
+  };
   
   return (
-    <div className="editor-scroll bg-primary" style={{ background: 'var(--bg-primary)', height: '100%' }}>
+    <div className="editor-scroll bg-primary" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
+      {/* Settings Modal */}
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+
       {/* Dashboard Topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 32px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Maniac OS</div>
-          <div style={{ display: 'flex', gap: '24px', fontSize: '14px', fontWeight: 500 }} role="tablist">
+      <div className="dashboard-topbar">
+        <div className="dashboard-brand-container">
+          <div className="dashboard-brand-title">Maniac OS</div>
+          <div className="dashboard-tabs" role="tablist">
             {['Workspace', 'Daily Review', 'Calendar', 'Archives'].map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                style={{ 
-                  background: 'none', border: 'none', outline: 'none',
-                  color: activeTab === tab ? 'var(--accent-primary)' : 'var(--text-secondary)', 
-                  borderBottom: activeTab === tab ? '2px solid var(--accent-primary)' : '2px solid transparent', 
-                  paddingBottom: '4px', 
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
-                  fontSize: 'inherit', fontWeight: 'inherit'
-                }}
+                className="dashboard-tab"
               >
                 {tab}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-secondary)' }}>
-          <button aria-label="Settings" className="icon-btn"><Settings size={18} /></button>
-          <button aria-label="Notifications" className="icon-btn"><Bell size={18} /></button>
-          <button aria-label="Profile" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', borderRadius: '50%', outline: 'none' }} className="interactive-card">
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-              <User size={16} />
-            </div>
+        <div className="dashboard-actions" onClick={e => e.stopPropagation()}>
+          <button aria-label="Settings" className="icon-btn" onClick={() => setIsSettingsOpen(true)}>
+            <Settings size={18} />
           </button>
+          
+          <div style={{ position: 'relative' }}>
+            <button aria-label="Notifications" className="icon-btn" onClick={() => togglePopover('notifications')}>
+              <Bell size={18} />
+            </button>
+            {activePopover === 'notifications' && <NotificationsPopover onClose={() => setActivePopover(null)} />}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <button aria-label="Profile" className="dashboard-profile-btn" onClick={() => togglePopover('profile')}>
+              <div className="dashboard-profile-avatar">
+                <User size={16} />
+              </div>
+            </button>
+            {activePopover === 'profile' && <ProfilePopover onClose={() => setActivePopover(null)} />}
+          </div>
         </div>
       </div>
 
@@ -222,34 +241,9 @@ function WorkspaceTab({ pages, navigate }) {
         </div>
       )}
 
-      {/* Onboarding Widget */}
+      {/* Onboarding Narrative Widget */}
       {!onboardingStatus?.isComplete && (
-        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Zap size={20} color="var(--accent-primary)" />
-            Activation Milestones
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.pagesCreated ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.pagesCreated ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.pagesCreated ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {onboardingStatus?.pagesCreated && <Check size={12} color="var(--bg-primary)" />}
-              </div>
-              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.pagesCreated ? 'line-through' : 'none' }}>Create your first page</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.blocksCreated ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.blocksCreated ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.blocksCreated ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {onboardingStatus?.blocksCreated && <Check size={12} color="var(--bg-primary)" />}
-              </div>
-              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.blocksCreated ? 'line-through' : 'none' }}>Add a block to a page</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: onboardingStatus?.trackersAdded ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid', borderColor: onboardingStatus?.trackersAdded ? 'var(--success)' : 'var(--border-strong)', background: onboardingStatus?.trackersAdded ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {onboardingStatus?.trackersAdded && <Check size={12} color="var(--bg-primary)" />}
-              </div>
-              <span style={{ fontSize: '14px', textDecoration: onboardingStatus?.trackersAdded ? 'line-through' : 'none' }}>Initialize a tracker database</span>
-            </div>
-          </div>
-        </div>
+        <OnboardingNarrative onComplete={() => useUIStore.getState().updateOnboarding('isComplete')} />
       )}
 
       {/* Header Section */}

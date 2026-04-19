@@ -2,19 +2,20 @@ import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 
 export default function CodeBlock({ block }) {
-  const [content, setContent] = useState(block.content);
   const language = block.properties?.language || 'javascript';
   const contentRef = useRef(null);
+  const localValue = useRef(block.content);
   
   const updateBlock = useBlockStore(s => s.updateBlock);
   const changeBlockType = useBlockStore(s => s.changeBlockType);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
 
   useEffect(() => {
-    if (contentRef.current && contentRef.current.textContent !== block.content) {
+    if (contentRef.current && block.content !== localValue.current && contentRef.current.textContent !== block.content) {
       contentRef.current.textContent = block.content;
+      localValue.current = block.content;
     }
-  }, [block.id]);
+  }, [block.id, block.content]);
 
   useEffect(() => {
     if (focusBlockId === block.id && contentRef.current) {
@@ -28,11 +29,12 @@ export default function CodeBlock({ block }) {
     }
   }, [focusBlockId, block.id]);
 
-  const handleInput = (e) => setContent(e.currentTarget.textContent);
+  const handleInput = (e) => { localValue.current = e.currentTarget.textContent; };
 
   const handleBlur = () => {
     const currentText = contentRef.current?.textContent || "";
     if (currentText !== block.content) {
+      localValue.current = currentText;
       updateBlock(block.id, { content: currentText });
     }
   };
@@ -59,9 +61,7 @@ export default function CodeBlock({ block }) {
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         data-placeholder="Write code here..."
-      >
-        {content}
-      </div>
+      ></div>
     </div>
   );
 }

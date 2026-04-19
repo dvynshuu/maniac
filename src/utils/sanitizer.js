@@ -1,5 +1,16 @@
 import DOMPurify from 'dompurify';
 
+// Defense-in-depth: Block data URIs in src attributes to mitigate SVG XSS vectors.
+// We strictly use Blob URIs or standard HTTP/HTTPS URIs for images.
+DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
+  if (data.attrName === 'src') {
+    const url = data.attrValue.trim().toLowerCase();
+    if (url.startsWith('data:')) {
+      data.keepAttr = false;
+    }
+  }
+});
+
 /**
  * Sanitizes HTML content to prevent XSS attacks.
  * @param {string} html - The raw HTML string.
@@ -15,8 +26,9 @@ export const sanitize = (html) => {
     ],
     ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'data-page-id', 'contenteditable'],
     ADD_ATTR: ['target'],
-    FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input', 'button'],
-    FORBID_ATTR: ['onerror', 'onclick', 'onload'],
+    FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input', 'button', 'svg', 'math', 'object', 'embed', 'base'],
+    FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover', 'onmouseout', 'onfocus', 'onblur'],
+    ALLOW_DATA_ATTR: false,
   });
 };
 

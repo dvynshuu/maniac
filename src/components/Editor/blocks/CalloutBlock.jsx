@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 
 export default function CalloutBlock({ block }) {
-  const [content, setContent] = useState(block.content);
   const emoji = block.properties?.emoji || '💡';
   const contentRef = useRef(null);
+  const localValue = useRef(block.content);
   
   const updateBlock = useBlockStore(s => s.updateBlock);
   const addBlock = useBlockStore(s => s.addBlock);
@@ -12,10 +12,11 @@ export default function CalloutBlock({ block }) {
   const focusBlockId = useBlockStore(s => s.focusBlockId);
 
   useEffect(() => {
-    if (contentRef.current && contentRef.current.innerHTML !== block.content) {
+    if (contentRef.current && block.content !== localValue.current && contentRef.current.innerHTML !== block.content) {
       contentRef.current.innerHTML = block.content;
+      localValue.current = block.content;
     }
-  }, [block.id]);
+  }, [block.id, block.content]);
 
   useEffect(() => {
     if (focusBlockId === block.id && contentRef.current) {
@@ -29,16 +30,20 @@ export default function CalloutBlock({ block }) {
     }
   }, [focusBlockId, block.id]);
 
-  const handleInput = e => setContent(e.currentTarget.textContent);
+  const handleInput = e => { localValue.current = e.currentTarget.textContent; };
 
   const handleBlur = () => {
     const currentText = contentRef.current?.textContent || "";
-    if (currentText !== block.content) updateBlock(block.id, { content: currentText });
+    if (currentText !== block.content) {
+      localValue.current = currentText;
+      updateBlock(block.id, { content: currentText });
+    }
   };
 
   const handleKeyDown = e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      localValue.current = contentRef.current.textContent;
       updateBlock(block.id, { content: contentRef.current.textContent });
       addBlock(block.pageId, 'text', block.id);
     } else if (e.key === 'Backspace' && contentRef.current.textContent === '') {
@@ -59,9 +64,7 @@ export default function CalloutBlock({ block }) {
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         data-placeholder="Callout text"
-      >
-        {content}
-      </div>
+      ></div>
     </div>
   );
 }

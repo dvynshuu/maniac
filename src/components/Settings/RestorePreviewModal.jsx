@@ -15,11 +15,7 @@ function RestorePreviewModal() {
 
   const handleConfirm = async () => {
     try {
-      // Defense-in-depth: re-validate through the sanitizer before writing to DB.
-      // If upstream already validated, this is a cheap no-op that guarantees safety.
-      const safe = pendingRestoreData._validated
-        ? pendingRestoreData
-        : validateBackupData({ size: 0, name: 'restore' }, pendingRestoreData);
+      const safe = validateBackupData({ size: 0, name: 'restore' }, pendingRestoreData);
 
       if (safe.pages.length > 0) await db.pages.bulkPut(safe.pages);
       if (safe.blocks.length > 0) await db.blocks.bulkPut(safe.blocks);

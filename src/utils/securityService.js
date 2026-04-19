@@ -157,7 +157,12 @@ export class SecurityService {
     combined.set(iv, 0);
     combined.set(new Uint8Array(encrypted), iv.length);
 
-    return btoa(String.fromCharCode(...combined));
+    let binary = '';
+    const CHUNK_SIZE = 8192;
+    for (let i = 0; i < combined.length; i += CHUNK_SIZE) {
+      binary += String.fromCharCode.apply(null, combined.subarray(i, i + CHUNK_SIZE));
+    }
+    return btoa(binary);
   }
 
   /**

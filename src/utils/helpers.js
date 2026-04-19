@@ -90,7 +90,7 @@ export function buildPageTree(pages) {
 
   // Sort children by sortOrder
   const sortChildren = (nodes) => {
-    nodes.sort((a, b) => (a.sortOrder || '').localeCompare(b.sortOrder || ''));
+    nodes.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
     nodes.forEach((n) => sortChildren(n.children));
   };
   sortChildren(roots);
@@ -170,7 +170,7 @@ export function createDatabaseRow(schema = [], overrides = {}) {
  */
 export function generateLexicalOrder(prev = null, next = null) {
   const BASE = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  
+
   if (!prev && !next) return 'm';
   if (!prev) {
     const firstChar = next[0] || 'm';
@@ -188,7 +188,7 @@ export function generateLexicalOrder(prev = null, next = null) {
   while (i < Math.max(prev.length, next.length)) {
     const charA = prev[i] || BASE[0];
     const charB = next[i] || BASE[BASE.length - 1];
-    
+
     if (charA === charB) {
       i++;
       continue;
@@ -206,7 +206,7 @@ export function generateLexicalOrder(prev = null, next = null) {
       i++;
     }
   }
-  
+
   // Fallback
   return prev + 'm';
 }

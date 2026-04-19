@@ -13,9 +13,9 @@ export default function TextBlock({ block, index }) {
   const [slashQuery, setSlashQuery] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
-  
   const contentRef = useRef(null);
   const lastPushedContent = useRef(block.content);
+  const localValue = useRef(block.content);
   
   const updateBlock = useBlockStore((s) => s.updateBlock);
   const addBlock = useBlockStore((s) => s.addBlock);
@@ -24,10 +24,11 @@ export default function TextBlock({ block, index }) {
   const pushUndo = useUndoStore((s) => s.pushUndo);
 
   useEffect(() => {
-    if (contentRef.current && contentRef.current.innerHTML !== block.content) {
+    if (contentRef.current && block.content !== localValue.current && contentRef.current.innerHTML !== block.content) {
       contentRef.current.innerHTML = sanitize(block.content);
+      localValue.current = block.content;
     }
-  }, [block.id]);
+  }, [block.id, block.content]);
 
   useEffect(() => {
     if (focusBlockId === block.id && contentRef.current) {
@@ -45,6 +46,7 @@ export default function TextBlock({ block, index }) {
   const debouncedSave = useCallback(
     debounce((html) => {
       if (html !== block.content) {
+        localValue.current = html;
         updateBlock(block.id, { content: html });
       }
     }, 1000),
@@ -100,6 +102,7 @@ export default function TextBlock({ block, index }) {
   const handleBlur = () => {
     const currentHTML = contentRef.current?.innerHTML || "";
     if (currentHTML !== block.content) {
+      localValue.current = currentHTML;
       updateBlock(block.id, { content: currentHTML });
     }
     setTimeout(() => {
@@ -112,6 +115,7 @@ export default function TextBlock({ block, index }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       if (showSlashMenu || showMentionMenu) return; // let the menu handle it
       e.preventDefault();
+      localValue.current = contentRef.current.innerHTML;
       updateBlock(block.id, { content: contentRef.current.innerHTML });
       addBlock(block.pageId, 'text', block.id);
     } else if (e.key === 'Backspace' && contentRef.current.textContent === '') {
@@ -126,6 +130,7 @@ export default function TextBlock({ block, index }) {
       const htmlWithoutTrigger = currentHTML.substring(0, lastSlashIndex);
       
       contentRef.current.innerHTML = htmlWithoutTrigger;
+      localValue.current = htmlWithoutTrigger;
       updateBlock(block.id, { content: htmlWithoutTrigger });
       useBlockStore.getState().changeBlockType(block.id, type);
       setShowSlashMenu(false);
@@ -144,6 +149,7 @@ export default function TextBlock({ block, index }) {
       
       const newHtml = htmlBefore + mentionHtml;
       contentRef.current.innerHTML = newHtml;
+      localValue.current = newHtml;
       updateBlock(block.id, { content: newHtml });
       setShowMentionMenu(false);
       

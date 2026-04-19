@@ -21,7 +21,7 @@ export const useBlockStore = create((set, get) => ({
     const { blockMap, blockOrder } = get();
     return blockOrder.map(id => blockMap[id]).filter(Boolean);
   },
-  
+
   getBlock: (id) => get().blockMap[id],
 
   loadBlocks: async (pageId) => {
@@ -31,7 +31,7 @@ export const useBlockStore = create((set, get) => ({
     }
     const key = useSecurityStore.getState().derivedKey;
     const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
-    
+
     const blockMap = {};
     const blockOrder = [];
 
@@ -39,7 +39,7 @@ export const useBlockStore = create((set, get) => ({
       if (key && b._isEncrypted) {
         let content = b.content;
         let properties = b.properties;
-        
+
         if (b.content) content = await SecurityService.decrypt(b.content, key) || '🔒 Decryption Failed';
         if (b.properties && typeof b.properties === 'string') {
           const decryptedProps = await SecurityService.decrypt(b.properties, key);
@@ -49,7 +49,7 @@ export const useBlockStore = create((set, get) => ({
             properties = {};
           }
         }
-        
+
         return { ...b, content, properties };
       }
       return b;
@@ -81,35 +81,35 @@ export const useBlockStore = create((set, get) => ({
         sortOrder = generateLexicalOrder(prev, next);
       }
     } else {
-        // Add to beginning
-        const nextId = blockOrder[0];
-        const next = nextId ? blockMap[nextId]?.sortOrder : null;
-        sortOrder = generateLexicalOrder(null, next);
+      // Add to beginning
+      const nextId = blockOrder[0];
+      const next = nextId ? blockMap[nextId]?.sortOrder : null;
+      sortOrder = generateLexicalOrder(null, next);
     }
 
     if (sortOrder === undefined) {
-        // Fallback to end
-        const lastId = blockOrder[blockOrder.length - 1];
-        const last = lastId ? blockMap[lastId]?.sortOrder : null;
-        sortOrder = generateLexicalOrder(last, null);
+      // Fallback to end
+      const lastId = blockOrder[blockOrder.length - 1];
+      const last = lastId ? blockMap[lastId]?.sortOrder : null;
+      sortOrder = generateLexicalOrder(last, null);
     }
 
     const safeContent = content_sanitizer(content);
     const safeProperties = sanitizeObject(properties) || {};
 
     const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder });
-    
+
     // Optimistic insert
     const newBlockMap = { ...get().blockMap, [block.id]: block };
     const allBlocks = [...get().getBlocks(), block];
-    allBlocks.sort((a, b) => (a.sortOrder || '').localeCompare(b.sortOrder || ''));
-    
-    set({ 
-      blockMap: newBlockMap, 
+    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+
+    set({
+      blockMap: newBlockMap,
       blockOrder: allBlocks.map(b => b.id),
-      focusBlockId: block.id 
+      focusBlockId: block.id
     });
-    
+
     await db.blocks.add(block);
     useUIStore.getState().updateOnboarding('blocksCreated');
     return block;
@@ -132,12 +132,12 @@ export const useBlockStore = create((set, get) => ({
     // Debounced persistence
     let debouncedFn = debouncedWrites.get(blockId);
     if (!debouncedFn) {
-        debouncedFn = debounce(async (id, upd) => {
-            useUIStore.getState().setIsSaving(true);
-            await db.blocks.update(id, { ...upd, updatedAt: Date.now() });
-            useUIStore.getState().setIsSaving(false);
-        }, 1000);
-        debouncedWrites.set(blockId, debouncedFn);
+      debouncedFn = debounce(async (id, upd) => {
+        useUIStore.getState().setIsSaving(true);
+        await db.blocks.update(id, { ...upd, updatedAt: Date.now() });
+        useUIStore.getState().setIsSaving(false);
+      }, 1000);
+      debouncedWrites.set(blockId, debouncedFn);
     }
     debouncedFn(blockId, safeUpdates);
   },
@@ -151,9 +151,9 @@ export const useBlockStore = create((set, get) => ({
 
     // Snapshot for undo
     useUndoStore.getState().pushUndo({
-       type: 'DELETE_BLOCK',
-       block: blockToDelete,
-       index: blockIndex
+      type: 'DELETE_BLOCK',
+      block: blockToDelete,
+      index: blockIndex
     });
 
     // Optimistic remove
@@ -161,7 +161,7 @@ export const useBlockStore = create((set, get) => ({
     delete newBlockMap[blockId];
     const newBlockOrder = blockOrder.filter(id => id !== blockId);
     const newFocus = blockIndex > 0 ? blockOrder[blockIndex - 1] : null;
-    
+
     set({ blockMap: newBlockMap, blockOrder: newBlockOrder, focusBlockId: newFocus });
 
     await db.blocks.delete(blockId);
@@ -187,19 +187,19 @@ export const useBlockStore = create((set, get) => ({
     const currentId = blockOrder[index];
     const prevId = blockOrder[index - 1];
     const prevPrevId = blockOrder[index - 2];
-    
+
     const current = blockMap[currentId];
     const prevBlock = blockMap[prevId];
     const prevPrev = prevPrevId ? blockMap[prevPrevId]?.sortOrder : null;
-    
+
     const newSortOrder = generateLexicalOrder(prevPrev, prevBlock.sortOrder);
     const now = Date.now();
 
     const updatedBlock = { ...current, sortOrder: newSortOrder, updatedAt: now };
     const newBlockMap = { ...blockMap, [currentId]: updatedBlock };
-    
+
     const allBlocks = blockOrder.map(id => id === currentId ? updatedBlock : blockMap[id]);
-    allBlocks.sort((a, b) => a.sortOrder.localeCompare(b.sortOrder));
+    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
 
     set({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
 
@@ -214,19 +214,19 @@ export const useBlockStore = create((set, get) => ({
     const currentId = blockOrder[index];
     const nextId = blockOrder[index + 1];
     const nextNextId = blockOrder[index + 2];
-    
+
     const current = blockMap[currentId];
     const nextBlock = blockMap[nextId];
     const nextNext = nextNextId ? blockMap[nextNextId]?.sortOrder : null;
-    
+
     const newSortOrder = generateLexicalOrder(nextBlock.sortOrder, nextNext);
     const now = Date.now();
 
     const updatedBlock = { ...current, sortOrder: newSortOrder, updatedAt: now };
     const newBlockMap = { ...blockMap, [currentId]: updatedBlock };
-    
+
     const allBlocks = blockOrder.map(id => id === currentId ? updatedBlock : blockMap[id]);
-    allBlocks.sort((a, b) => a.sortOrder.localeCompare(b.sortOrder));
+    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
 
     set({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
 
@@ -251,7 +251,7 @@ export const useBlockStore = create((set, get) => ({
     set(s => ({
       blockMap: { ...s.blockMap, [blockId]: { ...block, type: newType, properties, updatedAt: now } }
     }));
-    
+
     await db.blocks.update(blockId, { type: newType, properties, updatedAt: now });
   },
 }));
