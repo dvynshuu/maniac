@@ -30,12 +30,12 @@ export class SecurityService {
   }
 
   /**
-   * Derive a CryptoKey from a password + salt using PBKDF2.
+   * Derive both an AES-GCM key and an HMAC key (for blind indexing) from a password + salt.
    * @param {string} password
    * @param {Uint8Array} salt
-   * @returns {Promise<CryptoKey>}
+   * @returns {Promise<{aesKey: CryptoKey, hmacKey: CryptoKey}>}
    */
-  static async deriveKey(password, salt) {
+  static async deriveKeys(password, salt) {
     const encoder = new TextEncoder();
     const passwordKey = await window.crypto.subtle.importKey(
       'raw',
@@ -45,30 +45,39 @@ export class SecurityService {
       ['deriveKey']
     );
 
-    return window.crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: salt,
-        iterations: ITERATIONS,
-        hash: 'SHA-256',
-      },
+    const aesKey = await window.crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: salt, iterations: ITERATIONS, hash: 'SHA-256' },
       passwordKey,
       { name: 'AES-GCM', length: 256 },
       false,
       ['encrypt', 'decrypt']
     );
+
+    // Derive a separate HMAC key for blind indexing search
+    const hmacSalt = new Uint8Array(salt);
+    hmacSalt[0] ^= 0xFF; // Slightly modify salt to get a different key
+
+    const hmacKey = await window.crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: hmacSalt, iterations: ITERATIONS, hash: 'SHA-256' },
+      passwordKey,
+      { name: 'HMAC', hash: 'SHA-256', length: 256 },
+      false,
+      ['sign', 'verify']
+    );
+
+    return { aesKey, hmacKey };
   }
 
   /**
-   * Derives a long-lived CryptoKey from the user's password using the
+   * Derives long-lived CryptoKeys from the user's password using the
    * persistent master salt. This key is stored in Zustand; the plaintext
    * password is discarded immediately after this call.
    * @param {string} password
-   * @returns {Promise<CryptoKey>}
+   * @returns {Promise<{aesKey: CryptoKey, hmacKey: CryptoKey}>}
    */
-  static async deriveKeyFromPassword(password) {
+  static async deriveKeysFromPassword(password) {
     const salt = this.getMasterSalt();
-    return this.deriveKey(password, salt);
+    return this.deriveKeys(password, salt);
   }
 
   // ─── Password Verification (canary-based) ──────────────────
@@ -80,8 +89,8 @@ export class SecurityService {
    * @returns {Promise<string>} base64-encoded encrypted canary
    */
   static async createVerifier(password) {
-    const key = await this.deriveKeyFromPassword(password);
-    return this.encryptWithKey(CANARY_STRING, key);
+    const keys = await this.deriveKeysFromPassword(password);
+    return this.encryptWithKey(CANARY_STRING, keys.aesKey);
   }
 
   /**
@@ -92,8 +101,8 @@ export class SecurityService {
    */
   static async verifyPassword(password, verifierBlob) {
     try {
-      const key = await this.deriveKeyFromPassword(password);
-      const decrypted = await this.decryptWithKey(verifierBlob, key);
+      const keys = await this.deriveKeysFromPassword(password);
+      const decrypted = await this.decryptWithKey(verifierBlob, keys.aesKey);
       return decrypted === CANARY_STRING;
     } catch {
       return false;
@@ -113,8 +122,8 @@ export class SecurityService {
     if (!text) return text;
     if (typeof keyOrPassword === 'string') {
       // Legacy path: derive key from password (kept for backward compat)
-      const key = await this.deriveKeyFromPassword(keyOrPassword);
-      return this.encryptWithKey(text, key);
+      const keys = await this.deriveKeysFromPassword(keyOrPassword);
+      return this.encryptWithKey(text, keys.aesKey);
     }
     return this.encryptWithKey(text, keyOrPassword);
   }
@@ -128,8 +137,8 @@ export class SecurityService {
   static async decrypt(encryptedBase64, keyOrPassword) {
     if (!encryptedBase64 || typeof encryptedBase64 !== 'string') return encryptedBase64;
     if (typeof keyOrPassword === 'string') {
-      const key = await this.deriveKeyFromPassword(keyOrPassword);
-      return this.decryptWithKey(encryptedBase64, key);
+      const keys = await this.deriveKeysFromPassword(keyOrPassword);
+      return this.decryptWithKey(encryptedBase64, keys.aesKey);
     }
     return this.decryptWithKey(encryptedBase64, keyOrPassword);
   }
@@ -194,5 +203,26 @@ export class SecurityService {
       console.error('Decryption failed', e);
       return null;
     }
+  }
+
+  // ─── Blind Indexing ────────────────────────────────────────
+
+  /**
+   * Hashes a word using HMAC-SHA256 for secure indexing.
+   * Returns a hex string representation of the first 16 bytes.
+   * @param {string} word
+   * @param {CryptoKey} hmacKey
+   * @returns {Promise<string>}
+   */
+  static async hmacWord(word, hmacKey) {
+    if (!word || !hmacKey) return word;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(word);
+    const signature = await window.crypto.subtle.sign('HMAC', hmacKey, data);
+    
+    // Convert first 16 bytes to hex string for smaller DB storage
+    const hashArray = Array.from(new Uint8Array(signature).slice(0, 16));
+    const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hex;
   }
 }

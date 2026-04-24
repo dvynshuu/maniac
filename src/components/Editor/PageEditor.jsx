@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import VirtualList from '../Common/VirtualList';
+
 import { useParams } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useBlockStore } from '../../stores/blockStore';
@@ -17,7 +19,7 @@ function PageEditor() {
   const { pageId } = useParams();
   const pages = usePageStore((s) => s.pages);
   const updatePage = usePageStore((s) => s.updatePage);
-  const blockIds = useBlockStore(useShallow((s) => s.blockOrder));
+  const rootBlockIds = useBlockStore(useShallow((s) => s.blockOrder.filter(id => !s.blockMap[id]?.parentId)));
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const addBlock = useBlockStore((s) => s.addBlock);
   const updateBlock = useBlockStore((s) => s.updateBlock);
@@ -29,6 +31,7 @@ function PageEditor() {
   const [coverUrl, setCoverUrl] = useState(null);
   const titleInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const debouncedUpdatePage = useRef(
     debounce((id, updates) => {
@@ -128,10 +131,10 @@ function PageEditor() {
   const handleTitleKeyDown = async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (blockIds.length === 0) {
+      if (rootBlockIds.length === 0) {
         await addBlock(pageId, 'text');
       } else {
-        const firstBlockEl = document.querySelector(`[data-block-id="${blockIds[0]}"] .block-content [contenteditable="true"]`);
+        const firstBlockEl = document.querySelector(`[data-block-id="${rootBlockIds[0]}"] .block-content [contenteditable="true"]`);
         if (firstBlockEl) {
            firstBlockEl.focus();
            const selection = window.getSelection();
@@ -162,7 +165,7 @@ function PageEditor() {
   };
 
   return (
-    <div className="editor-scroll">
+    <div className="editor-scroll" ref={scrollRef}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px' }}>
         <Breadcrumb />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
@@ -237,7 +240,7 @@ function PageEditor() {
         />
 
         <div className="page-blocks">
-          {blockIds.length === 0 ? (
+          {rootBlockIds.length === 0 ? (
             <div 
               className="block-text text-placeholder" 
               style={{ padding: '4px 0', cursor: 'text', color: 'var(--text-placeholder)' }}
@@ -246,13 +249,19 @@ function PageEditor() {
               Click here or press Enter to add a block...
             </div>
           ) : (
-            blockIds.map((id, index) => (
-              <BlockRenderer 
-                key={id} 
-                blockId={id} 
-                index={index}
-              />
-            ))
+            <VirtualList 
+              items={rootBlockIds}
+              dynamic={true}
+              itemHeight={32}
+              scrollContainerRef={scrollRef}
+              renderItem={(id, index) => (
+                <BlockRenderer 
+                  key={id} 
+                  blockId={id} 
+                  index={index}
+                />
+              )}
+            />
           )}
         </div>
         
@@ -260,8 +269,8 @@ function PageEditor() {
         <div 
           style={{ height: '20vh', cursor: 'text' }} 
           onClick={(e) => {
-             if (e.target === e.currentTarget && blockIds.length > 0) {
-                 const lastId = blockIds[blockIds.length - 1];
+             if (e.target === e.currentTarget && rootBlockIds.length > 0) {
+                 const lastId = rootBlockIds[rootBlockIds.length - 1];
                  addBlock(pageId, 'text', lastId);
              }
           }}

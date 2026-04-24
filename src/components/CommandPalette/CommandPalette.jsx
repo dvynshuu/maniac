@@ -33,9 +33,9 @@ export default function CommandPalette({ onClose }) {
     );
 
     // Full-text block content search (async, debounced)
-    // Skipped when encryption is active — word index is empty.
+    // Uses plain text search for unencrypted, and blind indexing (HMAC) for encrypted
     useEffect(() => {
-        if (isEncrypted || query.length < 2) {
+        if (query.length < 2) {
             setBlockResults([]);
             return;
         }
@@ -45,11 +45,22 @@ export default function CommandPalette({ onClose }) {
                 let matches = [];
                 
                 if (queryWords.length > 0) {
-                    const rawMatches = await db.blocks
-                        .where('words')
-                        .startsWithAnyOfIgnoreCase(queryWords)
-                        .limit(10)
-                        .toArray();
+                    const { hmacKey } = useSecurityStore.getState();
+                    const { SecurityService } = await import('../../utils/securityService');
+                    
+                    let searchWords = queryWords;
+                    if (isEncrypted && hmacKey) {
+                        searchWords = await Promise.all(queryWords.map(w => SecurityService.hmacWord(w, hmacKey)));
+                    }
+
+                    // For encrypted words we need exact matches of the HMAC string.
+                    // For plaintext we can use startsWithAnyOfIgnoreCase.
+                    let rawMatches = [];
+                    if (isEncrypted) {
+                        rawMatches = await db.blocks.where('words').anyOf(searchWords).limit(10).toArray();
+                    } else {
+                        rawMatches = await db.blocks.where('words').startsWithAnyOfIgnoreCase(searchWords).limit(10).toArray();
+                    }
                         
                     const uniqueMatches = [];
                     const seen = new Set();
@@ -62,15 +73,27 @@ export default function CommandPalette({ onClose }) {
                     matches = uniqueMatches.slice(0, 5);
                 }
 
+                // Enrich with page info and decrypt snippet if needed
+                const { derivedKey } = useSecurityStore.getState();
+                const { SecurityService } = await import('../../utils/securityService');
 
-
-                // Enrich with page info
                 const enriched = await Promise.all(matches.map(async (b) => {
                     const page = await db.pages.get(b.pageId);
-                    const plainText = (b.content || '').replace(/<[^>]*>/g, '');
+                    
+                    let plainText = b.content || '';
+                    if (isEncrypted && b._isEncrypted && derivedKey) {
+                        try {
+                            plainText = await SecurityService.decrypt(b.content, derivedKey);
+                        } catch {
+                            plainText = '🔒 Encrypted Content';
+                        }
+                    }
+                    
+                    plainText = plainText.replace(/<[^>]*>/g, '');
                     const idx = plainText.toLowerCase().indexOf(lowerQuery);
                     const start = Math.max(0, idx - 30);
-                    const end = Math.min(plainText.length, idx + lowerQuery.length + 30);
+                    // if idx is -1 (due to stemming or exact hmac match vs substring), we just show start
+                    const end = Math.min(plainText.length, (idx > -1 ? idx : 30) + lowerQuery.length + 30);
                     const snippet = (start > 0 ? '...' : '') + plainText.slice(start, end) + (end < plainText.length ? '...' : '');
                     
                     return {
@@ -84,12 +107,13 @@ export default function CommandPalette({ onClose }) {
                     };
                 }));
                 setBlockResults(enriched);
-            } catch {
+            } catch (e) {
+                console.error("Search failed:", e);
                 setBlockResults([]);
             }
         }, 200);
         return () => clearTimeout(timer);
-    }, [query, lowerQuery]);
+    }, [query, lowerQuery, isEncrypted]);
         
     const cmds = [
         { id: 'cmd-new-page', title: 'Create new page', icon: Plus, run: async () => {
@@ -152,12 +176,6 @@ export default function CommandPalette({ onClose }) {
                 </div>
                 
                 <div className="command-palette-results">
-                    {isEncrypted && query.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '12px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
-                            <Lock size={12} />
-                            <span>Block content search unavailable in encrypted mode. Page titles are still searchable.</span>
-                        </div>
-                    )}
                     {results.length === 0 ? (
                         <div className="command-palette-empty">No results found</div>
                     ) : (

@@ -25,6 +25,7 @@ export function createBlock(pageId, type = 'text', overrides = {}) {
   return {
     id: createId(),
     pageId,
+    parentId: null,
     type,
     content: '',
     properties: {},

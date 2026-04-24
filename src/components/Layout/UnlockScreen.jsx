@@ -36,10 +36,11 @@ export default function UnlockScreen() {
       let key;
       if (!verifier) {
         // Fallback: verify password by attempting to decrypt a known block/page
-        key = await SecurityService.deriveKeyFromPassword(password);
+        const keys = await SecurityService.deriveKeysFromPassword(password);
+        key = keys;
         const testPage = await db.pages.toCollection().filter(p => p._isEncrypted).first();
         if (testPage && testPage.title) {
-           const decryptedContent = await SecurityService.decrypt(testPage.title, key);
+           const decryptedContent = await SecurityService.decrypt(testPage.title, keys.aesKey);
            if (!decryptedContent) {
                setError('Incorrect password. Please try again.');
                setIsVerifying(false);
@@ -56,7 +57,7 @@ export default function UnlockScreen() {
           setIsVerifying(false);
           return;
         }
-        key = await SecurityService.deriveKeyFromPassword(password);
+        key = await SecurityService.deriveKeysFromPassword(password);
       }
 
       unlock(key);
@@ -89,9 +90,9 @@ export default function UnlockScreen() {
       localStorage.setItem('maniac_initialized', 'true');
 
       // Derive the long-lived CryptoKey and unlock
-      const key = await SecurityService.deriveKeyFromPassword(password);
+      const keys = await SecurityService.deriveKeysFromPassword(password);
       setInitialized(true);
-      unlock(key);
+      unlock(keys);
     } catch (err) {
       setError('Setup failed: ' + err.message);
       setIsVerifying(false);

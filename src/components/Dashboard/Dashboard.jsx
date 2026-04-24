@@ -11,7 +11,9 @@ import './Dashboard.css';
 import { ProfilePopover } from './ProfilePopover';
 import { NotificationsPopover } from './NotificationsPopover';
 import { SettingsModal } from '../Settings/SettingsModal';
+import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
+import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -38,7 +40,7 @@ function Dashboard() {
         <div className="dashboard-brand-container">
           <div className="dashboard-brand-title">Maniac OS</div>
           <div className="dashboard-tabs" role="tablist">
-            {['Workspace', 'Daily Review', 'Calendar', 'Archives'].map(tab => (
+            {['Workspace', 'Intelligence', 'Calendar', 'Archives'].map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -76,7 +78,7 @@ function Dashboard() {
 
       <div className="editor-container" style={{ maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
         {activeTab === 'Workspace' && <WorkspaceTab pages={pages} navigate={navigate} />}
-        {activeTab === 'Daily Review' && <DailyReviewTab navigate={navigate} />}
+        {activeTab === 'Intelligence' && <IntelligenceTab navigate={navigate} />}
         {activeTab === 'Calendar' && <CalendarTab pages={pages} navigate={navigate} />}
         {activeTab === 'Archives' && <ArchivesTab archivedPages={archivedPages} restore={restorePage} permaDelete={deletePage} />}
       </div>
@@ -85,124 +87,132 @@ function Dashboard() {
 }
 
 // ==========================================
-// Daily Review Tab
+// Intelligence Tab (Decision Engine)
 // ==========================================
-function DailyReviewTab({ navigate }) {
-  const [unfinishedBlocks, setUnfinishedBlocks] = useState([]);
-  const [trackerTrends, setTrackerTrends] = useState([]);
-  const [loading, setLoading] = useState(true);
+function IntelligenceTab({ navigate }) {
+  const { nextActions, forgetting, weeklyFocus, analyze, isAnalyzing } = useIntelligenceStore();
   const key = useSecurityStore(s => s.derivedKey);
 
   useEffect(() => {
-    const fetchReviewData = async () => {
-      try {
-        setLoading(true);
-        // Fetch unfinished todos — limit to 500 max to bound the decrypt cost
-        const allTodosRaw = await db.blocks.where('type').equals('todo').reverse().sortBy('updatedAt');
-        const allTodos = allTodosRaw.slice(0, 500);
-        
-        const decryptFn = async (todo, k) => {
-          let props = todo.properties || {};
-          let content = todo.content || '';
-          if (k && todo._isEncrypted) {
-             try {
-                if (typeof props === 'string') props = JSON.parse(await SecurityService.decrypt(props, k));
-                if (typeof content === 'string') content = await SecurityService.decrypt(content, k);
-             } catch {
-                props = {};
-                content = 'Encrypted...';
-             }
-          }
-          return { ...todo, properties: props, content };
-        };
-
-        // Stream decrypted items into the UI as batches finish
-        const onProgress = (currentDecrypted) => {
-           const unfinished = currentDecrypted.filter(t => t.properties?.checked === false).slice(0, 100);
-           setUnfinishedBlocks(unfinished);
-        };
-
-        const decryptedTodos = await batchDecrypt(allTodos, key, decryptFn, 20, onProgress);
-        
-        // Final pass
-        const reviewTodos = decryptedTodos.filter(t => t.properties?.checked === false).slice(0, 100);
-        setUnfinishedBlocks(reviewTodos);
-
-        // Fetch tracker trends
-        const trackers = await db.trackers.toArray();
-        const trends = await Promise.all(trackers.map(async (t) => {
-           const entries = await db.tracker_entries.where('trackerId').equals(t.id).toArray();
-           return { ...t, entryCount: entries.length };
-        }));
-        setTrackerTrends(trends);
-
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReviewData();
+    analyze();
   }, [key]);
 
-  if (loading) return <div style={{ padding: '32px', color: 'var(--text-tertiary)' }}>Loading review data...</div>;
+  if (isAnalyzing && !nextActions.length) {
+    return (
+      <div style={{ padding: '64px', textAlign: 'center' }}>
+        <div className="spinner" style={{ margin: '0 auto 24px' }}></div>
+        <div style={{ fontSize: '18px', color: 'var(--text-primary)', fontWeight: 600 }}>Analyzing nodes...</div>
+        <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginTop: '8px' }}>Scanning for patterns and stale thoughts.</div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '8px' }}>Daily Review</h2>
-        <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>Review unfinished tasks and recent trends.</p>
+    <div className="intelligence-container animate-fade-in">
+      <div style={{ marginBottom: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <Brain size={24} color="var(--accent-primary)" />
+          <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>Decision Engine</h2>
+        </div>
+        <p style={{ fontSize: '16px', color: 'var(--text-tertiary)', margin: 0 }}>Intelligence derived from your behavior and content.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>Unfinished Tasks</h3>
-          {unfinishedBlocks.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {unfinishedBlocks.map(block => (
-                <div 
-                  key={block.id} 
-                  onClick={() => navigate(`/page/${block.pageId}`)}
-                  className="interactive-card"
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer' }}
-                >
-                  <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: '2px solid var(--border-strong)' }}></div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.content || 'Empty task'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+        {/* Next Actions */}
+        <div className="intelligence-card glass">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <Zap size={18} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What should I do next?</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {nextActions.length > 0 ? nextActions.map(action => (
+              <div 
+                key={action.id} 
+                className="intelligence-item"
+                onClick={() => navigate(`/page/${action.pageId}`)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                   {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
+                   <span style={{ fontSize: '14px', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: '48px 0', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>Inbox Zero</div>
-              <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>You're all caught up! Enjoy your focused momentum.</p>
-            </div>
-          )}
+              </div>
+            )) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>No pending tasks detected.</div>
+            )}
+          </div>
         </div>
 
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 16px 0' }}>Tracker Overview</h3>
-          {trackerTrends.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {trackerTrends.map(t => (
-                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ position: 'relative', width: '32px', height: '32px' }}>
-                      <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border-subtle)" strokeWidth="3" />
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-primary)" strokeWidth="3" strokeDasharray={`${Math.min(100, (t.entryCount / 30) * 100)}, 100`} strokeLinecap="round" style={{ transition: 'stroke-dasharray 0.5s ease' }} />
-                      </svg>
-                    </div>
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{t.title || 'Untitled'}</span>
+        {/* Forgetting */}
+        <div className="intelligence-card glass">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <AlertCircle size={18} color="var(--warning)" />
+            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What am I forgetting?</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {forgetting.stalePages.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>STALE PAGES</div>
+                {forgetting.stalePages.slice(0, 3).map(page => (
+                  <div key={page.id} className="intelligence-item" onClick={() => navigate(`/page/${page.id}`)}>
+                    <span style={{ fontSize: '13px' }}>{page.icon || '📄'} {page.title}</span>
                   </div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t.entryCount} total</span>
+                ))}
+              </div>
+            )}
+            {forgetting.abandonedTodos.length > 0 && (
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>ABANDONED TASKS</div>
+                {forgetting.abandonedTodos.slice(0, 3).map(todo => (
+                  <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/page/${todo.pageId}`)}>
+                    <span style={{ fontSize: '13px' }}>{todo.content}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {forgetting.stalePages.length === 0 && forgetting.abandonedTodos.length === 0 && (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>Your memory is synchronized.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Weekly Focus */}
+        <div className="intelligence-card glass">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <TrendingUp size={18} color="var(--success)" />
+            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What matters this week?</h3>
+          </div>
+          {weeklyFocus ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '12px' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{weeklyFocus.activePages}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Active Nodes this week</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>TOP TRACKERS</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {weeklyFocus.trackerStats.map(stat => (
+                    <div key={stat.id} style={{ background: 'var(--bg-tertiary)', padding: '4px 10px', borderRadius: '20px', fontSize: '12px' }}>
+                      {stat.name}: {stat.count}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           ) : (
-            <div style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>No trackers found.</div>
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>Insufficient data for this week.</div>
           )}
         </div>
+      </div>
+
+      {/* Logic for Feedback Loop */}
+      <div className="intelligence-card" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Knowledge Growth Curve</h3>
+        <div style={{ height: '200px', width: '100%', background: 'var(--bg-elevated)', borderRadius: '12px', display: 'flex', alignItems: 'flex-end', padding: '20px', gap: '10px' }}>
+           {[30, 45, 40, 60, 75, 70, 90].map((h, i) => (
+             <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0' }}></div>
+           ))}
+        </div>
+        <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Maniac is becoming more personalized as you add more nodes. Current personalization depth: <b>Level 3</b></p>
       </div>
     </div>
   );
@@ -212,11 +222,43 @@ function DailyReviewTab({ navigate }) {
 // Workspace Tab
 // ==========================================
 function WorkspaceTab({ pages, navigate }) {
-  const recentPages = [...pages].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4);
-  const pinnedPages = [...pages].sort((a, b) => a.createdAt - b.createdAt).slice(0, 3); // mock pinned
+  const [recentPages, setRecentPages] = useState([]);
+  const [pinnedPages, setPinnedPages] = useState([]);
   const lastVisitedPageId = useUIStore(s => s.lastVisitedPageId);
   const onboardingStatus = useUIStore(s => s.onboardingStatus);
   const lastVisitedPage = lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId) : null;
+  const key = useSecurityStore(s => s.derivedKey);
+
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const recent = await db.pages.orderBy('updatedAt').reverse().limit(4).toArray();
+        // Since isFavorite isn't indexed yet, we'll fetch mock pinned via createdAt limit
+        const pinned = await db.pages.orderBy('createdAt').limit(3).toArray();
+        
+        // Decrypt titles if needed
+        const decryptTitles = async (list) => {
+           return Promise.all(list.map(async p => {
+             if (key && p._isEncrypted && p.title) {
+               try {
+                 const decrypted = await SecurityService.decrypt(p.title, key);
+                 return { ...p, title: decrypted || '🔒 Decryption Failed' };
+               } catch {
+                 return { ...p, title: '🔒 Decryption Failed' };
+               }
+             }
+             return p;
+           }));
+        };
+
+        setRecentPages(await decryptTitles(recent));
+        setPinnedPages(await decryptTitles(pinned));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchPages();
+  }, [key, pages.length]); // Re-run when new pages are created
 
   return (
     <>
@@ -254,18 +296,18 @@ function WorkspaceTab({ pages, navigate }) {
         {/* Metrics */}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>LATENCY</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>0 <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>ms</span></div>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>KNOWLEDGE VELOCITY</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{useIntelligenceStore.getState().knowledgeVelocity.velocity} <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>%</span></div>
           </div>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>STORAGE</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>100 <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>% Local</span></div>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>TOTAL NODES</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{pages.length} <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>obj</span></div>
           </div>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>STATUS</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></div>
-              Optimized
+              Decision Engine Active
             </div>
           </div>
         </div>

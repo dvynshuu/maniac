@@ -15,22 +15,52 @@ export const usePageStore = create((set, get) => ({
     const key = useSecurityStore.getState().derivedKey;
     const allPagesRaw = await db.pages.toArray();
 
-    const allPages = await Promise.all(allPagesRaw.map(async p => {
-      if (key && p._isEncrypted && p.title) {
-        const decrypted = await SecurityService.decrypt(p.title, key);
-        return { ...p, title: decrypted || '🔒 Decryption Failed' };
-      }
-      return p;
-    }));
-
+    // Optimistic initial load (encrypted titles will show raw or placeholders)
     set({
-      pages: allPages.filter(p => !p.isArchived),
-      archivedPages: allPages.filter(p => p.isArchived)
+      pages: allPagesRaw.filter(p => !p.isArchived).map(p => ({ ...p, title: p._isEncrypted && key ? 'Decrypting...' : p.title })),
+      archivedPages: allPagesRaw.filter(p => p.isArchived).map(p => ({ ...p, title: p._isEncrypted && key ? 'Decrypting...' : p.title }))
     });
+
+    if (key) {
+      const decryptFn = async (p, k) => {
+        if (p._isEncrypted && p.title) {
+          try {
+             const decrypted = await SecurityService.decrypt(p.title, k);
+             return { ...p, title: decrypted || '🔒 Decryption Failed' };
+          } catch {
+             return { ...p, title: '🔒 Decryption Failed' };
+          }
+        }
+        return p;
+      };
+
+      const { batchDecrypt } = await import('../utils/cryptoWorker');
+      
+      const onProgress = (currentDecrypted) => {
+         // Optionally, we could stream updates here.
+         // For pages, usually the count is small enough that the final update is fast.
+      };
+
+      const allPages = await batchDecrypt(allPagesRaw, key, decryptFn, 50, onProgress);
+      
+      set({
+        pages: allPages.filter(p => !p.isArchived),
+        archivedPages: allPages.filter(p => p.isArchived)
+      });
+    }
   },
 
   setCurrentPage: (pageId) => {
     set({ currentPageId: pageId });
+    if (pageId) get().touchPage(pageId);
+  },
+
+  touchPage: async (id) => {
+    const now = Date.now();
+    set(s => ({
+      pages: s.pages.map(p => p.id === id ? { ...p, lastViewedAt: now } : p),
+    }));
+    await db.pages.update(id, { lastViewedAt: now });
   },
 
   addPage: async (parentId = null) => {

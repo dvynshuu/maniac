@@ -1,26 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { ChevronRight } from 'lucide-react';
+import BlockRenderer from '../BlockRenderer';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function ToggleBlock({ block }) {
   const contentRef = useRef(null);
-  const childRef = useRef(null);
   const expanded = block.properties?.expanded ?? true;
   
   const updateBlock = useBlockStore(s => s.updateBlock);
   const addBlock = useBlockStore(s => s.addBlock);
-  const deleteBlock = useBlockStore(s => s.deleteBlock);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
+
+  const childBlockIds = useBlockStore(useShallow(s => 
+    s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
+  ));
 
   useEffect(() => {
     if (contentRef.current && contentRef.current.innerHTML !== block.content) {
       contentRef.current.innerHTML = block.content;
-    }
-  }, [block.id]);
-
-  useEffect(() => {
-    if (childRef.current && childRef.current.innerHTML !== (block.properties?.childContent || '')) {
-      childRef.current.innerHTML = block.properties?.childContent || '';
     }
   }, [block.id]);
 
@@ -57,24 +55,17 @@ export default function ToggleBlock({ block }) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       updateBlock(block.id, { content: contentRef.current.innerHTML });
-      // Focus the child content area
-      if (expanded && childRef.current) {
-        childRef.current.focus();
+      
+      // If expanded, add a new block inside as the first child
+      if (expanded) {
+        addBlock(block.pageId, 'text', null, '', {}, block.id);
       } else {
-        addBlock(block.pageId, 'text', block.id);
+        // If collapsed, add block below toggle at the same level
+        addBlock(block.pageId, 'text', block.id, '', {}, block.parentId);
       }
     } else if (e.key === 'Backspace' && contentRef.current.textContent === '') {
       e.preventDefault();
       useBlockStore.getState().changeBlockType(block.id, 'text');
-    }
-  };
-
-  const handleChildBlur = () => {
-    const html = childRef.current?.innerHTML || '';
-    if (html !== (block.properties?.childContent || '')) {
-      updateBlock(block.id, {
-        properties: { ...block.properties, childContent: html }
-      });
     }
   };
 
@@ -100,15 +91,22 @@ export default function ToggleBlock({ block }) {
         />
       </div>
       {expanded && (
-        <div className="block-toggle-body">
-          <div
-            ref={childRef}
-            className="block-text block-toggle-content"
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={handleChildBlur}
-            data-placeholder="Empty toggle. Click to add content..."
-          />
+        <div className="block-toggle-body" style={{ marginLeft: '24px', paddingLeft: '4px', borderLeft: '1px solid var(--border-subtle)' }}>
+          {childBlockIds.length === 0 ? (
+            <div 
+              className="block-text text-placeholder" 
+              style={{ padding: '4px 8px', cursor: 'text', color: 'var(--text-placeholder)', fontSize: '14px' }}
+              onClick={() => addBlock(block.pageId, 'text', null, '', {}, block.id)}
+            >
+              Empty toggle. Click to add content...
+            </div>
+          ) : (
+            <div className="page-blocks toggle-children-blocks">
+              {childBlockIds.map((id, index) => (
+                <BlockRenderer key={id} blockId={id} index={index} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

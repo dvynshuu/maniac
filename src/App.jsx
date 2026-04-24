@@ -5,6 +5,7 @@ import { usePageStore } from './stores/pageStore';
 import { useTrackerStore } from './stores/trackerStore';
 import { useUIStore } from './stores/uiStore';
 import { useSecurityStore } from './stores/securityStore';
+import { useIntelligenceStore } from './stores/intelligenceStore';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
@@ -41,6 +42,7 @@ function App() {
       if (!isLocked) {
         await loadPages();
         await loadTrackers();
+        await useIntelligenceStore.getState().analyze();
       }
     };
     init();

@@ -30,6 +30,22 @@ db.version(3).stores({
   blobs: 'hash, createdAt',
 });
 
+db.version(4).stores({
+  pages: 'id, parentId, title, sortOrder, isArchived, createdAt, updatedAt, lastViewedAt',
+  blocks: 'id, pageId, type, sortOrder, createdAt, updatedAt, lastViewedAt, *words',
+});
+
+db.version(5).stores({
+  blocks: 'id, pageId, parentId, type, sortOrder, createdAt, updatedAt, lastViewedAt, *words',
+}).upgrade(tx => {
+  return tx.blocks.toCollection().modify(block => {
+    if (block.parentId === undefined) {
+      block.parentId = null;
+    }
+  });
+});
+
+
 const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';
@@ -73,12 +89,24 @@ db.pages.hook('reading', (obj) => {
 // Blocks
 db.blocks.hook('creating', (primKey, obj) => {
   const key = useSecurityStore.getState().derivedKey;
+  const hmacKey = useSecurityStore.getState().hmacKey;
   
   if (!key && obj.content) {
     obj.words = extractWords(obj.content);
   } else if (key) {
-    obj.words = [];
     const promises = [];
+    
+    // Blind Indexing
+    if (hmacKey && obj.content) {
+      const words = extractWords(obj.content);
+      promises.push(
+        Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)))
+          .then(hashedWords => obj.words = hashedWords.filter(Boolean))
+      );
+    } else {
+      obj.words = [];
+    }
+
     if (obj.content) {
         promises.push(SecurityService.encrypt(obj.content, key).then(e => obj.content = e));
     }
@@ -94,14 +122,25 @@ db.blocks.hook('creating', (primKey, obj) => {
 
 db.blocks.hook('updating', (mods, primKey, obj) => {
   const key = useSecurityStore.getState().derivedKey;
+  const hmacKey = useSecurityStore.getState().hmacKey;
   
   if (!key && mods.content !== undefined) {
     mods.words = extractWords(mods.content);
   }
 
   if (key) {
-    mods.words = [];
     const promises = [];
+    
+    if (hmacKey && mods.content !== undefined) {
+      const words = extractWords(mods.content);
+      promises.push(
+        Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)))
+          .then(hashedWords => mods.words = hashedWords.filter(Boolean))
+      );
+    } else if (mods.content !== undefined) {
+      mods.words = [];
+    }
+
     if (mods.content) {
         promises.push(SecurityService.encrypt(mods.content, key).then(e => mods.content = e));
     }

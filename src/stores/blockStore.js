@@ -32,64 +32,93 @@ export const useBlockStore = create((set, get) => ({
     const key = useSecurityStore.getState().derivedKey;
     const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
 
-    const blockMap = {};
-    const blockOrder = [];
-
-    const decryptedBlocks = await Promise.all(blocksRaw.map(async b => {
-      if (key && b._isEncrypted) {
-        let content = b.content;
-        let properties = b.properties;
-
-        if (b.content) content = await SecurityService.decrypt(b.content, key) || '🔒 Decryption Failed';
-        if (b.properties && typeof b.properties === 'string') {
-          const decryptedProps = await SecurityService.decrypt(b.properties, key);
-          try {
-            properties = JSON.parse(decryptedProps);
-          } catch (e) {
-            properties = {};
-          }
-        }
-
-        return { ...b, content, properties };
-      }
-      return b;
-    }));
-
-    decryptedBlocks.forEach(b => {
-      blockMap[b.id] = b;
-      blockOrder.push(b.id);
+    // Optimistic fast load: Render immediately with raw (encrypted) content or placeholders
+    const initialMap = {};
+    const initialOrder = [];
+    blocksRaw.forEach(b => {
+      initialOrder.push(b.id);
+      initialMap[b.id] = { 
+        ...b, 
+        content: b._isEncrypted && key ? 'Decrypting...' : b.content 
+      };
     });
+    set({ blockMap: initialMap, blockOrder: initialOrder });
 
-    set({ blockMap, blockOrder });
+    if (key) {
+      const decryptFn = async (b, k) => {
+        if (b._isEncrypted) {
+          let content = b.content;
+          let properties = b.properties;
+
+          if (b.content) {
+             try { content = await SecurityService.decrypt(b.content, k); } 
+             catch { content = '🔒 Decryption Failed'; }
+          }
+          if (b.properties && typeof b.properties === 'string') {
+            try {
+              const decryptedProps = await SecurityService.decrypt(b.properties, k);
+              properties = JSON.parse(decryptedProps);
+            } catch {
+              properties = {};
+            }
+          }
+          return { ...b, content, properties };
+        }
+        return b;
+      };
+
+      const { batchDecrypt } = await import('../utils/cryptoWorker');
+
+      const onProgress = (currentDecrypted) => {
+         // Update blockMap incrementally so user sees progress
+         const newMap = { ...get().blockMap };
+         currentDecrypted.forEach(b => {
+            if (newMap[b.id]) newMap[b.id] = b;
+         });
+         set({ blockMap: newMap });
+      };
+
+      const fullyDecrypted = await batchDecrypt(blocksRaw, key, decryptFn, 20, onProgress);
+      
+      const finalMap = { ...get().blockMap };
+      fullyDecrypted.forEach(b => { finalMap[b.id] = b; });
+      set({ blockMap: finalMap });
+    }
   },
 
   setFocusBlock: (blockId) => {
     set({ focusBlockId: blockId });
   },
 
-  addBlock: async (pageId, type = 'text', afterBlockId = null, content = '', properties = {}) => {
+  addBlock: async (pageId, type = 'text', afterBlockId = null, content = '', properties = {}, parentId = undefined) => {
     const { blockMap, blockOrder } = get();
     let sortOrder;
 
+    // Inherit parentId from afterBlockId if undefined
+    let resolvedParentId = parentId;
+    if (resolvedParentId === undefined && afterBlockId) {
+      resolvedParentId = blockMap[afterBlockId]?.parentId || null;
+    } else if (resolvedParentId === undefined) {
+      resolvedParentId = null;
+    }
+
+    // Filter siblings that share the same parentId
+    const siblings = blockOrder.filter(id => (blockMap[id]?.parentId || null) === resolvedParentId);
+
     if (afterBlockId) {
-      const afterIndex = blockOrder.indexOf(afterBlockId);
+      const afterIndex = siblings.indexOf(afterBlockId);
       if (afterIndex !== -1) {
-        const prevId = blockOrder[afterIndex];
-        const nextId = blockOrder[afterIndex + 1];
+        const prevId = siblings[afterIndex];
+        const nextId = siblings[afterIndex + 1];
         const prev = blockMap[prevId]?.sortOrder || null;
         const next = nextId ? blockMap[nextId]?.sortOrder : null;
         sortOrder = generateLexicalOrder(prev, next);
       }
-    } else {
-      // Add to beginning
-      const nextId = blockOrder[0];
-      const next = nextId ? blockMap[nextId]?.sortOrder : null;
-      sortOrder = generateLexicalOrder(null, next);
-    }
-
+    } 
+    
     if (sortOrder === undefined) {
-      // Fallback to end
-      const lastId = blockOrder[blockOrder.length - 1];
+      // Add to end of siblings
+      const lastId = siblings[siblings.length - 1];
       const last = lastId ? blockMap[lastId]?.sortOrder : null;
       sortOrder = generateLexicalOrder(last, null);
     }
@@ -97,7 +126,7 @@ export const useBlockStore = create((set, get) => ({
     const safeContent = content_sanitizer(content);
     const safeProperties = sanitizeObject(properties) || {};
 
-    const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder });
+    const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder, parentId });
 
     // Optimistic insert
     const newBlockMap = { ...get().blockMap, [block.id]: block };

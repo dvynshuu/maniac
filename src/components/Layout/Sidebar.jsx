@@ -24,10 +24,6 @@ function Sidebar() {
   const activePages = useMemo(() => pages.filter((p) => !p.isArchived), [pages]);
   const pageTree = useMemo(() => buildPageTree(activePages), [activePages]);
   const favoritePages = useMemo(() => pages.filter(p => p.isFavorite), [pages]);
-  const recentPages = useMemo(() => 
-    [...pages].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5), 
-    [pages]
-  );
 
   const handleNewPage = async () => {
     const page = await addPage();
