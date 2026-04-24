@@ -91,7 +91,7 @@ export const usePageStore = create((set, get) => ({
   },
 
   deletePage: async (id) => {
-    // Recursively collect all descendant IDs
+    // Collect all IDs to delete (recursive)
     const collectIds = (parentId) => {
       const children = get().pages.filter(p => p.parentId === parentId);
       let ids = [parentId];
@@ -101,18 +101,58 @@ export const usePageStore = create((set, get) => ({
       return ids;
     };
     const idsToDelete = collectIds(id);
-
-    // Optimistic update
+    const pagesBackup = get().pages.filter(p => idsToDelete.includes(p.id));
+    
+    // Optimistic UI update
     set(s => ({
       pages: s.pages.filter(p => !idsToDelete.includes(p.id)),
       archivedPages: s.archivedPages.filter(p => !idsToDelete.includes(p.id)),
     }));
 
-    // Background Dexie cleanup
-    for (const delId of idsToDelete) {
-      await db.blocks.where('pageId').equals(delId).delete();
-      await db.pages.delete(delId);
-    }
+    // Actual deletion (could be delayed by caller for Undo)
+    await db.transaction('rw', [db.pages, db.blocks], async () => {
+      await db.blocks.where('pageId').anyOf(idsToDelete).delete();
+      await db.pages.bulkDelete(idsToDelete);
+    });
+  },
+
+  bulkDeletePages: async (ids) => {
+    const { pages, archivedPages } = get();
+    
+    // Collect all descendants for all target IDs
+    const allIdsToDelete = new Set();
+    const collectIds = (parentId) => {
+      allIdsToDelete.add(parentId);
+      pages.filter(p => p.parentId === parentId).forEach(child => collectIds(child.id));
+    };
+    ids.forEach(id => collectIds(id));
+    const idsArray = Array.from(allIdsToDelete);
+    
+    // Backup for undo
+    const backupPages = pages.filter(p => allIdsToDelete.has(p.id));
+    const backupArchived = archivedPages.filter(p => allIdsToDelete.has(p.id));
+
+    // Optimistic UI update
+    set(s => ({
+      pages: s.pages.filter(p => !allIdsToDelete.has(p.id)),
+      archivedPages: s.archivedPages.filter(p => !allIdsToDelete.has(p.id)),
+    }));
+
+    return {
+      ids: idsArray,
+      undo: () => {
+        set(s => ({
+          pages: [...s.pages, ...backupPages],
+          archivedPages: [...s.archivedPages, ...backupArchived]
+        }));
+      },
+      commit: async () => {
+        await db.transaction('rw', [db.pages, db.blocks], async () => {
+          await db.blocks.where('pageId').anyOf(idsArray).delete();
+          await db.pages.bulkDelete(idsArray);
+        });
+      }
+    };
   },
 
   archivePage: async (id) => {

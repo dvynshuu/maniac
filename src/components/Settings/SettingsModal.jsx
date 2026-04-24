@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Moon, Monitor, Key, HardDrive, BellRing } from 'lucide-react';
+import { useUIStore } from '../../stores/uiStore';
 
 export function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('Appearance');
@@ -66,7 +67,34 @@ export function SettingsModal({ onClose }) {
               </div>
             )}
 
-            {activeTab !== 'Appearance' && (
+            {activeTab === 'Data' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Import from Notion</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Migrate your Notion workspace (HTML or Markdown+CSV export)</div>
+                  </div>
+                  <button
+                    onClick={() => { onClose(); setTimeout(() => useUIStore.getState().openNotionImport(), 150); }}
+                    style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                  >
+                    Import
+                  </button>
+                </div>
+                <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Export Workspace</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Download all data as a JSON backup file.</div>
+                  </div>
+                  <button disabled style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 500, fontSize: '13px', opacity: 0.6 }}>
+                    Use Sidebar ↓
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab !== 'Appearance' && activeTab !== 'Data' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
                 <Monitor size={48} style={{ marginBottom: '16px', opacity: 0.2 }} />
                 <div style={{ fontSize: '16px', fontWeight: 500 }}>Advanced {activeTab} settings</div>

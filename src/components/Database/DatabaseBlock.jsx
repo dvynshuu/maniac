@@ -11,9 +11,9 @@ import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
 
 // Memoized Row for performance
-const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInteraction, onUpdateCell, onUpdateCellImmediate }) => {
+const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInteraction, onUpdateCell, onUpdateCellImmediate, isNew }) => {
   return (
-    <tr className="db-tr group">
+    <tr className={`db-tr group ${isNew ? 'db-tr-new' : ''}`}>
       {schema.map((prop) => (
         <td key={prop.id} className="db-td">
           <CellRenderer 
@@ -58,6 +58,8 @@ export default function DatabaseBlock({ block }) {
   const [filters, setFilters] = useState([]);
   const [sorts, setSorts] = useState([]);
   const [processedRows, setProcessedRows] = useState([]);
+  const [justAddedRowId, setJustAddedRowId] = useState(null);
+  const [isAddingRow, setIsAddingRow] = useState(false);
 
   useEffect(() => {
     if (block.properties.schema) {
@@ -107,7 +109,40 @@ export default function DatabaseBlock({ block }) {
     return () => clearTimeout(handler);
   }, [rawRows, filters, sorts]);
 
+  // Handle instant row addition and filter bypass
+  useEffect(() => {
+    if (justAddedRowId) {
+      const newRow = rawRows.find(r => r.id === justAddedRowId);
+      if (newRow && !processedRows.find(r => r.id === justAddedRowId)) {
+        // If the new row was filtered out, add it back to the end of the processed rows
+        setProcessedRows(prev => [...prev, newRow]);
+      }
+    }
+  }, [rawRows, justAddedRowId, processedRows]);
+
   const rows = processedRows;
+
+  const handleAddRow = async () => {
+    if (isAddingRow) return;
+    setIsAddingRow(true);
+    try {
+      const newRow = await addRow(block.id);
+      if (newRow) {
+        setJustAddedRowId(newRow.id);
+        // Auto-focus first cell
+        if (schema.length > 0) {
+          handleCellInteraction('edit', newRow.id, schema[0].id);
+        }
+        // Reset justAddedRowId after a delay or when edited
+        setTimeout(() => setJustAddedRowId(null), 5000); 
+      }
+    } catch (err) {
+      console.error('Failed to add row:', err);
+      // In a real app we'd show a toast here
+    } finally {
+      setIsAddingRow(false);
+    }
+  };
 
   // --- Auto-Migration ---
   useEffect(() => {
@@ -251,17 +286,19 @@ export default function DatabaseBlock({ block }) {
                 onCellInteraction={handleCellInteraction}
                 onUpdateCell={updateCell}
                 onUpdateCellImmediate={updateCellImmediate}
+                isNew={row.id === justAddedRowId}
               />
             ))}
             <tr className="db-tr">
               <td colSpan={schema.length + 1} className="db-td-new">
-                 <button 
-                  className="db-add-row-btn"
-                  onClick={() => addRow(block.id)}
-                 >
-                   <Plus size={14} />
-                   <span>New Row</span>
-                 </button>
+                  <button 
+                   className="db-add-row-btn"
+                   onClick={handleAddRow}
+                   disabled={isAddingRow}
+                  >
+                    <Plus size={14} />
+                    <span>{isAddingRow ? 'Adding...' : 'New Row'}</span>
+                  </button>
               </td>
             </tr>
           </tbody>

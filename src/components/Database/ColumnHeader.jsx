@@ -33,12 +33,10 @@ export default function ColumnHeader({
       className={`db-th ${className || ''}`} 
       style={{ width: property.width || 200 }}
     >
-      <div className="db-th-content flex items-center justify-between group">
-        <div className="flex items-center gap-2 truncate pr-6" onClick={handleOpenMenu}>
-          <Icon size={14} className="text-tertiary flex-shrink-0" />
-          <span className="db-th-name truncate font-medium">{property.name}</span>
-          <ChevronDown size={12} className="text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+      <div className="db-th-content">
+        <Icon size={14} className="flex-shrink-0" />
+        <span className="db-th-name" onClick={handleOpenMenu}>{property.name}</span>
+        <ChevronDown size={14} className="db-th-chevron" onClick={handleOpenMenu} />
 
         {/* Resize Handle */}
         <div 

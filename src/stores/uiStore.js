@@ -18,8 +18,22 @@ export const useUIStore = create(
     isComplete: false,
   },
   pendingRestoreData: null,
+  notionImportModalOpen: false,
   toasts: [],
   isSaving: false,
+  selectedPageIds: [],
+
+  openNotionImport: () => set({ notionImportModalOpen: true }),
+  closeNotionImport: () => set({ notionImportModalOpen: false }),
+
+  setSelectedPages: (ids) => set({ selectedPageIds: ids }),
+  selectAllPages: (allIds) => set({ selectedPageIds: allIds }),
+  clearSelectedPages: () => set({ selectedPageIds: [] }),
+  togglePageSelection: (id) => set((state) => ({
+    selectedPageIds: state.selectedPageIds.includes(id) 
+      ? state.selectedPageIds.filter(i => i !== id)
+      : [...state.selectedPageIds, id]
+  })),
 
   setLastVisitedPageId: (id) => set({ lastVisitedPageId: id }),
   

@@ -22,8 +22,20 @@ function SidebarPageItem({ page, depth }) {
   const isExpanded = expandedPages[page.id] || false;
   const hasChildren = page.children && page.children.length > 0;
   const isFav = page.isFavorite || false;
+  const isSelected = useUIStore((s) => s.selectedPageIds.includes(page.id));
+  const selectedCount = useUIStore((s) => s.selectedPageIds.length);
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    if (window.__isDraggingSelection) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+
+    if (selectedCount > 0) {
+      useUIStore.getState().togglePageSelection(page.id);
+      return;
+    }
     setCurrentPage(page.id);
     navigate(`/page/${page.id}`);
   };
@@ -44,11 +56,30 @@ function SidebarPageItem({ page, depth }) {
   const handleDelete = async (e) => {
     e.stopPropagation();
     setShowMenu(false);
+    
     if (isActive) {
       navigate('/');
       setCurrentPage(null);
     }
-    await deletePage(page.id);
+
+    const { undo, commit } = await usePageStore.getState().bulkDeletePages([page.id]);
+    
+    let undone = false;
+    useUIStore.getState().addToast(`Deleted "${page.title || 'Untitled'}"`, 'info', {
+      label: 'Undo',
+      onClick: () => {
+        undone = true;
+        undo();
+        if (isActive) {
+           setCurrentPage(page.id);
+           navigate(`/page/${page.id}`);
+        }
+      }
+    });
+
+    setTimeout(() => {
+      if (!undone) commit();
+    }, 5000);
   };
 
   const handleArchive = async (e) => {
@@ -79,9 +110,13 @@ function SidebarPageItem({ page, depth }) {
   return (
     <div>
       <div
-        className={`page-item ${isActive ? 'active' : ''}`}
+        className={`page-item page-item-wrapper ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
         onClick={handleClick}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        data-page-id={page.id}
+        style={{ 
+          paddingLeft: `${depth * 16 + 8}px`,
+          background: isSelected ? 'rgba(35, 131, 226, 0.15)' : undefined
+        }}
       >
         <div
           className={`page-item-expand ${isExpanded ? 'expanded' : ''}`}

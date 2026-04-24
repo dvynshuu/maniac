@@ -43,8 +43,8 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
       style={{ top: position.top, left: position.left }}
     >
       {!isChangingType ? (
-        <div className="p-2 flex flex-col gap-1">
-          <div className="px-2 py-1">
+        <div style={{ padding: '6px' }}>
+          <div style={{ padding: '4px' }}>
             <input 
               autoFocus
               className="db-menu-input"
@@ -56,45 +56,51 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
 
           <div className="db-menu-divider" />
 
-          <button className="db-menu-item flex items-center justify-between" onClick={() => setIsChangingType(true)}>
-            <div className="flex items-center gap-2">
+          <button className="db-menu-item" onClick={() => setIsChangingType(true)}>
+            <div className="db-type-icon-wrapper" style={{ width: '20px', height: '20px', background: 'transparent' }}>
               <Type size={14} />
-              <span>Type</span>
             </div>
-            <div className="flex items-center gap-1 text-tertiary">
-              <span className="text-xs">{PROPERTY_TYPE_META[property.type].label}</span>
+            <span>Type</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
+              <span style={{ fontSize: '12px' }}>{PROPERTY_TYPE_META[property.type].label}</span>
               <ChevronRight size={14} />
             </div>
           </button>
 
           <div className="db-menu-divider" />
 
-          <button className="db-menu-item text-error flex items-center gap-2" onClick={handleDelete}>
-            <Trash2 size={14} />
+          <button className="db-menu-item text-error" onClick={handleDelete}>
+            <div className="db-type-icon-wrapper" style={{ width: '20px', height: '20px', background: 'transparent', color: 'inherit' }}>
+              <Trash2 size={14} />
+            </div>
             <span>Delete Property</span>
           </button>
         </div>
       ) : (
-        <div className="p-1 flex flex-col">
-          <button className="db-menu-item-back flex items-center gap-2 px-2 py-2 hover:bg-hover rounded-md" onClick={() => setIsChangingType(false)}>
-            <Icons.ChevronLeft size={14} />
-            <span className="text-xs font-semibold uppercase text-tertiary">Select Type</span>
-          </button>
-          <div className="db-type-grid grid grid-cols-1 max-h-80 overflow-y-auto">
+        <div className="flex flex-col h-full">
+          <div className="db-popover-header">
+            <button className="db-popover-close" onClick={() => setIsChangingType(false)} style={{ padding: '2px' }}>
+              <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} />
+            </button>
+            <span className="db-popover-title">Property Type</span>
+            <div style={{ width: '20px' }} />
+          </div>
+          <div className="db-type-selector">
             {Object.entries(PROPERTY_TYPES).map(([key, type]) => {
               const meta = PROPERTY_TYPE_META[type];
               const Icon = Icons[meta.icon] || Type;
+              const isSelected = property.type === type;
               return (
                 <button 
                   key={type}
-                  className={`db-type-item flex items-center gap-3 px-3 py-2 hover:bg-hover transition-colors rounded-md ${property.type === type ? 'bg-active' : ''}`}
+                  className={`db-type-option ${isSelected ? 'active' : ''}`}
                   onClick={() => handleChangeType(type)}
                 >
-                  <Icon size={14} className="text-tertiary" />
-                  <div className="flex flex-col items-start translate-y-[1px]">
-                    <span className="text-sm">{meta.label}</span>
-                    <span className="text-[10px] text-tertiary leading-none">{meta.description}</span>
+                  <div className="db-type-icon-wrapper">
+                    <Icon size={14} />
                   </div>
+                  <span className="db-type-label">{meta.label}</span>
+                  {isSelected && <div className="db-type-active-indicator" />}
                 </button>
               );
             })}

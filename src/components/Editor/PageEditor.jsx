@@ -24,6 +24,7 @@ function PageEditor() {
   const addBlock = useBlockStore((s) => s.addBlock);
   const updateBlock = useBlockStore((s) => s.updateBlock);
   const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
+  const isSaving = useUIStore((s) => s.isSaving);
 
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -169,7 +170,7 @@ function PageEditor() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px' }}>
         <Breadcrumb />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-          {useUIStore(s => s.isSaving) ? (
+          {isSaving ? (
             <>
               <Cloud size={14} className="animate-pulse" />
               <span>Saving...</span>

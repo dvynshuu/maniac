@@ -10,6 +10,7 @@ import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
 import RestorePreviewModal from './components/Settings/RestorePreviewModal';
+import NotionImportModal from './components/Settings/NotionImportModal';
 import ToastContainer from './components/Common/ToastContainer';
 
 // Lazy load heavy components
@@ -80,6 +81,7 @@ function App() {
       </AppLayout>
       {commandPaletteOpen && <CommandPalette onClose={closeCommandPalette} />}
       <RestorePreviewModal />
+      <NotionImportModal />
       <ToastContainer />
     </>
   );

@@ -15,18 +15,10 @@ export default function UnlockScreen() {
   const unlock = useSecurityStore(s => s.unlock);
   const setInitialized = useSecurityStore(s => s.setInitialized);
 
-  useEffect(() => {
-    // Check if a master password has been set before
-    const hasMaster = localStorage.getItem('maniac_initialized') === 'true';
-    setInitialized(hasMaster);
-    if (!hasMaster) {
-      setIsSettingUp(true);
-    }
-  }, []);
-
-  const handleUnlock = async (e) => {
-    e.preventDefault();
-    if (!password || isVerifying) return;
+  const handleUnlock = async (e, autoPassword = null) => {
+    if (e) e.preventDefault();
+    const pwToUse = autoPassword || password;
+    if (!pwToUse || isVerifying) return;
 
     setIsVerifying(true);
     setError('');
@@ -36,7 +28,7 @@ export default function UnlockScreen() {
       let key;
       if (!verifier) {
         // Fallback: verify password by attempting to decrypt a known block/page
-        const keys = await SecurityService.deriveKeysFromPassword(password);
+        const keys = await SecurityService.deriveKeysFromPassword(pwToUse);
         key = keys;
         const testPage = await db.pages.toCollection().filter(p => p._isEncrypted).first();
         if (testPage && testPage.title) {
@@ -48,24 +40,43 @@ export default function UnlockScreen() {
            }
         }
         // If decryption succeeded or DB is empty, generate and store a new verifier
-        const newVerifier = await SecurityService.createVerifier(password);
+        const newVerifier = await SecurityService.createVerifier(pwToUse);
         localStorage.setItem('maniac_verifier', newVerifier);
       } else {
-        const valid = await SecurityService.verifyPassword(password, verifier);
+        const valid = await SecurityService.verifyPassword(pwToUse, verifier);
         if (!valid) {
           setError('Incorrect password. Please try again.');
           setIsVerifying(false);
+          // If auto-unlock fails, clear the bad session password
+          if (autoPassword) sessionStorage.removeItem('maniac_session_password');
           return;
         }
-        key = await SecurityService.deriveKeysFromPassword(password);
+        key = await SecurityService.deriveKeysFromPassword(pwToUse);
       }
 
+      // Save to session storage so refresh works without retyping
+      sessionStorage.setItem('maniac_session_password', pwToUse);
       unlock(key);
     } catch (err) {
       setError('Verification failed. Please try again.');
       setIsVerifying(false);
     }
   };
+
+  useEffect(() => {
+    // Check if a master password has been set before
+    const hasMaster = localStorage.getItem('maniac_initialized') === 'true';
+    setInitialized(hasMaster);
+    if (!hasMaster) {
+      setIsSettingUp(true);
+    } else {
+      // Auto-unlock if password is in sessionStorage
+      const sessionPw = sessionStorage.getItem('maniac_session_password');
+      if (sessionPw) {
+        handleUnlock(null, sessionPw);
+      }
+    }
+  }, []);
 
   const handleSetup = async (e) => {
     e.preventDefault();
@@ -91,6 +102,10 @@ export default function UnlockScreen() {
 
       // Derive the long-lived CryptoKey and unlock
       const keys = await SecurityService.deriveKeysFromPassword(password);
+      
+      // Save session password
+      sessionStorage.setItem('maniac_session_password', password);
+      
       setInitialized(true);
       unlock(keys);
     } catch (err) {

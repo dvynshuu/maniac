@@ -154,6 +154,11 @@ db.blocks.hook('updating', (mods, primKey, obj) => {
   }
 });
 
+// Database Rows
+db.database_rows.hook('creating', (primKey, obj) => {
+  // Currently no row-level metadata encryption, but hooks are ready
+});
+
 // Database Cells
 db.database_cells.hook('creating', (primKey, obj) => {
   const key = useSecurityStore.getState().derivedKey;
