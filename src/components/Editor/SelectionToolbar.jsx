@@ -123,7 +123,7 @@ function SelectionToolbar() {
 
       const blockId = blockEl.getAttribute('data-block-id');
       const store = useBlockStore.getState();
-      const targetBlock = store.blocks.find(b => b.id === blockId);
+      const targetBlock = store.blockMap[blockId];
       
       if (!targetBlock) return;
 

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { X, Moon, Monitor, Key, HardDrive, BellRing } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
-export function SettingsModal({ onClose }) {
-  const [activeTab, setActiveTab] = useState('Appearance');
+export function SettingsModal({ onClose, initialTab = 'Appearance' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const tabs = [
     { id: 'Appearance', icon: Moon },
@@ -89,6 +89,51 @@ export function SettingsModal({ onClose }) {
                   </div>
                   <button disabled style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 500, fontSize: '13px', opacity: 0.6 }}>
                     Use Sidebar ↓
+                  </button>
+                </div>
+                <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Garbage Collection</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Clear orphaned blocks and unused binary blobs to reclaim space.</div>
+                  </div>
+                  <button
+                    onClick={async (e) => {
+                      const btn = e.currentTarget;
+                      btn.textContent = 'Cleaning...';
+                      try {
+                        const { db } = await import('../../db/database');
+                        const pages = await db.pages.toArray();
+                        const pageIds = new Set(pages.map(p => p.id));
+                        
+                        // 1. Delete orphaned blocks
+                        const blocks = await db.blocks.toArray();
+                        const orphanedBlocks = blocks.filter(b => !pageIds.has(b.pageId)).map(b => b.id);
+                        if (orphanedBlocks.length > 0) {
+                          await db.blocks.bulkDelete(orphanedBlocks);
+                        }
+                        
+                        // 2. Safe blob cleanup (if no image blocks or covers exist, wipe blobs)
+                        const hasImages = blocks.some(b => b.type === 'image') || pages.some(p => p.coverImage);
+                        let blobsDeleted = false;
+                        if (!hasImages) {
+                          const blobs = await db.blobs.toArray();
+                          if (blobs.length > 0) {
+                             await db.blobs.clear();
+                             blobsDeleted = true;
+                          }
+                        }
+                        
+                        useUIStore.getState().addToast(`Cleaned up ${orphanedBlocks.length} orphaned blocks${blobsDeleted ? ' and unused media' : ''}.`, 'success');
+                      } catch (err) {
+                        useUIStore.getState().addToast('Cleanup failed', 'error');
+                      } finally {
+                        btn.textContent = 'Clean Up';
+                      }
+                    }}
+                    style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
+                  >
+                    Clean Up
                   </button>
                 </div>
               </div>

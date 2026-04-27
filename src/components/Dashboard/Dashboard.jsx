@@ -24,6 +24,12 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState('Workspace');
   const [activePopover, setActivePopover] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('Appearance');
+
+  const openSettings = (tab = 'Appearance') => {
+    setSettingsTab(tab);
+    setIsSettingsOpen(true);
+  };
 
   const togglePopover = (popover) => {
     if (activePopover === popover) setActivePopover(null);
@@ -33,7 +39,7 @@ function Dashboard() {
   return (
     <div className="editor-scroll bg-primary" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
       {/* Settings Modal */}
-      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} initialTab={settingsTab} />}
 
       {/* Dashboard Topbar */}
       <div className="dashboard-topbar">
@@ -54,7 +60,7 @@ function Dashboard() {
           </div>
         </div>
         <div className="dashboard-actions" onClick={e => e.stopPropagation()}>
-          <button aria-label="Settings" className="icon-btn" onClick={() => setIsSettingsOpen(true)}>
+          <button aria-label="Settings" className="icon-btn" onClick={() => openSettings('Appearance')}>
             <Settings size={18} />
           </button>
           
@@ -71,7 +77,7 @@ function Dashboard() {
                 <User size={16} />
               </div>
             </button>
-            {activePopover === 'profile' && <ProfilePopover onClose={() => setActivePopover(null)} />}
+            {activePopover === 'profile' && <ProfilePopover onClose={() => setActivePopover(null)} onOpenSettings={openSettings} />}
           </div>
         </div>
       </div>

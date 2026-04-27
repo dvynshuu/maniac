@@ -5,6 +5,16 @@ import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { createProperty, createDatabaseRow, createId, debounce } from '../utils/helpers';
 
+const encryptCellForDB = async (cellObj) => {
+  const key = useSecurityStore.getState().derivedKey;
+  const dbCell = { ...cellObj };
+  if (key && dbCell.value !== undefined) {
+    dbCell.value = await SecurityService.encrypt(JSON.stringify(dbCell.value), key);
+    dbCell._isEncrypted = true;
+  }
+  return dbCell;
+};
+
 export const useDatabaseStore = create((set, get) => ({
   // Local cache of database state for instant UI updates
   // Structure: { [blockId]: { schema, rows, initialized: true } }
@@ -169,7 +179,10 @@ export const useDatabaseStore = create((set, get) => ({
     const cellsToInsert = updatedRows.map(r => ({
       id: `${r.id}_${newProp.id}`, rowId: r.id, blockId, propertyId: newProp.id, value: newProp.type === 'checkbox' ? false : '', createdAt: Date.now(), updatedAt: Date.now()
     }));
-    if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
+    if (cellsToInsert.length > 0) {
+      const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+      await db.database_cells.bulkPut(encryptedCells);
+    }
     return newProp;
   },
 
@@ -234,12 +247,15 @@ export const useDatabaseStore = create((set, get) => ({
       delete rowToInsert.values;
       
       // We use a transaction to ensure atomic insert in Dexie
-      await db.transaction('rw', [db.database_rows, db.database_cells], async () => {
+      if (cellsToInsert.length > 0) {
+        const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+        await db.transaction('rw', [db.database_rows, db.database_cells], async () => {
+          await db.database_rows.add(rowToInsert);
+          await db.database_cells.bulkAdd(encryptedCells);
+        });
+      } else {
         await db.database_rows.add(rowToInsert);
-        if (cellsToInsert.length > 0) {
-          await db.database_cells.bulkAdd(cellsToInsert);
-        }
-      });
+      }
       
       return newRow;
     } catch (error) {
@@ -267,7 +283,10 @@ export const useDatabaseStore = create((set, get) => ({
     
     // Background save to isolated table
     if (updatedRow) {
-      db.database_cells.put({ id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt });
+      const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
+      encryptCellForDB(cell).then(encryptedCell => {
+        db.database_cells.put(encryptedCell);
+      });
     }
   },
   
@@ -288,7 +307,9 @@ export const useDatabaseStore = create((set, get) => ({
       
       get()._updateLocal(blockId, { rows: newRows });
       if (updatedRow) {
-        await db.database_cells.put({ id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt });
+        const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
+        const encryptedCell = await encryptCellForDB(cell);
+        await db.database_cells.put(encryptedCell);
       }
   },
 
@@ -327,6 +348,9 @@ export const useDatabaseStore = create((set, get) => ({
     delete rowToInsert.values;
     
     await db.database_rows.add(rowToInsert);
-    if (cellsToInsert.length > 0) await db.database_cells.bulkAdd(cellsToInsert);
+    if (cellsToInsert.length > 0) {
+      const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+      await db.database_cells.bulkAdd(encryptedCells);
+    }
   }
 }));

@@ -46,137 +46,27 @@ db.version(5).stores({
 });
 
 
-const extractWords = (content) => {
+export const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';
   return [...new Set(text.split(/[\s\W]+/).filter(w => w.length > 1))];
 };
 
-// Encryption Hooks
-db.pages.hook('creating', (primKey, obj) => {
-  const key = useSecurityStore.getState().derivedKey;
-  if (key && obj.title) {
-    return SecurityService.encrypt(obj.title, key).then(encrypted => {
-       obj.title = encrypted;
-       obj._isEncrypted = true;
-    });
-  }
-});
+// Encryption Hooks have been moved to the store level to prevent DataCloneError
+// in Dexie 3+ updating hooks. See blockStore.js, pageStore.js, databaseStore.js.
 
-db.pages.hook('updating', (mods, primKey, obj) => {
-  const key = useSecurityStore.getState().derivedKey;
-  if (key && mods.title) {
-    return SecurityService.encrypt(mods.title, key).then(encrypted => {
-       mods.title = encrypted;
-       mods._isEncrypted = true;
-    });
-  }
-});
-
-db.pages.hook('reading', (obj) => {
-  const key = useSecurityStore.getState().derivedKey;
-  if (key && obj.title && obj._isEncrypted) {
-    // Note: read hooks are synchronous in Dexie v3/v4 for most things, 
-    // but we can't easily do async decryption here without blocking the UI.
-    // We'll handle decryption in the UI layer or stores instead for better UX,
-    // OR we use a proxy. 
-    // Actually, Dexie reading hooks don't support async well.
-    // I'll skip the reading hook and decrypt in the store.
-  }
-  return obj;
-});
-
-// Blocks
+// We still keep the synchronous hook for setting default words when unencrypted
 db.blocks.hook('creating', (primKey, obj) => {
   const key = useSecurityStore.getState().derivedKey;
-  const hmacKey = useSecurityStore.getState().hmacKey;
-  
   if (!key && obj.content) {
     obj.words = extractWords(obj.content);
-  } else if (key) {
-    const promises = [];
-    
-    // Blind Indexing
-    if (hmacKey && obj.content) {
-      const words = extractWords(obj.content);
-      promises.push(
-        Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)))
-          .then(hashedWords => obj.words = hashedWords.filter(Boolean))
-      );
-    } else {
-      obj.words = [];
-    }
-
-    if (obj.content) {
-        promises.push(SecurityService.encrypt(obj.content, key).then(e => obj.content = e));
-    }
-    if (obj.properties) {
-        promises.push(SecurityService.encrypt(JSON.stringify(obj.properties), key).then(e => obj.properties = e));
-    }
-    if (promises.length > 0) {
-        obj._isEncrypted = true;
-        return Promise.all(promises);
-    }
   }
 });
 
 db.blocks.hook('updating', (mods, primKey, obj) => {
   const key = useSecurityStore.getState().derivedKey;
-  const hmacKey = useSecurityStore.getState().hmacKey;
-  
   if (!key && mods.content !== undefined) {
     mods.words = extractWords(mods.content);
-  }
-
-  if (key) {
-    const promises = [];
-    
-    if (hmacKey && mods.content !== undefined) {
-      const words = extractWords(mods.content);
-      promises.push(
-        Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)))
-          .then(hashedWords => mods.words = hashedWords.filter(Boolean))
-      );
-    } else if (mods.content !== undefined) {
-      mods.words = [];
-    }
-
-    if (mods.content) {
-        promises.push(SecurityService.encrypt(mods.content, key).then(e => mods.content = e));
-    }
-    if (mods.properties) {
-        promises.push(SecurityService.encrypt(JSON.stringify(mods.properties), key).then(e => mods.properties = e));
-    }
-    if (promises.length > 0) {
-        mods._isEncrypted = true;
-        return Promise.all(promises);
-    }
-  }
-});
-
-// Database Rows
-db.database_rows.hook('creating', (primKey, obj) => {
-  // Currently no row-level metadata encryption, but hooks are ready
-});
-
-// Database Cells
-db.database_cells.hook('creating', (primKey, obj) => {
-  const key = useSecurityStore.getState().derivedKey;
-  if (key && obj.value !== undefined) {
-    return SecurityService.encrypt(JSON.stringify(obj.value), key).then(encrypted => {
-       obj.value = encrypted;
-       obj._isEncrypted = true;
-    });
-  }
-});
-
-db.database_cells.hook('updating', (mods, primKey, obj) => {
-  const key = useSecurityStore.getState().derivedKey;
-  if (key && mods.value !== undefined) {
-    return SecurityService.encrypt(JSON.stringify(mods.value), key).then(encrypted => {
-       mods.value = encrypted;
-       mods._isEncrypted = true;
-    });
   }
 });
 

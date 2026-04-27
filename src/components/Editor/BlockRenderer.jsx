@@ -1,4 +1,7 @@
 import React, { useState, memo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
 import TextBlock from './blocks/TextBlock';
@@ -20,6 +23,24 @@ import { useBlockStore } from '../../stores/blockStore';
 
 const BlockRenderer = memo(({ blockId, index }) => {
   const block = useBlockStore(s => s.blockMap[blockId]);
+  const childBlockIds = useBlockStore(useShallow(s =>
+    s.blockOrder.filter(id => s.blockMap[id]?.parentId === blockId)
+  ));
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: blockId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
 
   if (!block) return null;
 
@@ -70,8 +91,6 @@ const BlockRenderer = memo(({ blockId, index }) => {
   const moveBlockUp = useBlockStore(s => s.moveBlockUp);
   const moveBlockDown = useBlockStore(s => s.moveBlockDown);
   const deleteBlock = useBlockStore(s => s.deleteBlock);
-  const addBlock = useBlockStore(s => s.addBlock);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [menuPos, setMenuPos] = useState(null);
 
   const handleMenuClick = (e) => {
@@ -98,52 +117,19 @@ const BlockRenderer = memo(({ blockId, index }) => {
     { label: 'Delete', icon: Trash2, action: () => deleteBlock(block.id), danger: true },
   ];
 
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('text/plain', block.id);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const draggedBlockId = e.dataTransfer.getData('text/plain');
-    if (draggedBlockId && draggedBlockId !== block.id) {
-       const { db } = await import('../../db/database');
-       const draggedBlock = await db.blocks.get(draggedBlockId);
-       if (draggedBlock) {
-           const targetSortOrder = block.sortOrder;
-           await db.blocks.update(draggedBlockId, { sortOrder: targetSortOrder, updatedAt: Date.now() });
-           await db.blocks.update(block.id, { sortOrder: draggedBlock.sortOrder, updatedAt: Date.now() });
-           useBlockStore.getState().loadBlocks(block.pageId);
-       }
-    }
-  };
-
   return (
-    <div 
-        className="block-wrapper" 
-        data-block-id={block.id}
-        style={{ borderTop: isDragOver ? '2px solid var(--accent-primary)' : '2px solid transparent' }}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`block-wrapper ${isDragging ? 'dragging' : ''}`}
+      data-block-id={block.id}
+      {...attributes}
     >
-      <div 
-        className="block-handle" 
-        contentEditable={false} 
+      <div
+        className="block-handle"
+        contentEditable={false}
         suppressContentEditableWarning
-        draggable
-        onDragStart={handleDragStart}
+        {...listeners}
         onClick={handleMenuClick}
       >
         <GripVertical size={14} style={{ pointerEvents: 'none' }} />
@@ -159,6 +145,13 @@ const BlockRenderer = memo(({ blockId, index }) => {
       <div className="block-content">
         {renderBlockContent()}
       </div>
+      {childBlockIds.length > 0 && (
+        <div className="block-children" style={{ paddingLeft: '24px' }}>
+          {childBlockIds.map((childId, i) => (
+            <BlockRenderer key={childId} blockId={childId} index={i} />
+          ))}
+        </div>
+      )}
     </div>
   );
 });

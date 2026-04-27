@@ -75,7 +75,15 @@ export const usePageStore = create((set, get) => ({
     });
     // Optimistic update
     set(s => ({ pages: [...s.pages, page] }));
-    await db.pages.add(page);
+
+    const key = useSecurityStore.getState().derivedKey;
+    const dbPage = { ...page };
+    if (key && dbPage.title) {
+      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
+      dbPage._isEncrypted = true;
+    }
+
+    await db.pages.add(dbPage);
     useUIStore.getState().updateOnboarding('pagesCreated');
     return page;
   },
@@ -87,7 +95,15 @@ export const usePageStore = create((set, get) => ({
       pages: s.pages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
       archivedPages: s.archivedPages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
     }));
-    await db.pages.update(id, { ...updates, updatedAt: now });
+
+    const key = useSecurityStore.getState().derivedKey;
+    const dbUpdates = { ...updates, updatedAt: now };
+    if (key && dbUpdates.title !== undefined) {
+      dbUpdates.title = await SecurityService.encrypt(dbUpdates.title, key);
+      dbUpdates._isEncrypted = true;
+    }
+
+    await db.pages.update(id, dbUpdates);
   },
 
   deletePage: async (id) => {
@@ -244,7 +260,14 @@ export const usePageStore = create((set, get) => ({
     // Optimistic update
     set(s => ({ pages: [...s.pages, newPage] }));
 
-    await db.pages.add(newPage);
+    const key = useSecurityStore.getState().derivedKey;
+    const dbPage = { ...newPage };
+    if (key && dbPage.title) {
+      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
+      dbPage._isEncrypted = true;
+    }
+
+    await db.pages.add(dbPage);
     if (newBlocks.length > 0) {
       await db.blocks.bulkAdd(newBlocks);
     }

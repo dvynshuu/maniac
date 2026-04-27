@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
+import { debounce } from '../../../utils/helpers';
 
 export default function CodeBlock({ block }) {
   const language = block.properties?.language || 'javascript';
@@ -9,6 +10,12 @@ export default function CodeBlock({ block }) {
   const updateBlock = useBlockStore(s => s.updateBlock);
   const changeBlockType = useBlockStore(s => s.changeBlockType);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
+
+  const debouncedSave = useRef(
+    debounce((id, content) => {
+      updateBlock(id, { content });
+    }, 800)
+  ).current;
 
   useEffect(() => {
     if (contentRef.current && block.content !== localValue.current && contentRef.current.textContent !== block.content) {
@@ -29,7 +36,10 @@ export default function CodeBlock({ block }) {
     }
   }, [focusBlockId, block.id]);
 
-  const handleInput = (e) => { localValue.current = e.currentTarget.textContent; };
+  const handleInput = (e) => {
+    localValue.current = e.currentTarget.textContent;
+    debouncedSave(block.id, e.currentTarget.textContent);
+  };
 
   const handleBlur = () => {
     const currentText = contentRef.current?.textContent || "";
@@ -40,13 +50,17 @@ export default function CodeBlock({ block }) {
   };
 
   const handleKeyDown = (e) => {
+    // Tab for indentation inside code
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      document.execCommand('insertText', false, '  ');
+    }
     if (e.key === 'Backspace' && contentRef.current.textContent === '') {
       e.preventDefault();
-      useBlockStore.getState().changeBlockType(block.id, 'text');
+      changeBlockType(block.id, 'text');
     }
   };
 
-  // Allow enter to create new lines inside code block instead of unmounting
   return (
     <div className="block-code-wrapper">
       <div className="block-code-header">
@@ -61,6 +75,7 @@ export default function CodeBlock({ block }) {
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         data-placeholder="Write code here..."
+        spellCheck={false}
       ></div>
     </div>
   );

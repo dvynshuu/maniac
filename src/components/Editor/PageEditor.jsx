@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import VirtualList from '../Common/VirtualList';
 
 import { useParams } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
@@ -7,13 +6,17 @@ import { useBlockStore } from '../../stores/blockStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useUndoStore } from '../../stores/undoStore';
 import { useUIStore } from '../../stores/uiStore';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+
 import BlockRenderer from './BlockRenderer';
 import SelectionToolbar from './SelectionToolbar';
 import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
-import { debounce } from '../../utils/helpers';
-import { ImageIcon, X, Cloud, CloudCheck } from 'lucide-react';
+import { debounce, generateLexicalOrder } from '../../utils/helpers';
+import { ImageIcon, X, Cloud } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
+import { db } from '../../db/database';
 
 function PageEditor() {
   const { pageId } = useParams();
@@ -33,6 +36,42 @@ function PageEditor() {
   const titleInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const scrollRef = useRef(null);
+
+  // dnd-kit sensors — require a 5px movement before activating drag
+  // This prevents accidental drags when clicking on the handle
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (!active || !over || active.id === over.id) return;
+
+    const store = useBlockStore.getState();
+    const { blockMap, blockOrder } = store;
+
+    const overIndex = blockOrder.indexOf(over.id);
+    const prevBlockId = overIndex > 0 ? blockOrder[overIndex - 1] : null;
+    
+    // Don't move if already in position
+    if (prevBlockId === active.id) return;
+
+    const prevSort = prevBlockId ? blockMap[prevBlockId]?.sortOrder : null;
+    const overSort = blockMap[over.id]?.sortOrder;
+    const newSortOrder = generateLexicalOrder(prevSort, overSort);
+    const now = Date.now();
+
+    // Optimistic update
+    const updatedBlock = { ...blockMap[active.id], sortOrder: newSortOrder, updatedAt: now };
+    const newBlockMap = { ...blockMap, [active.id]: updatedBlock };
+    const allBlocks = blockOrder.map(id => id === active.id ? updatedBlock : newBlockMap[id]).filter(Boolean);
+    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+
+    useBlockStore.setState({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
+
+    // Persist
+    db.blocks.update(active.id, { sortOrder: newSortOrder, updatedAt: now });
+  }, []);
 
   const debouncedUpdatePage = useRef(
     debounce((id, updates) => {
@@ -250,19 +289,21 @@ function PageEditor() {
               Click here or press Enter to add a block...
             </div>
           ) : (
-            <VirtualList 
-              items={rootBlockIds}
-              dynamic={true}
-              itemHeight={32}
-              scrollContainerRef={scrollRef}
-              renderItem={(id, index) => (
-                <BlockRenderer 
-                  key={id} 
-                  blockId={id} 
-                  index={index}
-                />
-              )}
-            />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={rootBlockIds} strategy={verticalListSortingStrategy}>
+                {rootBlockIds.map((id, index) => (
+                  <BlockRenderer 
+                    key={id} 
+                    blockId={id} 
+                    index={index}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
         </div>
         
