@@ -1,11 +1,20 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { debounce } from '../../../utils/helpers';
+import { Copy, Check } from 'lucide-react';
+
+const COMMON_LANGUAGES = [
+  'plain text', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp',
+  'csharp', 'go', 'rust', 'ruby', 'php', 'swift', 'kotlin', 'html', 'css',
+  'sql', 'bash', 'json', 'yaml', 'xml', 'markdown', 'dockerfile', 'graphql',
+];
 
 export default function CodeBlock({ block }) {
   const language = block.properties?.language || 'javascript';
+  const caption = block.properties?.caption || '';
   const contentRef = useRef(null);
   const localValue = useRef(block.content);
+  const [copied, setCopied] = useState(false);
   
   const updateBlock = useBlockStore(s => s.updateBlock);
   const changeBlockType = useBlockStore(s => s.changeBlockType);
@@ -50,7 +59,6 @@ export default function CodeBlock({ block }) {
   };
 
   const handleKeyDown = (e) => {
-    // Tab for indentation inside code
     if (e.key === 'Tab') {
       e.preventDefault();
       document.execCommand('insertText', false, '  ');
@@ -61,10 +69,47 @@ export default function CodeBlock({ block }) {
     }
   };
 
+  const handleCopy = async () => {
+    const text = contentRef.current?.textContent || block.content || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard access denied */ }
+  };
+
+  const handleLanguageChange = (e) => {
+    updateBlock(block.id, { properties: { ...block.properties, language: e.target.value } });
+  };
+
+  const handleCaptionChange = (e) => {
+    updateBlock(block.id, { properties: { ...block.properties, caption: e.target.value } });
+  };
+
   return (
     <div className="block-code-wrapper">
       <div className="block-code-header">
-        <span>{language}</span>
+        <select
+          className="block-code-lang-select"
+          value={language}
+          onChange={handleLanguageChange}
+          contentEditable={false}
+        >
+          {COMMON_LANGUAGES.map(lang => (
+            <option key={lang} value={lang}>{lang}</option>
+          ))}
+          {/* Show current language if not in common list */}
+          {!COMMON_LANGUAGES.includes(language) && (
+            <option value={language}>{language}</option>
+          )}
+        </select>
+        <button
+          className={`block-code-copy-btn ${copied ? 'copied' : ''}`}
+          onClick={handleCopy}
+          contentEditable={false}
+        >
+          {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+        </button>
       </div>
       <div
         ref={contentRef}
@@ -77,6 +122,15 @@ export default function CodeBlock({ block }) {
         data-placeholder="Write code here..."
         spellCheck={false}
       ></div>
+      {/* Caption input */}
+      <input
+        className="block-code-caption"
+        type="text"
+        placeholder="Add a caption…"
+        value={caption}
+        onChange={handleCaptionChange}
+        contentEditable={false}
+      />
     </div>
   );
 }

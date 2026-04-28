@@ -16,6 +16,7 @@ import BulletBlock from './blocks/BulletBlock';
 import NumberedBlock from './blocks/NumberedBlock';
 import TableBlock from './blocks/TableBlock';
 import ToggleBlock from './blocks/ToggleBlock';
+import EmbedBlock from './blocks/EmbedBlock';
 import DatabaseBlock from '../Database/DatabaseBlock';
 import TrackerBlock from '../Tracker/TrackerBlock';
 import ContextMenu from '../Common/ContextMenu';
@@ -82,6 +83,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
       case BLOCK_TYPES.TOGGLE:
         return <ToggleBlock block={block} index={index} />;
+
+      case BLOCK_TYPES.EMBED:
+        return <EmbedBlock block={block} index={index} />;
         
       default:
         return <TextBlock block={block} index={index} />;

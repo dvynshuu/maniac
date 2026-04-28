@@ -68,7 +68,7 @@ export default function DatabaseBlock({ block }) {
   }, [block.id, block.properties.schema, block.properties.rows, initializeDatabase]);
 
   const { schema, rawRows } = useMemo(() => {
-    if (dbData) return { schema: dbData.schema, rawRows: dbData.rows };
+    if (dbData) return { schema: dbData.schema || [], rawRows: dbData.rows || [] };
     return { schema: block.properties.schema || [], rawRows: block.properties.rows || [] };
   }, [dbData, block.properties]);
 

@@ -306,10 +306,20 @@ export const useBlockStore = create((set, get) => ({
     const properties = { ...block.properties };
     if (newType === 'todo') properties.checked = properties.checked ?? false;
     if (newType === 'code') properties.language = properties.language ?? 'javascript';
-    if (newType === 'callout') properties.emoji = properties.emoji ?? '💡';
+    if (newType === 'callout') {
+      properties.emoji = properties.emoji ?? '💡';
+      properties.color = properties.color ?? 'default';
+    }
     if (newType === 'toggle') {
       properties.expanded = properties.expanded ?? true;
       properties.childContent = properties.childContent ?? '';
+    }
+    if (newType === 'embed') {
+      properties.url = properties.url ?? '';
+      properties.caption = properties.caption ?? '';
+    }
+    if (newType === 'bullet' || newType === 'numbered') {
+      properties.depth = properties.depth ?? 0;
     }
 
     const now = Date.now();

@@ -10,6 +10,7 @@ export default function QuoteBlock({ block }) {
 
   if (!editor) return null;
 
+  // Notion quotes: NOT italic, NOT oversized — just left border + normal font
   return (
     <div className="block-quote">
       <EditorContent editor={editor} className="block-text" />

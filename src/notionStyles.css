@@ -1,0 +1,343 @@
+/* ============================================
+   Notion Fidelity Styles
+   Pixel-accurate spacing, typography, and
+   color palette matching Notion's rendering.
+   ============================================ */
+
+/* ─── Notion Color Variables ───────────────────────────────────── */
+
+:root {
+  /* Text Colors */
+  --notion-default: inherit;
+  --notion-gray: rgba(155, 154, 151, 1);
+  --notion-brown: rgba(186, 133, 111, 1);
+  --notion-orange: rgba(199, 125, 72, 1);
+  --notion-yellow: rgba(202, 152, 73, 1);
+  --notion-green: rgba(82, 158, 114, 1);
+  --notion-blue: rgba(94, 135, 201, 1);
+  --notion-purple: rgba(144, 101, 176, 1);
+  --notion-pink: rgba(193, 76, 138, 1);
+  --notion-red: rgba(212, 76, 71, 1);
+
+  /* Background Colors (dark mode tuned) */
+  --notion-gray_background: rgba(155, 154, 151, 0.12);
+  --notion-brown_background: rgba(186, 133, 111, 0.12);
+  --notion-orange_background: rgba(199, 125, 72, 0.12);
+  --notion-yellow_background: rgba(202, 152, 73, 0.12);
+  --notion-green_background: rgba(82, 158, 114, 0.12);
+  --notion-blue_background: rgba(94, 135, 201, 0.12);
+  --notion-purple_background: rgba(144, 101, 176, 0.12);
+  --notion-pink_background: rgba(193, 76, 138, 0.12);
+  --notion-red_background: rgba(212, 76, 71, 0.12);
+
+  /* Notion Typography Scale */
+  --notion-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --notion-font-mono: 'SFMono-Regular', Menlo, Consolas, 'PT Mono', 'Liberation Mono', Courier, monospace;
+
+  --notion-body-size: 16px;
+  --notion-body-line-height: 1.5;
+  --notion-h1-size: 1.875em;
+  --notion-h1-line-height: 1.3;
+  --notion-h2-size: 1.5em;
+  --notion-h2-line-height: 1.3;
+  --notion-h3-size: 1.25em;
+  --notion-h3-line-height: 1.3;
+
+  /* Notion Block Spacing */
+  --notion-block-gap: 1px;
+  --notion-h1-mt: 2em;
+  --notion-h2-mt: 1.4em;
+  --notion-h3-mt: 1em;
+  --notion-indent: 24px;
+  --notion-block-padding: 3px 2px;
+}
+
+/* ─── Notion Callout Color Variants ───────────────────────────── */
+
+.block-callout[data-color="default"],
+.block-callout:not([data-color]) {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.block-callout[data-color="gray_background"] {
+  background: rgba(155, 154, 151, 0.1);
+  border-color: rgba(155, 154, 151, 0.2);
+}
+
+.block-callout[data-color="brown_background"] {
+  background: rgba(186, 133, 111, 0.1);
+  border-color: rgba(186, 133, 111, 0.2);
+}
+
+.block-callout[data-color="orange_background"] {
+  background: rgba(199, 125, 72, 0.1);
+  border-color: rgba(199, 125, 72, 0.2);
+}
+
+.block-callout[data-color="yellow_background"] {
+  background: rgba(202, 152, 73, 0.1);
+  border-color: rgba(202, 152, 73, 0.2);
+}
+
+.block-callout[data-color="green_background"] {
+  background: rgba(82, 158, 114, 0.1);
+  border-color: rgba(82, 158, 114, 0.2);
+}
+
+.block-callout[data-color="blue_background"] {
+  background: rgba(94, 135, 201, 0.1);
+  border-color: rgba(94, 135, 201, 0.2);
+}
+
+.block-callout[data-color="purple_background"] {
+  background: rgba(144, 101, 176, 0.1);
+  border-color: rgba(144, 101, 176, 0.2);
+}
+
+.block-callout[data-color="pink_background"] {
+  background: rgba(193, 76, 138, 0.1);
+  border-color: rgba(193, 76, 138, 0.2);
+}
+
+.block-callout[data-color="red_background"] {
+  background: rgba(212, 76, 71, 0.1);
+  border-color: rgba(212, 76, 71, 0.2);
+}
+
+/* ─── Notion List Depth Markers ───────────────────────────────── */
+/* Bullet: disc → circle → square (cycles) */
+
+.block-bullet-marker[data-depth="0"],
+.block-bullet-marker:not([data-depth]) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  border: none;
+}
+
+.block-bullet-marker[data-depth="1"] {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--text-tertiary);
+}
+
+.block-bullet-marker[data-depth="2"] {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--text-tertiary);
+  border: none;
+}
+
+/* ─── Image Enhancements ──────────────────────────────────────── */
+
+.block-image-caption {
+  width: 100%;
+  padding: 6px 2px;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  outline: none;
+  text-align: center;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+  resize: none;
+}
+
+.block-image-caption::placeholder {
+  color: var(--text-placeholder);
+}
+
+.block-image-caption:focus {
+  color: var(--text-secondary);
+}
+
+.block-image-wrapper[data-align="left"] {
+  margin-right: auto;
+}
+
+.block-image-wrapper[data-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.block-image-wrapper[data-align="full"] img {
+  width: 100%;
+  max-width: none;
+}
+
+/* ─── Code Block Enhancements ─────────────────────────────────── */
+
+.block-code-caption {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  outline: none;
+  width: 100%;
+  font-family: var(--font-sans);
+}
+
+.block-code-caption::placeholder {
+  color: var(--text-placeholder);
+}
+
+.block-code-copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.block-code-copy-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.block-code-copy-btn.copied {
+  color: var(--success);
+}
+
+.block-code-lang-select {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  outline: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.block-code-lang-select:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* ─── Embed Block ─────────────────────────────────────────────── */
+
+.block-embed-wrapper {
+  margin: 4px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.block-embed-wrapper:hover {
+  border-color: var(--border-default);
+}
+
+.block-embed-iframe {
+  width: 100%;
+  border: none;
+  display: block;
+}
+
+.block-embed-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.block-embed-link:hover {
+  background: var(--bg-hover);
+  text-decoration: none;
+}
+
+.block-embed-link-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.block-embed-link-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.block-embed-link-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-embed-link-url {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* ─── Toggle Block refinement ─────────────────────────────────── */
+
+.block-toggle {
+  padding: 0;
+}
+
+.block-toggle-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.block-toggle-arrow {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  border-radius: 4px;
+  margin-top: 1px;
+}
+
+.block-toggle-arrow:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.block-toggle-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.block-toggle-body {
+  margin-left: var(--notion-indent);
+  padding-left: 4px;
+  border-left: 1px solid var(--border-subtle);
+}

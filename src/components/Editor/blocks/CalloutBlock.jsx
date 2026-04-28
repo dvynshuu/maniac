@@ -3,6 +3,7 @@ import { useBlockEditor } from '../../../hooks/useBlockEditor';
 
 export default function CalloutBlock({ block }) {
   const emoji = block.properties?.emoji || '💡';
+  const color = block.properties?.color || 'default';
 
   const editor = useBlockEditor(block, {
     placeholder: 'Callout text',
@@ -13,7 +14,7 @@ export default function CalloutBlock({ block }) {
   if (!editor) return null;
 
   return (
-    <div className="block-callout">
+    <div className="block-callout" data-color={color}>
       <span className="block-callout-emoji">{emoji}</span>
       <EditorContent editor={editor} className="block-callout-content" />
     </div>

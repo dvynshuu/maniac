@@ -1,9 +1,13 @@
 import JSZip from 'jszip';
 import { createId, generateLexicalOrder } from './helpers';
+import { applyFidelityLayer } from './notionFidelityLayer';
 
 // ─── Notion Export Parser ───────────────────────────────────────
 // Accepts a Notion export ZIP (HTML or Markdown+CSV) and converts
 // it into Maniac-compatible pages, blocks, database rows/cells, and blobs.
+
+// Yield control to the main thread to prevent UI freezing during heavy parsing
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 /**
  * Main entry: parse a Notion ZIP file into Maniac data
@@ -135,6 +139,9 @@ export async function parseNotionExport(file, onProgress = () => {}) {
       ? parseHtmlToBlocks(text, page.id)
       : parseMarkdownToBlocks(text, page.id);
 
+    // Apply Notion fidelity enrichment (callout colors, list depths, rich text, etc.)
+    applyFidelityLayer(blocks);
+
     allBlocks.push(...blocks);
     processed++;
     const pct = 30 + Math.floor((processed / totalFiles) * 40);
@@ -182,22 +189,36 @@ export async function parseNotionExport(file, onProgress = () => {}) {
     processed++;
     const pct = 30 + Math.floor((processed / totalFiles) * 40);
     onProgress({ phase: 'databases', percent: pct, detail: `Database: ${title}` });
+
+    // Yield to main thread periodically to prevent UI freezing
+    if (processed % 10 === 0) await yieldToMain();
   }
 
-  // ─── Phase 4: Extract images ─────
+  // ─── Phase 4: Extract images (parallel batches) ─────
   onProgress({ phase: 'images', percent: 75, detail: `Extracting ${imageFiles.length} images...` });
 
-  for (let i = 0; i < imageFiles.length; i++) {
-    const { path, zipEntry } = imageFiles[i];
-    try {
-      const data = await zipEntry.async('arraybuffer');
-      const ext = path.split('.').pop().toLowerCase();
-      const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon' };
-      const mimeType = mimeMap[ext] || 'application/octet-stream';
-      const blob = new Blob([data], { type: mimeType });
-      const hash = await hashBlob(data);
+  const IMAGE_BATCH_SIZE = 5;
+  for (let batchStart = 0; batchStart < imageFiles.length; batchStart += IMAGE_BATCH_SIZE) {
+    const batch = imageFiles.slice(batchStart, batchStart + IMAGE_BATCH_SIZE);
+    
+    // Process batch in parallel
+    const batchResults = await Promise.allSettled(
+      batch.map(async ({ path, zipEntry }) => {
+        const data = await zipEntry.async('arraybuffer');
+        const ext = path.split('.').pop().toLowerCase();
+        const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon' };
+        const mimeType = mimeMap[ext] || 'application/octet-stream';
+        const blob = new Blob([data], { type: mimeType });
+        const hash = await hashBlob(data);
+        return { hash, blob, mimeType, size: blob.size, createdAt: Date.now(), path };
+      })
+    );
 
-      allBlobs.push({ hash, blob, mimeType, size: blob.size, createdAt: Date.now() });
+    for (const result of batchResults) {
+      if (result.status !== 'fulfilled') continue;
+      const { hash, blob, mimeType, size, createdAt, path } = result.value;
+
+      allBlobs.push({ hash, blob, mimeType, size, createdAt });
 
       // Link image blocks that reference this file
       const fileName = path.split('/').pop();
@@ -210,11 +231,13 @@ export async function parseNotionExport(file, onProgress = () => {}) {
           }
         }
       }
-    } catch { /* skip corrupted images */ }
-
-    if (i % 5 === 0) {
-      onProgress({ phase: 'images', percent: 75 + Math.floor((i / imageFiles.length) * 15), detail: `Image ${i + 1}/${imageFiles.length}` });
     }
+
+    const progress = Math.min(batchStart + IMAGE_BATCH_SIZE, imageFiles.length);
+    onProgress({ phase: 'images', percent: 75 + Math.floor((progress / imageFiles.length) * 15), detail: `Image ${progress}/${imageFiles.length}` });
+
+    // Yield between batches
+    await yieldToMain();
   }
 
   // Clean up temp markers
@@ -276,13 +299,16 @@ function parseHtmlToBlocks(html, pageId) {
       return;
     }
 
-    // Callout
-    if (tag === 'figure' && classList.includes('callout')) {
+    // Callout — detect from figure.callout or div with callout class
+    if ((tag === 'figure' || tag === 'div') && classList.some(c => c.includes('callout'))) {
       const emojiEl = node.querySelector('.icon');
       const emoji = emojiEl ? emojiEl.textContent.trim() : '💡';
       const contentEl = node.querySelector('.callout-text') || node;
-      const text = getTextContent(contentEl).replace(emoji, '').trim();
-      blocks.push(makeBlock(pageId, 'callout', text, { emoji }, nextSort(), parentId));
+      const text = getInnerHtml(contentEl).replace(emoji, '').trim();
+      // Extract color from Notion's class (e.g. 'callout-color-yellow_background')
+      const colorClass = classList.find(c => c.startsWith('callout-color-'));
+      const color = colorClass ? colorClass.replace('callout-color-', '') : 'default';
+      blocks.push(makeBlock(pageId, 'callout', text, { emoji, color }, nextSort(), parentId));
       return;
     }
 
@@ -295,15 +321,35 @@ function parseHtmlToBlocks(html, pageId) {
       return;
     }
 
-    // Image
+    // Image — extract caption, width, alt
     if (tag === 'img' || (tag === 'figure' && node.querySelector('img'))) {
       const img = tag === 'img' ? node : node.querySelector('img');
       if (img) {
         const src = img.getAttribute('src') || '';
-        blocks.push(makeBlock(pageId, 'image', '', { hash: '' }, nextSort(), parentId));
-        blocks[blocks.length - 1]._imageSrc = src;
+        const alt = img.getAttribute('alt') || '';
+        const style = img.getAttribute('style') || '';
+        const widthMatch = style.match(/width:\s*(\d+)px/i) || img.getAttribute('width');
+        const width = widthMatch ? (typeof widthMatch === 'string' ? parseInt(widthMatch) : parseInt(widthMatch[1])) : null;
+        // Extract figcaption if inside a figure
+        const figcaption = tag === 'figure' ? node.querySelector('figcaption') : null;
+        const caption = figcaption ? getTextContent(figcaption) : alt;
+        const props = { hash: '', caption: caption || '', width, alignment: 'center' };
+        const block = makeBlock(pageId, 'image', '', props, nextSort(), parentId);
+        block._imageSrc = src;
+        blocks.push(block);
       }
       return;
+    }
+
+    // Embed — detect bookmark/embed links
+    if (tag === 'figure' && classList.some(c => c.includes('bookmark') || c.includes('embed'))) {
+      const linkEl = node.querySelector('a');
+      const url = linkEl ? linkEl.getAttribute('href') : '';
+      const caption = getTextContent(node.querySelector('figcaption') || node.querySelector('.bookmark-title') || node).trim();
+      if (url) {
+        blocks.push(makeBlock(pageId, 'embed', caption, { url, caption }, nextSort(), parentId));
+        return;
+      }
     }
 
     // Blockquote
@@ -330,19 +376,59 @@ function parseHtmlToBlocks(html, pageId) {
       return;
     }
 
-    // Lists
+    // Lists — handle nesting recursively
     if (tag === 'ul' || tag === 'ol') {
       const items = node.querySelectorAll(':scope > li');
       items.forEach(li => {
-        const checkbox = li.querySelector('input[type="checkbox"]');
+        const checkbox = li.querySelector(':scope > input[type="checkbox"], :scope > label > input[type="checkbox"]');
+        let blockType;
+        let props = {};
         if (checkbox) {
-          const checked = checkbox.checked || checkbox.hasAttribute('checked');
-          const text = getTextContent(li).trim();
-          blocks.push(makeBlock(pageId, 'todo', text, { checked }, nextSort(), parentId));
+          blockType = 'todo';
+          props.checked = checkbox.checked || checkbox.hasAttribute('checked');
         } else if (tag === 'ol') {
-          blocks.push(makeBlock(pageId, 'numbered', getInnerHtml(li), {}, nextSort(), parentId));
+          blockType = 'numbered';
         } else {
-          blocks.push(makeBlock(pageId, 'bullet', getInnerHtml(li), {}, nextSort(), parentId));
+          blockType = 'bullet';
+        }
+
+        // Get direct text content (exclude nested lists)
+        const textParts = [];
+        for (const child of li.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            textParts.push(child.textContent);
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const childTag = child.tagName.toLowerCase();
+            if (childTag !== 'ul' && childTag !== 'ol') {
+              textParts.push(child.outerHTML || child.textContent);
+            }
+          }
+        }
+        const content = textParts.join('').trim();
+        const listBlock = makeBlock(pageId, blockType, content, props, nextSort(), parentId);
+        blocks.push(listBlock);
+
+        // Process nested lists as children
+        const nestedList = li.querySelector(':scope > ul, :scope > ol');
+        if (nestedList) {
+          // Recurse: create child blocks with parentId pointing to this list item
+          const nestedTag = nestedList.tagName.toLowerCase();
+          const nestedItems = nestedList.querySelectorAll(':scope > li');
+          nestedItems.forEach(nestedLi => {
+            const nestedCheckbox = nestedLi.querySelector(':scope > input[type="checkbox"]');
+            let nestedType;
+            let nestedProps = { depth: 1 };
+            if (nestedCheckbox) {
+              nestedType = 'todo';
+              nestedProps.checked = nestedCheckbox.checked || nestedCheckbox.hasAttribute('checked');
+            } else if (nestedTag === 'ol') {
+              nestedType = 'numbered';
+            } else {
+              nestedType = 'bullet';
+            }
+            const nestedContent = getInnerHtml(nestedLi).replace(/<(ul|ol)[\s\S]*$/i, '').trim();
+            blocks.push(makeBlock(pageId, nestedType, nestedContent, nestedProps, nextSort(), listBlock.id));
+          });
         }
       });
       return;
@@ -506,15 +592,56 @@ function parseCsvToDatabase(csvText, pageId) {
   const dataRows = rows.slice(1);
   const blockId = createId();
 
-  // Build schema with type inference
+  // Build schema with type inference and color assignment
   const schema = headers.map((header, colIdx) => {
     const values = dataRows.map(r => (r[colIdx] || '').trim()).filter(Boolean);
+    const headerLower = header.trim().toLowerCase();
+    
+    // Detect created/edited time columns by name
+    let type;
+    if (headerLower === 'created' || headerLower === 'created time' || headerLower === 'created_time') {
+      type = 'date';
+    } else if (headerLower === 'last edited' || headerLower === 'last edited time' || headerLower === 'last_edited_time') {
+      type = 'date';
+    } else {
+      type = inferColumnType(values, header.trim());
+    }
+
+    const config = {};
+    
+    // For select/multi_select, extract unique options with cycling colors
+    if (type === 'select' || type === 'multi_select') {
+      const SELECT_COLORS = [
+        'gray', 'blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal',
+      ];
+      const COLOR_MAP = {
+        gray:   { bg: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.7)' },
+        blue:   { bg: 'rgba(96,165,250,0.15)',  text: '#60a5fa' },
+        purple: { bg: 'rgba(167,139,250,0.15)', text: '#a78bfa' },
+        pink:   { bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
+        red:    { bg: 'rgba(248,113,113,0.15)', text: '#f87171' },
+        orange: { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
+        yellow: { bg: 'rgba(250,204,21,0.15)',  text: '#facc15' },
+        green:  { bg: 'rgba(74,222,128,0.15)',  text: '#4ade80' },
+        teal:   { bg: 'rgba(45,212,191,0.15)',  text: '#2dd4bf' },
+      };
+      
+      const allValues = type === 'multi_select'
+        ? [...new Set(values.flatMap(v => v.split(',').map(s => s.trim())).filter(Boolean))]
+        : [...new Set(values)];
+      
+      config.options = allValues.map((value, i) => {
+        const colorName = SELECT_COLORS[i % SELECT_COLORS.length];
+        return { value, color: colorName, ...COLOR_MAP[colorName] };
+      });
+    }
+
     return {
       id: createId(),
       name: header.trim() || `Column ${colIdx + 1}`,
-      type: inferColumnType(values),
+      type,
       width: 200,
-      config: {},
+      config,
     };
   });
 
@@ -592,10 +719,11 @@ function parseCsvRows(text) {
   return rows;
 }
 
-function inferColumnType(values) {
+function inferColumnType(values, headerName = '') {
   if (values.length === 0) return 'text';
 
   const sample = values.slice(0, 30);
+  const headerLower = headerName.toLowerCase();
 
   // Check checkbox
   if (sample.every(v => /^(true|false|yes|no|✓|✗|☑|☐)$/i.test(v))) return 'checkbox';
@@ -612,12 +740,26 @@ function inferColumnType(values) {
   // Check email
   if (sample.every(v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))) return 'email';
 
+  // Check multi-select (comma-separated with consistent low cardinality per segment)
+  const hasCommas = sample.filter(v => v.includes(',')).length;
+  if (hasCommas >= sample.length * 0.3) {
+    // Many values contain commas → likely multi-select
+    const allSegments = sample.flatMap(v => v.split(',').map(s => s.trim())).filter(Boolean);
+    const uniqueSegments = new Set(allSegments);
+    // If segments are reused across rows, it's multi-select
+    if (uniqueSegments.size < allSegments.length * 0.6) return 'multi_select';
+  }
+
   // Check select (low cardinality)
   const unique = new Set(sample);
   if (unique.size <= 5 && sample.length >= 3) return 'select';
-
-  // Check multi-select (comma-separated values)
-  if (sample.some(v => v.includes(',')) && unique.size > 5) return 'multi_select';
+  // Also detect by header hint
+  if (headerLower.includes('status') || headerLower.includes('type') || headerLower.includes('category') || headerLower.includes('priority')) {
+    if (unique.size <= 10) return 'select';
+  }
+  if (headerLower.includes('tags') || headerLower.includes('labels')) {
+    return 'multi_select';
+  }
 
   return 'text';
 }
@@ -658,11 +800,15 @@ function cleanNotionFileName(name) {
 }
 
 function getInnerHtml(node) {
-  // Get innerHTML but strip Notion-specific classes and style attrs
+  // Get innerHTML, preserving inline styles (for color detection)
+  // but stripping Notion-specific class names and IDs
   let html = node.innerHTML || '';
-  html = html.replace(/\s*class="[^"]*"/g, '');
-  html = html.replace(/\s*style="[^"]*"/g, '');
+  // Remove IDs (not useful)
   html = html.replace(/\s*id="[^"]*"/g, '');
+  // Remove non-color classes but preserve style attributes for color/background parsing
+  html = html.replace(/\s*class="[^"]*"/g, '');
+  // Keep style attributes — they contain color info from Notion exports
+  // html = html.replace(/\s*style="[^"]*"/g, ''); // REMOVED: was stripping colors
   return html.trim();
 }
 
