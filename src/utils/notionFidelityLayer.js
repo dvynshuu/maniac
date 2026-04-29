@@ -262,14 +262,20 @@ function normalizeLanguage(lang) {
 
 function detectEmbedType(url) {
   if (!url) return 'generic';
-  const lower = url.toLowerCase();
-  if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
-  if (lower.includes('twitter.com') || lower.includes('x.com')) return 'twitter';
-  if (lower.includes('github.com')) return 'github';
-  if (lower.includes('figma.com')) return 'figma';
-  if (lower.includes('codepen.io')) return 'codepen';
-  if (lower.includes('maps.google')) return 'google_maps';
-  if (lower.includes('drive.google')) return 'google_drive';
-  if (lower.includes('loom.com')) return 'loom';
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const host = parsed.hostname.toLowerCase();
+    
+    if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') return 'youtube';
+    if (host === 'twitter.com' || host === 'www.twitter.com' || host === 'x.com' || host === 'www.x.com') return 'twitter';
+    if (host === 'github.com' || host === 'www.github.com') return 'github';
+    if (host === 'figma.com' || host === 'www.figma.com') return 'figma';
+    if (host === 'codepen.io' || host === 'www.codepen.io') return 'codepen';
+    if (host.includes('maps.google')) return 'google_maps';
+    if (host.includes('drive.google')) return 'google_drive';
+    if (host === 'loom.com' || host === 'www.loom.com') return 'loom';
+  } catch (e) {
+    // Fallback if URL is invalid
+  }
   return 'generic';
 }

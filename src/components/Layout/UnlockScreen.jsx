@@ -48,14 +48,11 @@ export default function UnlockScreen() {
           setError('Incorrect password. Please try again.');
           setIsVerifying(false);
           // If auto-unlock fails, clear the bad session password
-          if (autoPassword) sessionStorage.removeItem('maniac_session_password');
           return;
         }
         key = await SecurityService.deriveKeysFromPassword(pwToUse);
       }
 
-      // Save to session storage so refresh works without retyping
-      sessionStorage.setItem('maniac_session_password', pwToUse);
       unlock(key);
     } catch (err) {
       setError('Verification failed. Please try again.');
@@ -69,12 +66,6 @@ export default function UnlockScreen() {
     setInitialized(hasMaster);
     if (!hasMaster) {
       setIsSettingUp(true);
-    } else {
-      // Auto-unlock if password is in sessionStorage
-      const sessionPw = sessionStorage.getItem('maniac_session_password');
-      if (sessionPw) {
-        handleUnlock(null, sessionPw);
-      }
     }
   }, []);
 
@@ -102,9 +93,6 @@ export default function UnlockScreen() {
 
       // Derive the long-lived CryptoKey and unlock
       const keys = await SecurityService.deriveKeysFromPassword(password);
-      
-      // Save session password
-      sessionStorage.setItem('maniac_session_password', password);
       
       setInitialized(true);
       unlock(keys);

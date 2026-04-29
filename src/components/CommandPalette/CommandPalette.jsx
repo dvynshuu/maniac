@@ -5,6 +5,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { db } from '../../db/database';
 import { Search, FileText, Plus, Star, Type, Hash, Lock } from 'lucide-react';
 import { useSecurityStore } from '../../stores/securityStore';
+import DOMPurify from 'dompurify';
 
 export default function CommandPalette({ onClose }) {
     const pages = usePageStore(s => s.pages);
@@ -89,7 +90,7 @@ export default function CommandPalette({ onClose }) {
                         }
                     }
                     
-                    plainText = plainText.replace(/<[^>]*>/g, '');
+                    plainText = DOMPurify.sanitize(plainText, { ALLOWED_TAGS: [] });
                     const idx = plainText.toLowerCase().indexOf(lowerQuery);
                     const start = Math.max(0, idx - 30);
                     // if idx is -1 (due to stemming or exact hmac match vs substring), we just show start
