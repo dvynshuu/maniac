@@ -45,6 +45,11 @@ db.version(5).stores({
   });
 });
 
+db.version(6).stores({
+  operations: '++seq, id, actorId, entityType, entityId, timestamp, [entityType+entityId]',
+  permissions: '++id, entityType, entityId, actorId, [entityType+entityId+actorId]',
+});
+
 
 export const extractWords = (content) => {
   if (!content) return [];

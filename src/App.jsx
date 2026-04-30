@@ -6,12 +6,17 @@ import { useTrackerStore } from './stores/trackerStore';
 import { useUIStore } from './stores/uiStore';
 import { useSecurityStore } from './stores/securityStore';
 import { useIntelligenceStore } from './stores/intelligenceStore';
+import { useCrossTabSync } from './hooks/useCrossTabSync';
+import { undo, redo } from './core/commandBus';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
 import RestorePreviewModal from './components/Settings/RestorePreviewModal';
 import NotionImportModal from './components/Settings/NotionImportModal';
 import ToastContainer from './components/Common/ToastContainer';
+
+// Register all command handlers on module load
+import './core/commandHandlers';
 
 // Lazy load heavy components
 const PageEditor = lazy(() => import('./components/Editor/PageEditor'));
@@ -37,6 +42,9 @@ function App() {
   const isLocked = useSecurityStore(s => s.isLocked);
   const derivedKey = useSecurityStore(s => s.derivedKey);
 
+  // Cross-tab sync
+  useCrossTabSync();
+
   useEffect(() => {
     const init = async () => {
       await seedDefaultData();
@@ -55,6 +63,24 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         useUIStore.getState().toggleCommandPalette();
+      }
+      // Command bus undo/redo (Ctrl+Z / Ctrl+Shift+Z)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        // Only intercept if not inside a TipTap editor
+        const active = document.activeElement;
+        const inEditor = active?.closest?.('.tiptap-editor');
+        if (!inEditor) {
+          e.preventDefault();
+          undo();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+        const active = document.activeElement;
+        const inEditor = active?.closest?.('.tiptap-editor');
+        if (!inEditor) {
+          e.preventDefault();
+          redo();
+        }
       }
       if (e.key === 'Escape') {
         useUIStore.getState().closeCommandPalette();
