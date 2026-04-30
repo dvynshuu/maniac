@@ -22,6 +22,11 @@ export const useUIStore = create(
   toasts: [],
   isSaving: false,
   selectedPageIds: [],
+  activeEditor: null,
+  activeEditorBlockId: null,
+
+  setActiveEditor: (editor, blockId) => set({ activeEditor: editor, activeEditorBlockId: blockId }),
+  clearActiveEditor: () => set({ activeEditor: null, activeEditorBlockId: null }),
 
   openNotionImport: () => set({ notionImportModalOpen: true }),
   closeNotionImport: () => set({ notionImportModalOpen: false }),

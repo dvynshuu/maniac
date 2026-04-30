@@ -156,7 +156,7 @@ export const useBlockStore = create((set, get) => ({
     const safeContent = content_sanitizer(content);
     const safeProperties = sanitizeObject(properties) || {};
 
-    const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder, parentId });
+    const block = createBlock(pageId, type, { content: safeContent, properties: safeProperties, sortOrder, parentId: resolvedParentId });
 
     // Optimistic insert
     const newBlockMap = { ...get().blockMap, [block.id]: block };

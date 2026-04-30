@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bold, Italic, Strikethrough, Code, Link as LinkIcon, 
-  ChevronDown, Type, Palette, ExternalLink,
-  AlignLeft, AlignCenter, AlignRight, Heading3, Eraser,
-  Sparkles, List, ListOrdered, Quote
+  Palette, ExternalLink, Heading3, Sparkles, List, Quote
 } from 'lucide-react';
 import { useBlockStore } from '../../stores/blockStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -18,6 +16,10 @@ const COLORS = [
 ];
 
 function SelectionToolbar() {
+  const activeEditor = useUIStore(s => s.activeEditor);
+  const activeEditorBlockId = useUIStore(s => s.activeEditorBlockId);
+  const changeBlockType = useBlockStore(s => s.changeBlockType);
+
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -26,216 +28,124 @@ function SelectionToolbar() {
     bold: false,
     italic: false,
     strikethrough: false,
-    alignLeft: false,
-    alignCenter: false,
-    alignRight: false,
+    code: false,
   });
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [savedRange, setSavedRange] = useState(null);
   const [isLink, setIsLink] = useState(false);
   const [currentLinkHref, setCurrentLinkHref] = useState('');
 
   const toolbarRef = useRef(null);
 
   useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
+    if (!activeEditor) {
+      if (!showLinkInput) setShow(false);
+      return;
+    }
+
+    const updateToolbar = () => {
+      if (activeEditor.isDestroyed) return;
       
-      if (!selection || selection.rangeCount === 0) {
+      const { selection } = activeEditor.state;
+      if (selection.empty) {
         if (!showLinkInput) setShow(false);
         return;
       }
 
-      const isCollapsed = selection.isCollapsed;
-      const range = selection.getRangeAt(0);
-      
-      // If user makes a new non-collapsed selection while link input is open, update savedRange
-      if (!isCollapsed && showLinkInput) {
-        setSavedRange(range.cloneRange());
-      }
+      // Calculate position
+      try {
+        const view = activeEditor.view;
+        const { from, to } = selection;
+        const start = view.coordsAtPos(from);
+        const end = view.coordsAtPos(to);
 
-      // Detect if cursor/selection is inside a link
-      let link = null;
-      if (selection.anchorNode) {
-        link = selection.anchorNode.nodeType === 3 
-          ? selection.anchorNode.parentElement?.closest('a')
-          : selection.anchorNode.closest?.('a');
-      }
-      
-      const container = range.commonAncestorContainer;
-      
-      if (!link && container) {
-        link = container.nodeType === 3 
-          ? container.parentElement?.closest('a')
-          : container.closest?.('a');
-      }
+        const top = Math.min(start.top, end.top);
+        const left = (start.left + end.left) / 2;
 
-      if (isCollapsed && !link) {
+        setPos({
+          top: top + window.scrollY - 48,
+          left: left
+        });
+
+        setShow(true);
+
+        // Active formats
+        setActiveFormats({
+          bold: activeEditor.isActive('bold'),
+          italic: activeEditor.isActive('italic'),
+          strikethrough: activeEditor.isActive('strike'),
+          code: activeEditor.isActive('code'),
+        });
+
+        const linkIsActive = activeEditor.isActive('link');
+        setIsLink(linkIsActive);
+        if (linkIsActive) {
+          setCurrentLinkHref(activeEditor.getAttributes('link').href || '');
+        } else {
+          setCurrentLinkHref('');
+        }
+      } catch (e) {
+        // Fallback if coords tracking fails during rapid changes
         if (!showLinkInput) setShow(false);
-        return;
       }
-
-      const rect = range.getBoundingClientRect();
-      setPos({
-        top: rect.top + window.scrollY - 48,
-        left: rect.left + rect.width / 2
-      });
-      setShow(true);
-      
-      if (link) {
-        setIsLink(true);
-        setCurrentLinkHref(link.getAttribute('href') || '');
-      } else {
-        setIsLink(false);
-      }
-
-      setActiveFormats({
-        bold: document.queryCommandState('bold'),
-        italic: document.queryCommandState('italic'),
-        strikethrough: document.queryCommandState('strikethrough'),
-        alignLeft: document.queryCommandState('justifyLeft'),
-        alignCenter: document.queryCommandState('justifyCenter'),
-        alignRight: document.queryCommandState('justifyRight'),
-      });
     };
 
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [showLinkInput]);
+    activeEditor.on('selectionUpdate', updateToolbar);
+    activeEditor.on('transaction', updateToolbar);
 
-  const exec = (command, value = null) => {
-    document.execCommand(command, false, value);
-    syncChanges();
-  };
+    // Initial check
+    updateToolbar();
 
-  const syncChanges = () => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const anchorNode = selection.anchorNode;
-      const editableParent = anchorNode.nodeType === 3 
-        ? anchorNode.parentElement?.closest('[contenteditable="true"]')
-        : anchorNode.closest?.('[contenteditable="true"]');
-
-      if (!editableParent) return;
-
-      const blockEl = editableParent.closest('[data-block-id]');
-      if (!blockEl) return;
-
-      const blockId = blockEl.getAttribute('data-block-id');
-      const store = useBlockStore.getState();
-      const targetBlock = store.blockMap[blockId];
-      
-      if (!targetBlock) return;
-
-      const html = editableParent.innerHTML;
-
-      // Check if it's a table cell
-      const rowIndex = editableParent.getAttribute('data-row');
-      const colIndex = editableParent.getAttribute('data-col');
-
-      if (rowIndex !== null && colIndex !== null && targetBlock.properties?.cells) {
-        // Table Sync
-        const r = parseInt(rowIndex);
-        const c = parseInt(colIndex);
-        const newCells = [...targetBlock.properties.cells];
-        newCells[r] = [...newCells[r]];
-        newCells[r][c] = html;
-        
-        store.updateBlock(blockId, { 
-          properties: { ...targetBlock.properties, cells: newCells } 
-        });
-      } else {
-        // Standard Sync
-        store.updateBlock(blockId, { content: html });
-      }
-    }
-  };
+    return () => {
+      activeEditor.off('selectionUpdate', updateToolbar);
+      activeEditor.off('transaction', updateToolbar);
+    };
+  }, [activeEditor, showLinkInput]);
 
   const applyHighlight = (colorClass) => {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-    
+    if (!activeEditor) return;
     if (!colorClass) {
-      // Remove highlight: execCommand removeFormat is simple, though it removes all formatting.
-      // Alternatively, we can just use hiliteColor transparent to remove background.
-      document.execCommand('hiliteColor', false, 'transparent');
+      activeEditor.chain().focus().unsetMark('customHighlight').run();
     } else {
-      try {
-        const range = selection.getRangeAt(0);
-        const span = document.createElement('span');
-        span.className = colorClass;
-        span.appendChild(range.extractContents());
-        range.insertNode(span);
-        
-        // Restore selection to the new span so syncChanges can find the editable parent
-        selection.removeAllRanges();
-        const newRange = document.createRange();
-        newRange.selectNodeContents(span);
-        selection.addRange(newRange);
-      } catch (e) {
-        // Fallback for extremely complex selections
-        console.warn('Complex selection highlight not fully supported yet', e);
-        document.execCommand('hiliteColor', false, colorClass === 'hl-purple' ? 'rgba(139, 92, 246, 0.2)' : 
-                                                 colorClass === 'hl-cyan' ? 'rgba(6, 182, 212, 0.2)' :
-                                                 colorClass === 'hl-amber' ? 'rgba(245, 158, 11, 0.2)' :
-                                                 colorClass === 'hl-rose' ? 'rgba(244, 63, 94, 0.2)' : 'transparent');
-      }
+      activeEditor.chain().focus().setMark('customHighlight', { class: colorClass }).run();
     }
-    
-    setShow(false);
-    syncChanges();
+    setShowColorPicker(false);
   };
 
   const handleLinkClick = () => {
-    if (!showLinkInput) {
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        setSavedRange(selection.getRangeAt(0).cloneRange());
-      }
-    } else {
-      setSavedRange(null);
-    }
     setShowLinkInput(!showLinkInput);
   };
 
   const addLink = () => {
+    if (!activeEditor) return;
     let url = linkUrl.trim();
-    if (!url) return;
+    if (!url) {
+      activeEditor.chain().focus().unsetLink().run();
+      setShowLinkInput(false);
+      setLinkUrl('');
+      return;
+    }
 
-    // Normalize URL
     if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url) && !/^tel:/i.test(url) && !url.startsWith('/') && !url.startsWith('#')) {
       url = 'https://' + url;
     }
     
-    // Sanitize to prevent malicious protocols
     url = sanitizeUrl(url);
     if (url === '#') return;
 
-    if (savedRange) {
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(savedRange);
-    }
-
-    exec('createLink', url);
-
-    // After creation, ensure target="_blank"
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const linkEl = selection.anchorNode.parentElement?.closest('a') || selection.focusNode.parentElement?.closest('a');
-      if (linkEl) {
-        linkEl.setAttribute('target', '_blank');
-        linkEl.setAttribute('rel', 'noopener noreferrer');
-        syncChanges(); // Sync the manual attribute change
-      }
-    }
+    activeEditor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
 
     setShowLinkInput(false);
     setLinkUrl('');
-    setSavedRange(null);
   };
 
-  if (!show) return null;
+  const handleBlockFormat = (type) => {
+    if (activeEditorBlockId) {
+      changeBlockType(activeEditorBlockId, type);
+      setShow(false);
+    }
+  };
+
+  if (!show || !activeEditor) return null;
 
   return (
     <div 
@@ -245,25 +155,25 @@ function SelectionToolbar() {
       <div className="selection-toolbar" ref={toolbarRef}>
         <button 
           className={`st-btn ${activeFormats.bold ? 'active' : ''}`}
-          onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
+          onMouseDown={(e) => { e.preventDefault(); activeEditor.chain().focus().toggleBold().run(); }}
         >
           <Bold size={16} />
         </button>
         <button 
           className={`st-btn ${activeFormats.italic ? 'active' : ''}`}
-          onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
+          onMouseDown={(e) => { e.preventDefault(); activeEditor.chain().focus().toggleItalic().run(); }}
         >
           <Italic size={16} />
         </button>
         <button 
           className={`st-btn ${activeFormats.strikethrough ? 'active' : ''}`}
-          onMouseDown={(e) => { e.preventDefault(); exec('strikeThrough'); }}
+          onMouseDown={(e) => { e.preventDefault(); activeEditor.chain().focus().toggleStrike().run(); }}
         >
           <Strikethrough size={16} />
         </button>
         <button 
-          className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<code>'); }}
+          className={`st-btn ${activeFormats.code ? 'active' : ''}`}
+          onMouseDown={(e) => { e.preventDefault(); activeEditor.chain().focus().toggleCode().run(); }}
         >
           <Code size={16} />
         </button>
@@ -299,31 +209,7 @@ function SelectionToolbar() {
 
         <button 
           className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('justifyLeft'); }}
-          title="Align Left"
-        >
-          <AlignLeft size={16} />
-        </button>
-        <button 
-          className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('justifyCenter'); }}
-          title="Align Center"
-        >
-          <AlignCenter size={16} />
-        </button>
-        <button 
-          className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('justifyRight'); }}
-          title="Align Right"
-        >
-          <AlignRight size={16} />
-        </button>
-
-        <div className="st-divider" />
-
-        <button 
-          className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<h3>'); }}
+          onMouseDown={(e) => { e.preventDefault(); handleBlockFormat('heading3'); }}
           title="Heading 3"
         >
           <Heading3 size={16} />
@@ -353,7 +239,7 @@ function SelectionToolbar() {
                     background: c.color,
                     border: c.class === '' ? '1px solid var(--border-strong)' : 'none'
                   }}
-                  onMouseDown={(e) => { e.preventDefault(); applyHighlight(c.class); setShowColorPicker(false); }}
+                  onMouseDown={(e) => { e.preventDefault(); applyHighlight(c.class); }}
                   title={c.label}
                 />
               ))}
@@ -365,15 +251,15 @@ function SelectionToolbar() {
 
         <button 
           className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }}
+          onMouseDown={(e) => { e.preventDefault(); handleBlockFormat('bullet'); }}
           title="Bullet List"
         >
           <List size={16} />
         </button>
         <button 
           className="st-btn"
-          onMouseDown={(e) => { e.preventDefault(); exec('formatBlock', '<blockquote>'); }}
-          title="Quote"
+          onMouseDown={(e) => { e.preventDefault(); handleBlockFormat('callout'); }}
+          title="Callout"
         >
           <Quote size={16} />
         </button>
@@ -399,9 +285,14 @@ function SelectionToolbar() {
               placeholder="Paste or type a link..."
               value={linkUrl}
               onChange={e => setLinkUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addLink()}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addLink();
+                }
+              }}
             />
-            <button className="btn btn-primary btn-sm" onClick={addLink}>Link</button>
+            <button className="btn btn-primary btn-sm" onClick={(e) => { e.preventDefault(); addLink(); }}>Link</button>
           </div>
         )}
       </div>

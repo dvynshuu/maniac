@@ -8,6 +8,7 @@ import { Mark, mergeAttributes } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBlockStore } from '../stores/blockStore';
 import { useUndoStore } from '../stores/undoStore';
+import { useUIStore } from '../stores/uiStore';
 import { debounce } from '../utils/helpers';
 import { sanitize } from '../utils/sanitizer';
 
@@ -174,6 +175,9 @@ export function useBlockEditor(block, options = {}) {
       }
 
       debouncedSave(block.id, cleaned);
+    },
+    onFocus: ({ editor: ed }) => {
+      useUIStore.getState().setActiveEditor(ed, block.id);
     },
     onBlur: ({ editor: ed }) => {
       const html = sanitize(ed.getHTML());
