@@ -4,11 +4,46 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
+import { Mark, mergeAttributes } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBlockStore } from '../stores/blockStore';
 import { useUndoStore } from '../stores/undoStore';
 import { debounce } from '../utils/helpers';
 import { sanitize } from '../utils/sanitizer';
+
+const CustomHighlight = Mark.create({
+  name: 'customHighlight',
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+        parseHTML: element => element.getAttribute('class') || null,
+        renderHTML: attributes => {
+          if (!attributes.class) return {};
+          return { class: attributes.class };
+        },
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: node => {
+          const className = node.getAttribute('class');
+          if (className && className.includes('hl-')) {
+            return null;
+          }
+          return false;
+        },
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
 
 /**
  * useBlockEditor — the shared TipTap integration for all editable block types.
@@ -75,6 +110,7 @@ export function useBlockEditor(block, options = {}) {
     Underline,
     Placeholder.configure({ placeholder }),
     Highlight.configure({ multicolor: false }),
+    CustomHighlight,
   ], [placeholder, JSON.stringify(starterKitConfig)]);
 
   const editor = useEditor({

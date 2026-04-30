@@ -10,11 +10,11 @@ import { useUIStore } from '../../stores/uiStore';
 import { sanitizeUrl } from '../../utils/sanitizer';
 
 const COLORS = [
-  { label: 'Default', class: '' },
-  { label: 'Purple', class: 'hl-purple' },
-  { label: 'Cyan', class: 'hl-cyan' },
-  { label: 'Amber', class: 'hl-amber' },
-  { label: 'Rose', class: 'hl-rose' },
+  { label: 'Default', class: '', color: 'transparent' },
+  { label: 'Purple', class: 'hl-purple', color: 'rgba(139, 92, 246, 0.5)' },
+  { label: 'Cyan', class: 'hl-cyan', color: 'rgba(6, 182, 212, 0.5)' },
+  { label: 'Amber', class: 'hl-amber', color: 'rgba(245, 158, 11, 0.5)' },
+  { label: 'Rose', class: 'hl-rose', color: 'rgba(244, 63, 94, 0.5)' },
 ];
 
 function SelectionToolbar() {
@@ -155,12 +155,34 @@ function SelectionToolbar() {
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
     
-    const range = selection.getRangeAt(0);
-    const span = document.createElement('span');
-    span.className = colorClass;
-    range.surroundContents(span);
-    setShow(false);
+    if (!colorClass) {
+      // Remove highlight: execCommand removeFormat is simple, though it removes all formatting.
+      // Alternatively, we can just use hiliteColor transparent to remove background.
+      document.execCommand('hiliteColor', false, 'transparent');
+    } else {
+      try {
+        const range = selection.getRangeAt(0);
+        const span = document.createElement('span');
+        span.className = colorClass;
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+        
+        // Restore selection to the new span so syncChanges can find the editable parent
+        selection.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        selection.addRange(newRange);
+      } catch (e) {
+        // Fallback for extremely complex selections
+        console.warn('Complex selection highlight not fully supported yet', e);
+        document.execCommand('hiliteColor', false, colorClass === 'hl-purple' ? 'rgba(139, 92, 246, 0.2)' : 
+                                                 colorClass === 'hl-cyan' ? 'rgba(6, 182, 212, 0.2)' :
+                                                 colorClass === 'hl-amber' ? 'rgba(245, 158, 11, 0.2)' :
+                                                 colorClass === 'hl-rose' ? 'rgba(244, 63, 94, 0.2)' : 'transparent');
+      }
+    }
     
+    setShow(false);
     syncChanges();
   };
 
@@ -323,9 +345,15 @@ function SelectionToolbar() {
               {COLORS.map(c => (
                 <button 
                   key={c.label}
-                  className={`st-btn ${c.class}`}
-                  style={{ width: 24, height: 24, borderRadius: '4px' }}
-                  onClick={() => { applyHighlight(c.class); setShowColorPicker(false); }}
+                  className="st-btn"
+                  style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '4px', 
+                    background: c.color,
+                    border: c.class === '' ? '1px solid var(--border-strong)' : 'none'
+                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyHighlight(c.class); setShowColorPicker(false); }}
                   title={c.label}
                 />
               ))}
