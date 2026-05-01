@@ -1,17 +1,45 @@
-import { ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, Play, Globe, Check } from 'lucide-react';
 import { useBlockStore } from '../../../stores/blockStore';
 
 export default function EmbedBlock({ block }) {
-  const url = block.properties?.url || block.content || '';
+  const url = block.properties?.url || '';
   const caption = block.properties?.caption || '';
   const embedType = block.properties?.embedType || 'generic';
+  
+  const updateBlock = useBlockStore(s => s.updateBlock);
   const deleteBlock = useBlockStore(s => s.deleteBlock);
 
+  const [inputUrl, setInputUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Backspace' || e.key === 'Delete') {
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !inputUrl && !url) {
       e.preventDefault();
       deleteBlock(block.id);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!inputUrl) return;
+
+    setIsSubmitting(true);
+    
+    // Simple heuristic for embed type
+    let type = 'generic';
+    if (inputUrl.includes('youtube.com') || inputUrl.includes('youtu.be')) {
+      type = 'youtube';
+    }
+
+    await updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        url: inputUrl,
+        embedType: type
+      }
+    });
+    setIsSubmitting(false);
   };
 
   // YouTube embed
@@ -47,21 +75,45 @@ export default function EmbedBlock({ block }) {
           className="block-embed-link"
         >
           <div className="block-embed-link-icon">
-            <ExternalLink size={16} />
+            <Globe size={18} />
           </div>
           <div className="block-embed-link-text">
             <div className="block-embed-link-title">{caption || url}</div>
             <div className="block-embed-link-url">{displayUrl}</div>
           </div>
+          <ExternalLink size={14} style={{ opacity: 0.5, marginLeft: '8px' }} />
         </a>
       </div>
     );
   }
 
-  // Fallback: empty embed
+  // Fallback: interactive empty state
   return (
-    <div className="block-embed-wrapper" tabIndex={0} onKeyDown={handleKeyDown} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>
-      No URL provided
+    <div className="block-embed-wrapper" tabIndex={0} onKeyDown={handleKeyDown}>
+      <form className="block-embed-input-container" onSubmit={handleSubmit}>
+        <div className="block-embed-input-group">
+          <input
+            autoFocus
+            type="text"
+            className="block-embed-input"
+            placeholder="Paste a link to embed..."
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+          />
+          <button 
+            type="submit" 
+            className="block-embed-submit-btn"
+            disabled={!inputUrl || isSubmitting}
+          >
+            {isSubmitting ? 'Embedding...' : 'Embed'}
+          </button>
+        </div>
+        <div className="block-embed-type-hint">
+          <Play size={14} /> YouTube
+          <span style={{ margin: '0 4px', opacity: 0.3 }}>•</span>
+          <Globe size={14} /> Web Link
+        </div>
+      </form>
     </div>
   );
 }
