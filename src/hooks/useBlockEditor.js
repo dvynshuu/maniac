@@ -11,6 +11,9 @@ import { useUndoStore } from '../stores/undoStore';
 import { useUIStore } from '../stores/uiStore';
 import { debounce } from '../utils/helpers';
 import { sanitize } from '../utils/sanitizer';
+import { TiptapMention } from '../extensions/tiptapMention';
+import { TiptapBacklink } from '../extensions/tiptapBacklink';
+import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
 
 const CustomHighlight = Mark.create({
   name: 'customHighlight',
@@ -112,6 +115,9 @@ export function useBlockEditor(block, options = {}) {
     Placeholder.configure({ placeholder }),
     Highlight.configure({ multicolor: false }),
     CustomHighlight,
+    TiptapMention,
+    TiptapBacklink,
+    TiptapDatabaseChip,
   ], [placeholder, JSON.stringify(starterKitConfig)]);
 
   const editor = useEditor({

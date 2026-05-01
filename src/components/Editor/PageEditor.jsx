@@ -17,6 +17,7 @@ import { debounce, generateLexicalOrder } from '../../utils/helpers';
 import { ImageIcon, X, Cloud } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import { db } from '../../db/database';
+import BacklinksPanel from './BacklinksPanel';
 
 function PageEditor() {
   const { pageId } = useParams();
@@ -317,6 +318,7 @@ function PageEditor() {
              }
           }}
         />
+        <BacklinksPanel pageId={pageId} />
         <SelectionToolbar />
       </div>
     </div>

@@ -330,4 +330,76 @@ export const useBlockStore = create((set, get) => ({
     const dbUpd = await encryptBlockForDB({ type: newType, properties, updatedAt: now }, true);
     await db.blocks.update(blockId, dbUpd);
   },
+
+  // ─── DnD Reparenting ────────────────────────────────────────
+
+  /**
+   * Get all recursive descendant block IDs.
+   * Used for circular reparenting prevention.
+   */
+  getDescendants: (blockId) => {
+    const { blockMap, blockOrder } = get();
+    const descendants = [];
+    const collect = (parentId) => {
+      for (const id of blockOrder) {
+        if (blockMap[id]?.parentId === parentId) {
+          descendants.push(id);
+          collect(id);
+        }
+      }
+    };
+    collect(blockId);
+    return descendants;
+  },
+
+  /**
+   * Reparent a block: change its parentId and sortOrder atomically.
+   * Prevents circular reparenting.
+   */
+  reparentBlock: async (blockId, newParentId, afterBlockId = null) => {
+    const { blockMap, blockOrder } = get();
+    const block = blockMap[blockId];
+    if (!block) return;
+
+    // Prevent circular reparenting
+    if (newParentId) {
+      const descendants = get().getDescendants(blockId);
+      if (descendants.includes(newParentId) || newParentId === blockId) {
+        console.warn('[blockStore] Circular reparenting prevented');
+        return;
+      }
+    }
+
+    // Compute sort order among new siblings
+    const siblings = blockOrder.filter(id =>
+      (blockMap[id]?.parentId || null) === (newParentId || null) && id !== blockId
+    );
+
+    let sortOrder;
+    if (afterBlockId && siblings.includes(afterBlockId)) {
+      const afterIdx = siblings.indexOf(afterBlockId);
+      const prevSort = blockMap[siblings[afterIdx]]?.sortOrder || null;
+      const nextSort = siblings[afterIdx + 1] ? blockMap[siblings[afterIdx + 1]]?.sortOrder : null;
+      sortOrder = generateLexicalOrder(prevSort, nextSort);
+    } else if (siblings.length > 0) {
+      // Place at end
+      const lastSort = blockMap[siblings[siblings.length - 1]]?.sortOrder || null;
+      sortOrder = generateLexicalOrder(lastSort, null);
+    } else {
+      sortOrder = 'm';
+    }
+
+    const now = Date.now();
+    const updated = { ...block, parentId: newParentId || null, sortOrder, updatedAt: now };
+    const newBlockMap = { ...blockMap, [blockId]: updated };
+
+    // Re-sort
+    const allBlocks = blockOrder.map(id => id === blockId ? updated : newBlockMap[id]).filter(Boolean);
+    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+
+    set({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
+
+    const dbUpd = await encryptBlockForDB({ parentId: newParentId || null, sortOrder, updatedAt: now }, true);
+    await db.blocks.update(blockId, dbUpd);
+  },
 }));

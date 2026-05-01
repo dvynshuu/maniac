@@ -16,6 +16,7 @@ export const BLOCK_TYPES = {
   TABLE: 'table',
   DATABASE: 'database',
   TOGGLE: 'toggle',
+  SYNCED_REFERENCE: 'synced_reference',
 };
 
 export const BLOCK_TYPE_META = {
@@ -36,6 +37,7 @@ export const BLOCK_TYPE_META = {
   [BLOCK_TYPES.TABLE]: { label: 'Table', icon: 'Table', description: 'Standard data table' },
   [BLOCK_TYPES.DATABASE]: { label: 'Database', icon: 'Database', description: 'Dynamic database table' },
   [BLOCK_TYPES.TOGGLE]: { label: 'Toggle', icon: 'ChevronRight', description: 'Collapsible content' },
+  [BLOCK_TYPES.SYNCED_REFERENCE]: { label: 'Synced Block', icon: 'RefreshCw', description: 'Reference to another block' },
 };
 
 export const TRACKER_FIELD_TYPES = {
