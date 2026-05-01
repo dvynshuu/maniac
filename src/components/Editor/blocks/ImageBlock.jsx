@@ -2,21 +2,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { Image as ImageIcon } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../../utils/blobService';
+import { EditorEngine } from '../../../core/editor/Engine';
 
 export default function ImageBlock({ block }) {
+  const engine = new EditorEngine(block.pageId);
   const [renderUrl, setRenderUrl] = useState(null);
   const [caption, setCaption] = useState(block.properties?.caption || '');
   const fileInputRef = useRef(null);
   const blobRefRef = useRef(block.properties?.src);
   
-  const updateBlock = useBlockStore((s) => s.updateBlock);
-  const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const focusBlockId = useBlockStore((s) => s.focusBlockId);
 
   const src = block.properties?.src;
   const hash = block.properties?.hash;
   const width = block.properties?.width;
-  const alignment = block.properties?.alignment || 'center';
+  const alignment = block.properties?.alignment || 'left';
 
   // Resolve blob references or hash-based references
   useEffect(() => {
@@ -60,39 +60,93 @@ export default function ImageBlock({ block }) {
     if (!file) return;
     const ref = await storeBlob(file);
     setRenderUrl(null);
-    updateBlock(block.id, { properties: { ...block.properties, src: ref } });
+    engine.updateBlock(block.id, { properties: { ...block.properties, src: ref } });
   };
 
   const handleCaptionChange = (e) => {
     const newCaption = e.target.value;
     setCaption(newCaption);
-    updateBlock(block.id, { properties: { ...block.properties, caption: newCaption } });
+    engine.updateBlock(block.id, { properties: { ...block.properties, caption: newCaption } });
   };
 
   const handleKeyDown = (e) => {
     if ((e.key === 'Backspace' || e.key === 'Delete') && e.target.tagName !== 'TEXTAREA') {
       e.preventDefault();
-      deleteBlock(block.id);
+      engine.deleteBlock(block.id);
     }
   };
 
-  if (renderUrl) {
-    const imgStyle = {};
-    if (width) imgStyle.maxWidth = `${width}px`;
+  // Resizing logic
+  const wrapperRef = useRef(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartRef = useRef(null);
 
+  const startResizing = (e, direction) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    resizeStartRef.current = {
+      x: e.clientX,
+      width: wrapperRef.current?.offsetWidth || 0,
+      direction
+    };
+
+    window.addEventListener('mousemove', handleResizing);
+    window.addEventListener('mouseup', stopResizing);
+  };
+
+  const handleResizing = (e) => {
+    if (!resizeStartRef.current || !wrapperRef.current) return;
+    
+    const delta = e.clientX - resizeStartRef.current.x;
+    const newWidth = resizeStartRef.current.direction === 'right' 
+      ? resizeStartRef.current.width + delta 
+      : resizeStartRef.current.width - delta;
+
+    const parentWidth = wrapperRef.current.parentElement?.offsetWidth || 800;
+    const widthPercent = Math.min(Math.max((newWidth / parentWidth) * 100, 10), 100);
+    
+    wrapperRef.current.style.width = `${widthPercent}%`;
+  };
+
+  const stopResizing = () => {
+    setIsResizing(false);
+    window.removeEventListener('mousemove', handleResizing);
+    window.removeEventListener('mouseup', stopResizing);
+
+    if (wrapperRef.current) {
+      const parentWidth = wrapperRef.current.parentElement?.offsetWidth || 800;
+      const widthPercent = Math.round((wrapperRef.current.offsetWidth / parentWidth) * 100);
+      
+      engine.updateBlock(block.id, { 
+        properties: { ...block.properties, width: `${widthPercent}%` } 
+      });
+    }
+    
+    resizeStartRef.current = null;
+  };
+
+  if (renderUrl) {
     return (
       <div 
-        className="block-image-wrapper" 
+        ref={wrapperRef}
+        className={`block-image-wrapper ${isResizing ? 'resizing' : ''}`}
         data-align={alignment}
         tabIndex={0} 
         onKeyDown={handleKeyDown}
         style={{ 
-          outline: focusBlockId === block.id ? '2px solid var(--accent-primary)' : 'none',
-          ...(width ? { maxWidth: `${width}px` } : {}),
-          ...(alignment === 'center' ? { marginLeft: 'auto', marginRight: 'auto' } : {}),
+          outline: focusBlockId === block.id && !isResizing ? '2px solid var(--accent-primary)' : 'none',
+          width: width || '100%',
+          marginLeft: '0',
+          marginRight: 'auto',
         }}
       >
-        <img src={renderUrl} alt={caption || 'Image'} style={imgStyle} />
+        <img src={renderUrl} alt={caption || 'Image'} draggable={false} />
+        
+        {/* Resize Handle (Right only for left-anchored images) */}
+        <div className="image-resizer-handle right" onMouseDown={(e) => startResizing(e, 'right')} />
+
         <textarea
           className="block-image-caption"
           placeholder="Add a caption…"

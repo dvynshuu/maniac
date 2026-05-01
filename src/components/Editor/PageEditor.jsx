@@ -19,26 +19,7 @@ import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import { db } from '../../db/database';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
-import { useVirtualizedBlocks } from '../../hooks/useVirtualizedBlocks';
 
-// Wrapper: renders full block or lightweight placeholder based on visibility
-import { memo } from 'react';
-const VirtualizedBlock = memo(({ blockId, index, visibleSet, measureRef, getPlaceholderHeight, isVirtualized }) => {
-  const isVisible = !isVirtualized || visibleSet.has(blockId);
-
-  return (
-    <div ref={measureRef(blockId)} data-block-id={blockId}>
-      {isVisible ? (
-        <BlockRenderer blockId={blockId} index={index} />
-      ) : (
-        <div
-          style={{ height: getPlaceholderHeight(blockId), opacity: 0 }}
-          aria-hidden="true"
-        />
-      )}
-    </div>
-  );
-});
 
 function PageEditor() {
   const { pageId } = useParams();
@@ -59,8 +40,6 @@ function PageEditor() {
   const coverInputRef = useRef(null);
   const scrollRef = useRef(null);
 
-  // Performance: virtualized rendering for large pages
-  const { visibleSet, measureRef, getPlaceholderHeight, isVirtualized } = useVirtualizedBlocks(rootBlockIds);
 
   // dnd-kit sensors — require a 5px movement before activating drag
   // This prevents accidental drags when clicking on the handle
@@ -321,14 +300,10 @@ function PageEditor() {
             >
               <SortableContext items={rootBlockIds} strategy={verticalListSortingStrategy}>
                 {rootBlockIds.map((id, index) => (
-                  <VirtualizedBlock
+                  <BlockRenderer
                     key={id}
                     blockId={id}
                     index={index}
-                    visibleSet={visibleSet}
-                    measureRef={measureRef}
-                    getPlaceholderHeight={getPlaceholderHeight}
-                    isVirtualized={isVirtualized}
                   />
                 ))}
               </SortableContext>

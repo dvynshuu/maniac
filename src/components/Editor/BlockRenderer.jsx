@@ -153,8 +153,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
       <div className="block-content">
         {renderBlockContent()}
       </div>
-      {childBlockIds.length > 0 && (
-        <div className="block-children" style={{ paddingLeft: '24px' }}>
+      {/* Skip generic child rendering for blocks that manage their own children */}
+      {childBlockIds.length > 0 && block.type !== BLOCK_TYPES.TOGGLE && block.type !== BLOCK_TYPES.DATABASE && (
+        <div className="block-children">
           {childBlockIds.map((childId, i) => (
             <BlockRenderer key={childId} blockId={childId} index={i} />
           ))}

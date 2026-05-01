@@ -54,7 +54,7 @@ export default function ToggleBlock({ block }) {
         <EditorContent editor={editor} className="block-text block-toggle-title" />
       </div>
       {expanded && (
-        <div className="block-toggle-body" style={{ marginLeft: '24px', paddingLeft: '4px', borderLeft: '1px solid var(--border-subtle)' }}>
+        <div className="block-children toggle-children-blocks">
           {childBlockIds.length === 0 ? (
             <div 
               className="block-text text-placeholder" 
@@ -64,11 +64,9 @@ export default function ToggleBlock({ block }) {
               Empty toggle. Click to add content...
             </div>
           ) : (
-            <div className="page-blocks toggle-children-blocks">
-              {childBlockIds.map((id, index) => (
-                <BlockRenderer key={id} blockId={id} index={index} />
-              ))}
-            </div>
+            childBlockIds.map((id, index) => (
+              <BlockRenderer key={id} blockId={id} index={index} />
+            ))
           )}
         </div>
       )}

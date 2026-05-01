@@ -1,70 +1,93 @@
 /**
  * ─── Core: Editor Engine ────────────────────────────────────────
- * Pure logic for managing a page's block lifecycle and state.
- * Orchestrates store updates, persistence, and undo/redo.
+ * High-level API for UI components to trigger state changes.
+ * Acts as a factory for operations that are dispatched via the CommandBus.
  */
 
-import { useBlockStore } from '../../stores/blockStore';
-import { usePageStore } from '../../stores/pageStore';
-import { generateLexicalOrder } from '../../utils/helpers';
-import { db } from '../../db/database';
+import { commandBus } from '../bus/CommandBus';
 import { createOp, OP_TYPES } from '../ops/definitions';
+import { useGraphStore } from '../store/graphStore';
+import { createId } from '../ids/identity';
 
 export class EditorEngine {
-  constructor(pageId) {
+  constructor(pageId, actorId = 'local-user') {
     this.pageId = pageId;
-    this.actorId = 'local-user'; // TODO: Get from security/identity store
+    this.actorId = actorId;
+  }
+
+  // ─── Block Operations ───────────────────────────────────────────
+
+  /**
+   * Create a new block.
+   */
+  async createBlock(type = 'text', parentId = null, orderKey = 'a0') {
+    const blockId = createId();
+    const op = createOp(OP_TYPES.CREATE, 'block', blockId, {
+      type,
+      pageId: this.pageId,
+      parentId,
+      orderKey,
+      content: '',
+      properties: {},
+      version: 1,
+      actorId: this.actorId,
+    }, this.actorId);
+
+    await commandBus.dispatch([op], `create-block:${type}`);
+    return blockId;
   }
 
   /**
-   * Handle block reordering via drag-and-drop.
+   * Update block content or properties.
    */
-  async reorderBlock(activeId, overId) {
-    const store = useBlockStore.getState();
-    const { blockMap, blockOrder } = store;
-
-    const overIndex = blockOrder.indexOf(overId);
-    const prevBlockId = overIndex > 0 ? blockOrder[overIndex - 1] : null;
-    
-    const prevSort = prevBlockId ? blockMap[prevBlockId]?.sortOrder : null;
-    const overSort = blockMap[overId]?.sortOrder;
-    const newSortOrder = generateLexicalOrder(prevSort, overSort);
-    const now = Date.now();
-
-    // Create Operation
-    const op = createOp(OP_TYPES.MOVE, 'block', activeId, { sortOrder: newSortOrder }, this.actorId);
-
-    // Optimistic store update
-    const updatedBlock = { ...blockMap[activeId], sortOrder: newSortOrder, updatedAt: now };
-    const newBlockMap = { ...blockMap, [activeId]: updatedBlock };
-    const allBlocks = blockOrder.map(id => id === activeId ? updatedBlock : newBlockMap[id]).filter(Boolean);
-    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
-
-    useBlockStore.setState({ 
-      blockMap: newBlockMap, 
-      blockOrder: allBlocks.map(b => b.id) 
-    });
-
-    // Persistence via Dexie
-    await db.blocks.update(activeId, { sortOrder: newSortOrder, updatedAt: now });
-    
-    return op;
+  async updateBlock(blockId, updates) {
+    const op = createOp(OP_TYPES.UPDATE, 'block', blockId, updates, this.actorId);
+    await commandBus.dispatch([op], 'update-block');
   }
 
   /**
-   * Update page metadata.
+   * Move a block within the same parent or to a new parent.
    */
+  async moveBlock(blockId, targetParentId, targetOrderKey) {
+    const ops = [];
+    const block = useGraphStore.getState().getById('blocks', blockId);
+    
+    if (block.parentId !== targetParentId) {
+      ops.push(createOp(OP_TYPES.REPARENT, 'block', blockId, { 
+        parentId: targetParentId,
+        orderKey: targetOrderKey 
+      }, this.actorId));
+    } else {
+      ops.push(createOp(OP_TYPES.MOVE, 'block', blockId, { 
+        orderKey: targetOrderKey 
+      }, this.actorId));
+    }
+
+    await commandBus.dispatch(ops, 'move-block');
+  }
+
+  /**
+   * Delete a block.
+   */
+  async deleteBlock(blockId) {
+    const op = createOp(OP_TYPES.DELETE, 'block', blockId, {}, this.actorId);
+    await commandBus.dispatch([op], 'delete-block');
+  }
+
+  // ─── Page Operations ────────────────────────────────────────────
+
   async updatePage(updates) {
-    const now = Date.now();
-    usePageStore.getState().updatePage(this.pageId, { ...updates, updatedAt: now });
-    // Persistence handled by pageStore's built-in logic for now
+    const op = createOp(OP_TYPES.UPDATE, 'page', this.pageId, updates, this.actorId);
+    await commandBus.dispatch([op], 'update-page');
   }
 
-  /**
-   * Selection management placeholder.
-   */
-  setSelection(blockId, offset) {
-    // TODO: Implement selection model
-    console.debug(`[EditorEngine] Selection set to ${blockId} at ${offset}`);
+  // ─── History ──────────────────────────────────────────────────
+
+  undo() {
+    return commandBus.undo();
+  }
+
+  redo() {
+    return commandBus.redo();
   }
 }

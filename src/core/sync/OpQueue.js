@@ -1,50 +1,99 @@
 /**
  * ─── Core: Sync OpQueue ─────────────────────────────────────────
- * Manages outgoing operations and incoming remote changes.
- * Handles retry, ACK, and conflict detection.
+ * Manages the operation log for replication and conflict resolution.
+ *
+ * Matches target tables:
+ *   ops(opId, actorId, lamport, entityType, entityId, opType, payload, deps, createdAt)
+ *   sync_state(peerId, lastAckLamport, cursor, health)
  */
 
+import { getLamport, mergeLamport } from '../ops/definitions.js';
+
 export class OpQueue {
-  constructor() {
-    this.pending = []; // Ops waiting for server ACK
-    this.history = []; // Applied ops
+  constructor(actorId = 'local-actor') {
+    this.actorId = actorId;
+    this.pending = [];     // Ops not yet ACK'd by remote
+    this.applied = [];     // Full local op history
     this._listeners = new Set();
   }
 
+  // ─── Local Operations ───────────────────────────────────────────
+
   /**
-   * Enqueue a local operation for propagation.
+   * Enqueue a locally-generated operation.
+   * @param {object} op - Operation created via createOp()
    */
-  async push(op) {
+  push(op) {
     this.pending.push(op);
-    this.history.push(op);
+    this.applied.push(op);
     this._notify();
-    
-    // Simulate network delay and ACK
-    this._processQueue();
   }
 
   /**
-   * Mock network processing.
+   * Acknowledge a remote confirmation for pending ops.
+   * Removes from pending queue, updates sync_state.
+   * @param {string} opId - The confirmed operation ID
+   * @returns {object|null} The confirmed op, or null
    */
-  async _processQueue() {
-    if (this.pending.length === 0) return;
-    
-    const nextOp = this.pending[0];
-    try {
-      // TODO: Transport.send(nextOp)
-      console.debug(`[OpQueue] Sending op ${nextOp.id} to network...`);
-      
-      // Assume success for local-first
-      this.pending.shift();
+  ack(opId) {
+    const idx = this.pending.findIndex(o => o.opId === opId);
+    if (idx !== -1) {
+      const [confirmed] = this.pending.splice(idx, 1);
       this._notify();
-    } catch (err) {
-      console.warn(`[OpQueue] Failed to send op ${nextOp.id}:`, err);
-      // Implement backoff retry
+      return confirmed;
     }
+    return null;
   }
+
+  // ─── Remote Operations ──────────────────────────────────────────
+
+  /**
+   * Receive a remote operation. Merges Lamport clock and appends.
+   * @param {object} remoteOp - Operation from a peer
+   */
+  receiveRemote(remoteOp) {
+    // Merge Lamport to maintain causal order
+    mergeLamport(remoteOp.lamport);
+    this.applied.push(remoteOp);
+    this.applied.sort((a, b) => a.lamport - b.lamport);
+    this._notify();
+  }
+
+  // ─── Queries ──────────────────────────────────────────────────
+
+  /**
+   * Get all ops since a given Lamport timestamp.
+   */
+  getOpsSince(lamport) {
+    return this.applied.filter(op => op.lamport > lamport);
+  }
+
+  /**
+   * Get pending (un-ACK'd) operations.
+   */
+  getPending() {
+    return [...this.pending];
+  }
+
+  /**
+   * Get sync state snapshot for this actor.
+   * @returns {object} Matches sync_state schema
+   */
+  getSyncState() {
+    const lastApplied = this.applied[this.applied.length - 1];
+    return {
+      peerId: this.actorId,
+      lastAckLamport: lastApplied ? lastApplied.lamport : 0,
+      cursor: lastApplied ? lastApplied.opId : null,
+      health: this.pending.length === 0 ? 'healthy' : 'degraded',
+    };
+  }
+
+  // ─── Subscriptions ────────────────────────────────────────────
 
   _notify() {
-    this._listeners.forEach(l => l(this.pending, this.history));
+    const state = { pending: this.pending, applied: this.applied };
+    this._listeners.forEach(fn => fn(state));
   }
 
   subscribe(callback) {

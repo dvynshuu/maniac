@@ -588,7 +588,8 @@ a:hover {
   font-family: var(--font-sans);
   line-height: var(--leading-tight);
   letter-spacing: -0.025em;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-left: 34px; /* Align with block content (handle 24px + gap 10px) */
   resize: none;
   overflow: hidden;
 }
@@ -609,6 +610,7 @@ a:hover {
   border-radius: var(--radius-lg);
   cursor: pointer;
   margin-bottom: var(--space-3);
+  margin-left: 34px; /* Align with block content */
   transition: all var(--transition-fast);
 }
 
@@ -625,7 +627,7 @@ a:hover {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: var(--space-1);
+  gap: var(--space-2-5);
   padding: var(--notion-block-padding, 3px 2px);
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
@@ -646,7 +648,7 @@ a:hover {
   opacity: 0;
   transition: opacity var(--transition-fast);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 4px;
   border-radius: var(--radius-sm);
 }
 
@@ -658,6 +660,17 @@ a:hover {
 .block-content {
   flex: 1;
   min-width: 0;
+}
+
+.block-children {
+  margin-left: 24px; /* Standard Notion indentation */
+  padding-left: 4px;
+  border-left: 1px solid transparent;
+  transition: border-color var(--transition-default);
+}
+
+.block-wrapper:hover > .block-children {
+  border-left-color: var(--border-subtle);
 }
 
 /* Text Block */
@@ -957,7 +970,7 @@ a:hover {
   border-radius: 50%;
   background: var(--text-tertiary);
   flex-shrink: 0;
-  margin-top: 9px;
+  margin-top: 11px;
 }
 
 /* Numbered Block */
@@ -979,17 +992,80 @@ a:hover {
 
 /* Image Block */
 .block-image-wrapper {
-  margin: var(--space-3) 0;
+  margin: var(--space-4) 0;
   border-radius: var(--radius-lg);
-  overflow: hidden;
   position: relative;
+  transition: box-shadow var(--transition-fast);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.block-image-wrapper:hover {
+  box-shadow: 0 0 0 1px var(--border-strong);
 }
 
 .block-image-wrapper img {
   width: 100%;
+  height: auto;
   display: block;
   border-radius: var(--radius-lg);
+  user-select: none;
+  -webkit-user-drag: none;
 }
+
+/* Image Resizer Handles */
+.image-resizer-handle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 48px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-resizer-handle::after {
+  content: '';
+  width: 2px;
+  height: 16px;
+  background: var(--text-tertiary);
+  border-radius: 1px;
+}
+
+.block-image-wrapper:hover .image-resizer-handle {
+  opacity: 1;
+}
+
+.image-resizer-handle:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.image-resizer-handle:hover::after {
+  background: white;
+}
+
+.image-resizer-handle.left { left: -6px; }
+.image-resizer-handle.right { right: -6px; }
+
+.block-image-wrapper.resizing {
+  cursor: col-resize;
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
+
+.block-image-wrapper.resizing .image-resizer-handle {
+  opacity: 1;
+  background: var(--accent-primary);
+}
+
 
 .block-image-upload {
   display: flex;
