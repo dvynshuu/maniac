@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useBacklinkStore } from '../../stores/backlinkStore';
 import { usePageStore } from '../../stores/pageStore';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,8 @@ export default function BacklinksPanel({ pageId }) {
   const [expanded, setExpanded] = useState(true);
   const navigate = useNavigate();
   const pages = usePageStore(s => s.pages);
-  const backlinks = useBacklinkStore(s => s.getBacklinkDetails(pageId));
+  const backlinkDetails = useBacklinkStore(s => s.backlinkDetails);
+  const backlinks = useMemo(() => backlinkDetails[pageId] || [], [backlinkDetails, pageId]);
 
   if (backlinks.length === 0) return null;
 
