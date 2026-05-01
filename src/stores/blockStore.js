@@ -6,6 +6,7 @@ import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { useUIStore } from './uiStore';
 import { useUndoStore } from './undoStore';
+import { invalidateStore } from '../core/derivedCache';
 
 // Helper for debouncing Dexie writes per block ID
 const debouncedWrites = new Map();
@@ -73,6 +74,7 @@ export const useBlockStore = create((set, get) => ({
       };
     });
     set({ blockMap: initialMap, blockOrder: initialOrder });
+    invalidateStore('blockStore');
 
     if (key) {
       const decryptFn = async (b, k) => {
@@ -168,6 +170,7 @@ export const useBlockStore = create((set, get) => ({
       blockOrder: allBlocks.map(b => b.id),
       focusBlockId: block.id
     });
+    invalidateStore('blockStore');
 
     const dbBlock = await encryptBlockForDB(block, false);
     await db.blocks.add(dbBlock);

@@ -22,12 +22,12 @@ import DatabaseBlock from '../Database/DatabaseBlock';
 import TrackerBlock from '../Tracker/TrackerBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
+import { useChildBlockIds } from '../../hooks/useChildBlockIds';
 
 const BlockRenderer = memo(({ blockId, index }) => {
   const block = useBlockStore(s => s.blockMap[blockId]);
-  const childBlockIds = useBlockStore(useShallow(s =>
-    s.blockOrder.filter(id => s.blockMap[id]?.parentId === blockId)
-  ));
+  // Performance: incremental child map instead of O(n) filter
+  const childBlockIds = useChildBlockIds(blockId);
 
   const {
     attributes,

@@ -8,6 +8,9 @@ import { useSecurityStore } from './stores/securityStore';
 import { useIntelligenceStore } from './stores/intelligenceStore';
 import { useCrossTabSync } from './hooks/useCrossTabSync';
 import { undo, redo } from './core/commandBus';
+import { startCompaction, stopCompaction } from './core/sortKeyCompaction';
+import { terminateWorker } from './core/transformWorker';
+import { writeCoalescer } from './core/writeCoalescer';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
@@ -52,9 +55,18 @@ function App() {
         await loadPages();
         await loadTrackers();
         await useIntelligenceStore.getState().analyze();
+        // Start background performance services
+        startCompaction();
       }
     };
     init();
+
+    return () => {
+      // Cleanup performance services on unmount
+      stopCompaction();
+      terminateWorker();
+      writeCoalescer.forceFlush();
+    };
   }, [isLocked]);
 
   // Global keyboard shortcuts
