@@ -4,6 +4,7 @@
    ============================================ */
 
 :root {
+  color-scheme: dark;
   /* ---- Colors ---- */
   --bg-primary: #0a0a0b;
   --bg-secondary: #121215;

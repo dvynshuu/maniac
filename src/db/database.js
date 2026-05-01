@@ -54,47 +54,36 @@ db.version(6).stores({
 // Adds all tables to support the Notion-level architecture:
 //   pages, blocks, block_props, richtext_docs, relations,
 //   databases, db_rows, db_cells, ops, sync_state
-db.version(7).stores({
-  // pages(id, workspaceId, parentId, title, icon, cover, createdBy, createdAt, updatedAt, tombstonedAt?)
+// ─── Version 9: Comprehensive Schema Restoration ────────────────
+// Restores all essential tables for the full application suite.
+db.version(9).stores({
   pages: 'id, workspaceId, parentId, title, sortOrder, isArchived, createdBy, createdAt, updatedAt, tombstonedAt, lastViewedAt',
-
-  // blocks(id, pageId, parentId, type, orderKey, propsRef, richTextRef, version, actorId, updatedLogical)
-  blocks: 'id, pageId, parentId, type, orderKey, propsRef, richTextRef, version, actorId, updatedLogical, *words',
-
-  // block_props(blockId, jsonSchemaVersion, payload)
+  blocks: 'id, pageId, parentId, type, orderKey, propsRef, richTextRef, version, actorId, updatedAt, updatedLogical, *words',
   block_props: 'blockId, jsonSchemaVersion',
-
-  // richtext_docs(docId, crdtState, plainTextIndex, marksIndex)
   richtext_docs: 'docId',
-
-  // relations(edgeId, fromEntity, fromId, toEntity, toId, relationType, metadata)
   relations: 'edgeId, fromId, toId, relationType, [fromEntity+fromId], [toEntity+toId]',
-
-  // databases(dbId, schemaVersion, name, propertyDefs) — renamed from old schema
   database_defs: 'dbId, schemaVersion, name',
-
-  // db_rows(rowId, dbId, orderKey, version, actorId)
   db_rows: 'rowId, dbId, orderKey, version, actorId',
-
-  // db_cells(rowId+propertyId composite, value, valueType, version)
   db_cells: '[rowId+propertyId], rowId, propertyId, valueType, version',
-
-  // ops(opId, actorId, lamport, entityType, entityId, opType, payload, deps, createdAt)
   ops: 'opId, actorId, lamport, entityType, entityId, opType, createdAt, [entityType+entityId], [actorId+lamport]',
-
-  // sync_state(peerId, lastAckLamport, cursor, health)
   sync_state: 'peerId, health',
+  
+  // Storage & Assets
+  blobs: 'hash, createdAt',
+  
+  // Tracker System
+  trackers: 'id, name, createdAt, updatedAt',
+  tracker_entries: 'id, trackerId, createdAt, updatedAt',
+  
+  // Security & Legacy Ops
+  permissions: '++id, entityType, entityId, actorId, [entityType+entityId+actorId]',
+  operations: '++seq, id, actorId, entityType, entityId, timestamp, [entityType+entityId]',
 }).upgrade(tx => {
-  // Migrate existing blocks: rename sortOrder → orderKey for new schema
-  return tx.table('blocks').toCollection().modify(block => {
-    if (block.sortOrder && !block.orderKey) {
-      block.orderKey = block.sortOrder;
-    }
-    if (block.version === undefined) block.version = 0;
-    if (block.actorId === undefined) block.actorId = 'local-actor';
-    if (block.updatedLogical === undefined) block.updatedLogical = 0;
-    if (block.propsRef === undefined) block.propsRef = block.id;
-    if (block.richTextRef === undefined) block.richTextRef = block.id;
+  // Ensure all entities have basic logical/physical timestamps
+  const now = Date.now();
+  tx.table('blocks').toCollection().modify(b => {
+    if (!b.updatedAt) b.updatedAt = now;
+    if (b.version === undefined) b.version = 1;
   });
 });
 
