@@ -161,6 +161,7 @@ export async function transaction(fn) {
     // Merge all entries into a single undo unit
     if (_activeTransaction.entries.length > 0) {
       const mergedOps = _activeTransaction.entries.flatMap(e => e.ops);
+      // Inverse operations should be applied in reverse order
       const mergedInverse = _activeTransaction.entries.flatMap(e => e.inverseOps).reverse();
       _undoStack.push({
         ops: mergedOps,
@@ -190,9 +191,9 @@ export async function undo() {
   if (_undoStack.length === 0) return null;
   const entry = _undoStack.pop();
 
-  // Execute inverse operations directly (bypass undo stack)
+  // Execute inverse operations directly
   for (const inverseOp of entry.inverseOps) {
-    await applyInverse(inverseOp);
+    await executeOp(inverseOp);
   }
 
   _redoStack.push(entry);
@@ -209,7 +210,7 @@ export async function redo() {
 
   // Re-execute the original operations
   for (const op of entry.ops) {
-    await applyForward(op);
+    await executeOp(op);
   }
 
   _undoStack.push(entry);
@@ -220,133 +221,110 @@ export async function redo() {
 export function canUndo() { return _undoStack.length > 0; }
 export function canRedo() { return _redoStack.length > 0; }
 
-// ─── Inverse Application ───────────────────────────────────────
-// These apply operations without going through the full dispatch pipeline.
+// ─── Operation Execution ────────────────────────────────────────
+// Single entry point for applying operations to state and DB.
+// Used by Undo, Redo, and Cross-tab replay.
 
-async function applyInverse(op) {
-  const { entityType, entityId, op: opType, prevPayload } = op;
+export async function executeOp(operation) {
+  const { entityType, entityId, op: opType, payload, prevPayload } = operation;
 
   if (entityType === EntityType.BLOCK) {
-    if (opType === OpType.CREATE) {
-      // Inverse of create = delete
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      const newMap = { ...store.blockMap };
-      delete newMap[entityId];
-      useBlockStore.setState({
-        blockMap: newMap,
-        blockOrder: store.blockOrder.filter(id => id !== entityId),
-      });
-      await db.blocks.delete(entityId);
-    } else if (opType === OpType.DELETE && prevPayload) {
-      // Inverse of delete = re-create
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      useBlockStore.setState({
-        blockMap: { ...store.blockMap, [entityId]: prevPayload },
-        blockOrder: [...store.blockOrder, entityId].sort((a, b) => {
-          const blockA = store.blockMap[a] || prevPayload;
-          const blockB = store.blockMap[b] || prevPayload;
+    const { useBlockStore } = await import('../stores/blockStore');
+    const store = useBlockStore.getState();
+
+    switch (opType) {
+      case OpType.CREATE: {
+        const block = payload;
+        if (!block) break;
+        const newMap = { ...store.blockMap, [entityId]: block };
+        const newOrder = store.blockOrder.includes(entityId) 
+          ? [...store.blockOrder] 
+          : [...store.blockOrder, entityId];
+        
+        newOrder.sort((a, b) => {
+          const blockA = newMap[a];
+          const blockB = newMap[b];
           return String(blockA?.sortOrder || '').localeCompare(String(blockB?.sortOrder || ''));
-        }),
-      });
-      await db.blocks.add(prevPayload);
-    } else if (opType === OpType.UPDATE && prevPayload) {
-      // Inverse of update = restore previous state
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      const current = store.blockMap[entityId];
-      if (current) {
-        useBlockStore.setState({
-          blockMap: { ...store.blockMap, [entityId]: { ...current, ...prevPayload } },
         });
-        await db.blocks.update(entityId, prevPayload);
+
+        useBlockStore.setState({
+          blockMap: newMap,
+          blockOrder: newOrder,
+        });
+        await db.blocks.put(block);
+        break;
+      }
+
+      case OpType.DELETE: {
+        const newMap = { ...store.blockMap };
+        delete newMap[entityId];
+        useBlockStore.setState({
+          blockMap: newMap,
+          blockOrder: store.blockOrder.filter(id => id !== entityId),
+        });
+        await db.blocks.delete(entityId);
+        break;
+      }
+
+      case OpType.UPDATE:
+      case OpType.REORDER:
+      case OpType.CHANGE_TYPE: {
+        const current = store.blockMap[entityId];
+        if (current && payload) {
+          const updated = { ...current, ...payload };
+          const newMap = { ...store.blockMap, [entityId]: updated };
+          
+          let newOrder = store.blockOrder;
+          if (payload.sortOrder !== undefined && payload.sortOrder !== current.sortOrder) {
+            newOrder = [...store.blockOrder].sort((a, b) => {
+              const blockA = newMap[a];
+              const blockB = newMap[b];
+              return String(blockA?.sortOrder || '').localeCompare(String(blockB?.sortOrder || ''));
+            });
+          }
+
+          useBlockStore.setState({
+            blockMap: newMap,
+            blockOrder: newOrder,
+          });
+          await db.blocks.update(entityId, payload);
+        }
+        break;
       }
     }
   } else if (entityType === EntityType.PAGE) {
-    if (opType === OpType.CREATE) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({
-        pages: s.pages.filter(p => p.id !== entityId),
-      }));
-      await db.pages.delete(entityId);
-    } else if (opType === OpType.DELETE && prevPayload) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({
-        pages: [...s.pages, prevPayload],
-      }));
-      await db.pages.add(prevPayload);
-    } else if (opType === OpType.UPDATE && prevPayload) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({
-        pages: s.pages.map(p => p.id === entityId ? { ...p, ...prevPayload } : p),
-      }));
-      await db.pages.update(entityId, prevPayload);
-    }
-  }
+    const { usePageStore } = await import('../stores/pageStore');
 
-  // Log the inverse
-  await appendOp(op);
-  broadcastOp(op);
-}
+    switch (opType) {
+      case OpType.CREATE: {
+        if (!payload) break;
+        usePageStore.setState(s => ({ pages: [...s.pages, payload] }));
+        await db.pages.put(payload);
+        break;
+      }
 
-async function applyForward(op) {
-  const { entityType, entityId, op: opType, payload } = op;
+      case OpType.DELETE: {
+        usePageStore.setState(s => ({ pages: s.pages.filter(p => p.id !== entityId) }));
+        await db.pages.delete(entityId);
+        break;
+      }
 
-  if (entityType === EntityType.BLOCK) {
-    if (opType === OpType.CREATE && payload) {
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      useBlockStore.setState({
-        blockMap: { ...store.blockMap, [entityId]: payload },
-        blockOrder: [...store.blockOrder, entityId].sort((a, b) => {
-          const blockA = store.blockMap[a] || payload;
-          const blockB = store.blockMap[b] || payload;
-          return String(blockA?.sortOrder || '').localeCompare(String(blockB?.sortOrder || ''));
-        }),
-      });
-      await db.blocks.add(payload);
-    } else if (opType === OpType.DELETE) {
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      const newMap = { ...store.blockMap };
-      delete newMap[entityId];
-      useBlockStore.setState({
-        blockMap: newMap,
-        blockOrder: store.blockOrder.filter(id => id !== entityId),
-      });
-      await db.blocks.delete(entityId);
-    } else if (opType === OpType.UPDATE && payload) {
-      const { useBlockStore } = await import('../stores/blockStore');
-      const store = useBlockStore.getState();
-      const current = store.blockMap[entityId];
-      if (current) {
-        useBlockStore.setState({
-          blockMap: { ...store.blockMap, [entityId]: { ...current, ...payload } },
-        });
-        await db.blocks.update(entityId, payload);
+      case OpType.UPDATE: {
+        if (!payload) break;
+        usePageStore.setState(s => ({
+          pages: s.pages.map(p => p.id === entityId ? { ...p, ...payload } : p),
+        }));
+        await db.pages.update(entityId, payload);
+        break;
       }
     }
-  } else if (entityType === EntityType.PAGE) {
-    if (opType === OpType.CREATE && payload) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({ pages: [...s.pages, payload] }));
-      await db.pages.add(payload);
-    } else if (opType === OpType.DELETE) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({ pages: s.pages.filter(p => p.id !== entityId) }));
-      await db.pages.delete(entityId);
-    } else if (opType === OpType.UPDATE && payload) {
-      const { usePageStore } = await import('../stores/pageStore');
-      usePageStore.setState(s => ({
-        pages: s.pages.map(p => p.id === entityId ? { ...p, ...payload } : p),
-      }));
-      await db.pages.update(entityId, payload);
-    }
   }
 
-  await appendOp(op);
-  broadcastOp(op);
+  // Cross-tab broadcast (only if it's a local execution like undo/redo)
+  // ReplayRemoteOp will NOT call executeOp to avoid loops.
+  if (operation.meta?.source !== 'remote') {
+    broadcastOp(operation);
+  }
 }
 
 // ─── Cross-Tab Replay ───────────────────────────────────────────
@@ -356,55 +334,10 @@ async function applyForward(op) {
  * Applies it to the local store without re-broadcasting.
  */
 export async function replayRemoteOp(operation) {
-  const { entityType, entityId, op: opType, payload, prevPayload } = operation;
-
-  event('command:remote', { entityType, entityId, opType });
-
-  if (entityType === EntityType.BLOCK) {
-    const { useBlockStore } = await import('../stores/blockStore');
-
-    if (opType === OpType.CREATE && payload) {
-      const store = useBlockStore.getState();
-      if (!store.blockMap[entityId]) {
-        useBlockStore.setState({
-          blockMap: { ...store.blockMap, [entityId]: payload },
-          blockOrder: [...store.blockOrder, entityId],
-        });
-      }
-    } else if (opType === OpType.UPDATE && payload) {
-      const store = useBlockStore.getState();
-      if (store.blockMap[entityId]) {
-        useBlockStore.setState({
-          blockMap: { ...store.blockMap, [entityId]: { ...store.blockMap[entityId], ...payload } },
-        });
-      }
-    } else if (opType === OpType.DELETE) {
-      const store = useBlockStore.getState();
-      const newMap = { ...store.blockMap };
-      delete newMap[entityId];
-      useBlockStore.setState({
-        blockMap: newMap,
-        blockOrder: store.blockOrder.filter(id => id !== entityId),
-      });
-    }
-  } else if (entityType === EntityType.PAGE) {
-    const { usePageStore } = await import('../stores/pageStore');
-
-    if (opType === OpType.CREATE && payload) {
-      usePageStore.setState(s => {
-        if (s.pages.some(p => p.id === entityId)) return s;
-        return { pages: [...s.pages, payload] };
-      });
-    } else if (opType === OpType.UPDATE && payload) {
-      usePageStore.setState(s => ({
-        pages: s.pages.map(p => p.id === entityId ? { ...p, ...payload } : p),
-      }));
-    } else if (opType === OpType.DELETE) {
-      usePageStore.setState(s => ({
-        pages: s.pages.filter(p => p.id !== entityId),
-      }));
-    }
-  }
+  // Mark as remote to avoid re-broadcast
+  operation.meta = { ...operation.meta, source: 'remote' };
+  await executeOp(operation);
+  event('command:remote', { type: operation.op, entityId: operation.entityId });
 }
 
 // ─── Debug Helpers ──────────────────────────────────────────────
