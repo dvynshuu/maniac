@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { debounce } from '../../../utils/helpers';
 import { Copy, Check } from 'lucide-react';
 
@@ -16,13 +17,12 @@ export default function CodeBlock({ block }) {
   const localValue = useRef(block.content);
   const [copied, setCopied] = useState(false);
   
-  const updateBlock = useBlockStore(s => s.updateBlock);
-  const changeBlockType = useBlockStore(s => s.changeBlockType);
+  const engine = useEditorEngine();
   const focusBlockId = useBlockStore(s => s.focusBlockId);
 
   const debouncedSave = useRef(
     debounce((id, content) => {
-      updateBlock(id, { content });
+      engine.updateBlock(id, { content });
     }, 800)
   ).current;
 
@@ -54,7 +54,7 @@ export default function CodeBlock({ block }) {
     const currentText = contentRef.current?.textContent || "";
     if (currentText !== block.content) {
       localValue.current = currentText;
-      updateBlock(block.id, { content: currentText });
+      engine.updateBlock(block.id, { content: currentText });
     }
   };
 
@@ -65,7 +65,7 @@ export default function CodeBlock({ block }) {
     }
     if (e.key === 'Backspace' && contentRef.current.textContent === '') {
       e.preventDefault();
-      changeBlockType(block.id, 'text');
+      engine.convertType(block.id, 'text');
     }
   };
 
@@ -79,11 +79,11 @@ export default function CodeBlock({ block }) {
   };
 
   const handleLanguageChange = (e) => {
-    updateBlock(block.id, { properties: { ...block.properties, language: e.target.value } });
+    engine.updateBlock(block.id, { properties: { ...block.properties, language: e.target.value } });
   };
 
   const handleCaptionChange = (e) => {
-    updateBlock(block.id, { properties: { ...block.properties, caption: e.target.value } });
+    engine.updateBlock(block.id, { properties: { ...block.properties, caption: e.target.value } });
   };
 
   return (

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabaseStore } from '../../stores/databaseStore';
-import { useBlockStore } from '../../stores/blockStore';
 import { Plus, MoreHorizontal, Table as TableIcon, Columns3, Calendar, Clock, LayoutGrid } from 'lucide-react';
 import ColumnHeader from './ColumnHeader';
 import CellRenderer from './CellRenderer';
@@ -14,6 +13,7 @@ import GalleryView from './views/GalleryView';
 import { applyFilters, applySorts } from '../../core/queryEngine';
 import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
+import { useEditorEngine } from '../../hooks/useEditorEngine';
 
 const VIEW_TYPES = {
   table: { label: 'Table', icon: TableIcon },
@@ -59,7 +59,7 @@ export default function DatabaseBlock({ block }) {
   const updateCell = useDatabaseStore(s => s.updateCell);
   const updateCellImmediate = useDatabaseStore(s => s.updateCellImmediate);
   const updateProperty = useDatabaseStore(s => s.updateProperty);
-  const updateBlock = useBlockStore(s => s.updateBlock);
+  const engine = useEditorEngine();
 
   const [activeView, setActiveView] = useState(block.properties?.activeView || 'table');
   const [activeCell, setActiveCell] = useState(null);
@@ -108,8 +108,8 @@ export default function DatabaseBlock({ block }) {
   // Persist active view
   const switchView = useCallback((view) => {
     setActiveView(view);
-    updateBlock(block.id, { properties: { ...block.properties, activeView: view } });
-  }, [block.id, block.properties, updateBlock]);
+    engine.updateBlock(block.id, { properties: { ...block.properties, activeView: view } });
+  }, [block.id, block.properties, engine]);
 
   const handleAddRow = async () => {
     if (isAddingRow) return;
@@ -166,7 +166,7 @@ export default function DatabaseBlock({ block }) {
         });
       }
 
-      updateBlock(block.id, {
+      engine.updateBlock(block.id, {
         type: 'database',
         properties: { schema: newSchema, rows: newRows }
       });

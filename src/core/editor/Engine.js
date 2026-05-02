@@ -40,13 +40,15 @@ export class EditorEngine {
 
   /**
    * Insert a new block after an existing one.
+   * properties may include { parentId } to override the derived parent.
    */
   async insertAfter(blockId, type = 'text', properties = {}) {
     const tx = this.startTransaction();
-    const block = useBlockStore.getState().blockMap[blockId];
-    const parentId = block ? block.parentId : null;
+    const { parentId: overrideParentId, ...restProperties } = properties;
+    const block = blockId ? useBlockStore.getState().blockMap[blockId] : null;
+    const parentId = overrideParentId !== undefined ? overrideParentId : (block ? block.parentId : null);
     
-    tx.createBlock(type, parentId, blockId, properties);
+    tx.createBlock(type, parentId, blockId, restProperties);
     return tx.commit();
   }
 

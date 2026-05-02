@@ -23,11 +23,13 @@ import TrackerBlock from '../Tracker/TrackerBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
+import { useEditorEngine } from '../../hooks/useEditorEngine';
 
 const BlockRenderer = memo(({ blockId, index }) => {
   const block = useBlockStore(s => s.blockMap[blockId]);
   // Performance: incremental child map instead of O(n) filter
   const childBlockIds = useChildBlockIds(blockId);
+  const engine = useEditorEngine();
 
   const {
     attributes,
@@ -96,9 +98,6 @@ const BlockRenderer = memo(({ blockId, index }) => {
     }
   };
 
-  const moveBlockUp = useBlockStore(s => s.moveBlockUp);
-  const moveBlockDown = useBlockStore(s => s.moveBlockDown);
-  const deleteBlock = useBlockStore(s => s.deleteBlock);
   const [menuPos, setMenuPos] = useState(null);
 
   const handleMenuClick = (e) => {
@@ -107,22 +106,72 @@ const BlockRenderer = memo(({ blockId, index }) => {
     setMenuPos({ x: e.clientX, y: e.clientY });
   };
 
+  const handleMoveUp = () => {
+    const { blockOrder, blockMap } = useBlockStore.getState();
+    const idx = blockOrder.indexOf(block.id);
+    if (idx <= 0) return;
+    // Find the previous sibling with the same parent
+    for (let i = idx - 1; i >= 0; i--) {
+      const candidateId = blockOrder[i];
+      const candidate = blockMap[candidateId];
+      if ((candidate?.parentId || null) === (block.parentId || null)) {
+        // Move before this sibling by finding what's before it
+        const prevIdx = i - 1;
+        let afterId = null;
+        for (let j = prevIdx; j >= 0; j--) {
+          if ((blockMap[blockOrder[j]]?.parentId || null) === (block.parentId || null)) {
+            afterId = blockOrder[j];
+            break;
+          }
+        }
+        engine.move(block.id, block.parentId || null, afterId);
+        return;
+      }
+    }
+  };
+
+  const handleMoveDown = () => {
+    const { blockOrder, blockMap } = useBlockStore.getState();
+    const idx = blockOrder.indexOf(block.id);
+    // Find the next sibling with the same parent
+    for (let i = idx + 1; i < blockOrder.length; i++) {
+      const candidateId = blockOrder[i];
+      const candidate = blockMap[candidateId];
+      if ((candidate?.parentId || null) === (block.parentId || null)) {
+        // Move after this sibling
+        engine.move(block.id, block.parentId || null, candidateId);
+        return;
+      }
+    }
+  };
+
   const handleDuplicate = async () => {
-    const { db } = await import('../../db/database');
-    const { createId, generateLexicalOrder } = await import('../../utils/helpers');
-    const newSortOrder = generateLexicalOrder(block.sortOrder, null);
-    const newBlock = { ...block, id: createId(), sortOrder: newSortOrder, createdAt: Date.now(), updatedAt: Date.now() };
-    await db.blocks.add(newBlock);
-    useBlockStore.getState().loadBlocks(block.pageId);
+    const { dispatch } = await import('../../core/commandBus');
+    await dispatch({
+      type: 'block/create',
+      payload: {
+        type: block.type,
+        parentId: block.parentId,
+        afterBlockId: block.id,
+        properties: {
+          content: block.content,
+          properties: { ...block.properties },
+        }
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    engine.deleteBlock(block.id);
   };
 
   const menuItems = [
-    { label: 'Move Up', icon: ArrowUp, action: () => moveBlockUp(block.id) },
-    { label: 'Move Down', icon: ArrowDown, action: () => moveBlockDown(block.id) },
+    { label: 'Move Up', icon: ArrowUp, action: handleMoveUp },
+    { label: 'Move Down', icon: ArrowDown, action: handleMoveDown },
     'divider',
     { label: 'Duplicate', icon: Copy, action: handleDuplicate },
     'divider',
-    { label: 'Delete', icon: Trash2, action: () => deleteBlock(block.id), danger: true },
+    { label: 'Delete', icon: Trash2, action: handleDelete, danger: true },
   ];
 
   return (

@@ -4,6 +4,7 @@ import { useBlockStore } from './blockStore';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { createProperty, createDatabaseRow, createId, debounce } from '../utils/helpers';
+import { dispatch } from '../core/commandBus';
 
 const encryptCellForDB = async (cellObj) => {
   const key = useSecurityStore.getState().derivedKey;
@@ -37,11 +38,13 @@ export const useDatabaseStore = create((set, get) => ({
         const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
         await db.database_rows.bulkPut(rowsToInsert);
         
-        const block = useBlockStore.getState().getBlock(blockId);
         if (block) {
           const newProps = { ...block.properties };
           delete newProps.rows;
-          await useBlockStore.getState().updateBlock(blockId, { properties: newProps });
+          await dispatch({
+            type: 'block/update',
+            payload: { blockId, updates: { properties: newProps } }
+          });
         }
       }
 
@@ -124,8 +127,9 @@ export const useDatabaseStore = create((set, get) => ({
       state.debouncedSaves[blockId] = debounce((id, data) => {
         const block = useBlockStore.getState().getBlock(id);
         if (block) {
-          useBlockStore.getState().updateBlock(id, {
-            properties: { ...block.properties, ...data }
+          dispatch({
+            type: 'block/update',
+            payload: { blockId: id, updates: { properties: { ...block.properties, ...data } } }
           });
         }
       }, 500);
@@ -137,8 +141,9 @@ export const useDatabaseStore = create((set, get) => ({
   _immediateSave: async (blockId, updates) => {
     const block = useBlockStore.getState().getBlock(blockId);
     if (block) {
-      await useBlockStore.getState().updateBlock(blockId, {
-        properties: { ...block.properties, ...updates }
+      await dispatch({
+        type: 'block/update',
+        payload: { blockId, updates: { properties: { ...block.properties, ...updates } } }
       });
     }
   },

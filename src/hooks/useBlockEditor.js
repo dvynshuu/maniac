@@ -7,7 +7,6 @@ import Underline from '@tiptap/extension-underline';
 import { Mark, mergeAttributes } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBlockStore } from '../stores/blockStore';
-import { useUndoStore } from '../stores/undoStore';
 import { useUIStore } from '../stores/uiStore';
 import { debounce } from '../utils/helpers';
 import { sanitize } from '../utils/sanitizer';
@@ -209,7 +208,7 @@ export function useBlockEditor(block, options = {}) {
     onBlur: ({ editor: ed }) => {
       const html = sanitize(ed.getHTML());
       if (html !== block.content) {
-        updateBlock(block.id, { content: html });
+        engine.updateBlock(block.id, { content: html });
       }
     },
   });

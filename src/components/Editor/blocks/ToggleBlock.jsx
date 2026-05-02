@@ -1,15 +1,15 @@
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
-import { useBlockStore } from '../../../stores/blockStore';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { ChevronRight } from 'lucide-react';
 import BlockRenderer from '../BlockRenderer';
 import { useShallow } from 'zustand/react/shallow';
+import { useBlockStore } from '../../../stores/blockStore';
 
 export default function ToggleBlock({ block }) {
   const expanded = block.properties?.expanded ?? true;
   
-  const updateBlock = useBlockStore(s => s.updateBlock);
-  const addBlock = useBlockStore(s => s.addBlock);
+  const engine = useEditorEngine();
 
   const childBlockIds = useBlockStore(useShallow(s => 
     s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
@@ -20,21 +20,21 @@ export default function ToggleBlock({ block }) {
     backspaceAction: 'convert',
     onEnter: () => {
       if (editor) {
-        updateBlock(block.id, { content: editor.getHTML() });
+        engine.updateBlock(block.id, { content: editor.getHTML() });
       }
       if (expanded) {
         // Add a child inside the toggle
-        addBlock(block.pageId, 'text', null, '', {}, block.id);
+        engine.insertAfter(null, 'text', { parentId: block.id });
       } else {
         // Add sibling below toggle
-        addBlock(block.pageId, 'text', block.id, '', {}, block.parentId);
+        engine.insertAfter(block.id, 'text');
       }
       return true; // handled
     },
   });
 
   const toggleExpanded = () => {
-    updateBlock(block.id, {
+    engine.updateBlock(block.id, {
       properties: { ...block.properties, expanded: !expanded }
     });
   };
@@ -59,7 +59,7 @@ export default function ToggleBlock({ block }) {
             <div 
               className="block-text text-placeholder" 
               style={{ padding: '4px 8px', cursor: 'text', color: 'var(--text-placeholder)', fontSize: '14px' }}
-              onClick={() => addBlock(block.pageId, 'text', null, '', {}, block.id)}
+              onClick={() => engine.insertAfter(null, 'text', { parentId: block.id })}
             >
               Empty toggle. Click to add content...
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useBlockStore } from '../../../stores/blockStore';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
 import { Plus, Minus, Layout, GripVertical } from 'lucide-react';
 
@@ -16,12 +16,12 @@ export default function TableBlock({ block }) {
   const [resizingRow, setResizingRow] = useState(null);
   const resizerRef = useRef({ startX: 0, startY: 0, startSize: 0 });
 
-  const updateBlock = useBlockStore(s => s.updateBlock);
+  const engine = useEditorEngine();
   
   // Clean off the bad columns/rows schema if present
   useEffect(() => {
     if (!isMigrated || !block.properties.cells) {
-      updateBlock(block.id, { 
+      engine.updateBlock(block.id, { 
         properties: { 
           cells: [['', ''], ['', '']], 
           hasHeader: true,
@@ -38,7 +38,7 @@ export default function TableBlock({ block }) {
   }, [block.properties.columnWidths, block.properties.rowHeights]);
 
   const save = (newCells, newHeader = hasHeader, newWidths = columnWidths, newHeights = rowHeights) => {
-    updateBlock(block.id, { 
+    engine.updateBlock(block.id, { 
       properties: { 
         cells: newCells,
         hasHeader: newHeader,

@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
-import { useBlockStore } from '../../../stores/blockStore';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
 
@@ -10,8 +10,7 @@ export default function TextBlock({ block, index }) {
   const [slashQuery, setSlashQuery] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
-  const updateBlock = useBlockStore(s => s.updateBlock);
-  const changeBlockType = useBlockStore(s => s.changeBlockType);
+  const engine = useEditorEngine();
 
   const editor = useBlockEditor(block, {
     placeholder: "Type '/' for commands or '@' to mention",
@@ -68,10 +67,10 @@ export default function TextBlock({ block, index }) {
     // Remove slash and query from content
     const beforeSlash = text.substring(0, lastSlashIndex);
     editor.commands.setContent(beforeSlash ? `<p>${beforeSlash}</p>` : '', false);
-    updateBlock(block.id, { content: beforeSlash ? `<p>${beforeSlash}</p>` : '' });
-    changeBlockType(block.id, type);
+    engine.updateBlock(block.id, { content: beforeSlash ? `<p>${beforeSlash}</p>` : '' });
+    engine.convertType(block.id, type);
     setShowSlashMenu(false);
-  }, [editor, block.id, updateBlock, changeBlockType]);
+  }, [editor, block.id, engine]);
 
   const handleSelectMention = useCallback((page) => {
     if (!editor) return;
@@ -84,10 +83,10 @@ export default function TextBlock({ block, index }) {
     const newHtml = `<p>${beforeTrigger}${mentionHtml}&nbsp;</p>`;
 
     editor.commands.setContent(newHtml, false);
-    updateBlock(block.id, { content: newHtml });
+    engine.updateBlock(block.id, { content: newHtml });
     setShowMentionMenu(false);
     editor.commands.focus('end');
-  }, [editor, block.id, updateBlock]);
+  }, [editor, block.id, engine]);
 
   if (!editor) return null;
 
