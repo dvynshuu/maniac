@@ -43,6 +43,37 @@ export function use(middlewareFn) {
   _middleware.push(middlewareFn);
 }
 
+// ─── Structural Normalization Middleware ───────────────────────
+import { Normalizer } from './editor/Normalizer';
+import { useBlockStore } from '../stores/blockStore';
+
+use(async (command, next) => {
+  const { type, payload } = command;
+  
+  if (type === 'block/create' || type === 'block/move') {
+    const targetParentId = payload.targetParentId || payload.parentId;
+    if (targetParentId) {
+      const store = useBlockStore.getState();
+      const parent = store.blockMap[targetParentId];
+      
+      // 1. Constraint Check: Can this parent have children?
+      if (parent && !Normalizer.canHaveChildren(parent.type)) {
+        console.warn(`[Normalizer] Parent ${parent.type} cannot have children. Redirecting to root.`);
+        if (payload.targetParentId !== undefined) payload.targetParentId = null;
+        if (payload.parentId !== undefined) payload.parentId = null;
+      }
+
+      // 2. Cycle Prevention (for moves)
+      if (type === 'block/move' && !Normalizer.isSafeMove(payload.blockId, targetParentId)) {
+        console.error(`[Normalizer] Cyclic move detected. Blocking command.`);
+        return null; // Block the command
+      }
+    }
+  }
+
+  return next(command);
+});
+
 // ─── Command Handlers ───────────────────────────────────────────
 // Each command type maps to a handler that returns { ops, inverseOps, zustandUpdate }.
 
@@ -274,6 +305,16 @@ export async function executeOp(operation) {
           const updated = { ...current, ...payload };
           const newMap = { ...store.blockMap, [entityId]: updated };
           
+          // DAG Synchronization: If this is a synced block, update all other instances
+          const sourceId = current.properties?.sourceBlockId;
+          if (sourceId && payload.content !== undefined) {
+            Object.values(newMap).forEach(b => {
+              if (b.properties?.sourceBlockId === sourceId && b.id !== entityId) {
+                newMap[b.id] = { ...b, content: payload.content };
+              }
+            });
+          }
+
           let newOrder = store.blockOrder;
           if (payload.sortOrder !== undefined && payload.sortOrder !== current.sortOrder) {
             newOrder = [...store.blockOrder].sort((a, b) => {
@@ -287,7 +328,19 @@ export async function executeOp(operation) {
             blockMap: newMap,
             blockOrder: newOrder,
           });
+
+          // Persist the primary change
           await db.blocks.update(entityId, payload);
+          
+          // Persist synced changes if any
+          if (sourceId && payload.content !== undefined) {
+            const syncedIds = Object.values(store.blockMap)
+              .filter(b => b.properties?.sourceBlockId === sourceId && b.id !== entityId)
+              .map(b => b.id);
+            if (syncedIds.length > 0) {
+              await db.blocks.where('id').anyOf(syncedIds).modify({ content: payload.content });
+            }
+          }
         }
         break;
       }

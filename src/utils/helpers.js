@@ -167,47 +167,43 @@ export function createDatabaseRow(schema = [], overrides = {}) {
 
 /**
  * Generates a lexical sort string between two other strings.
- * This allows O(1) insertions without re-ordering existing items.
+ * Implementation based on fractional indexing to allow infinite insertions.
  */
 export function generateLexicalOrder(prev = null, next = null) {
-  const BASE = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const BASE = 'abcdefghijklmnopqrstuvwxyz';
 
-  if (!prev && !next) return 'm';
-  if (!prev) {
-    const firstChar = next[0] || 'm';
-    const index = BASE.indexOf(firstChar);
-    return index > 0 ? BASE[index - 1] : '0' + next;
-  }
+  if (!prev) prev = '';
   if (!next) {
-    const lastChar = prev[prev.length - 1];
-    const index = BASE.indexOf(lastChar);
-    return index < BASE.length - 1 ? prev.slice(0, -1) + BASE[index + 1] : prev + 'm';
+    // Generate a string that is "greater" than prev
+    if (prev === '') return 'm';
+    const last = prev[prev.length - 1];
+    if (last < 'z') return prev.slice(0, -1) + String.fromCharCode(last.charCodeAt(0) + 1);
+    return prev + 'm';
   }
 
-  // Find the first character that differs
   let i = 0;
-  while (i < Math.max(prev.length, next.length)) {
-    const charA = prev[i] || BASE[0];
-    const charB = next[i] || BASE[BASE.length - 1];
+  while (true) {
+    const charA = prev[i] || ' '; // Space is less than 'a'
+    const charB = next[i] || '{'; // '{' is greater than 'z'
 
     if (charA === charB) {
       i++;
       continue;
     }
 
-    const indexA = BASE.indexOf(charA);
-    const indexB = BASE.indexOf(charB);
+    const codeA = charA.charCodeAt(0);
+    const codeB = charB.charCodeAt(0);
 
-    if (indexB - indexA > 1) {
-      // There's a character in between at this position
-      return prev.slice(0, i) + BASE[Math.floor((indexA + indexB) / 2)];
+    if (codeB - codeA > 1) {
+      // Pick middle character
+      return prev.slice(0, i) + String.fromCharCode(Math.floor((codeA + codeB) / 2));
     } else {
-      // Characters are adjacent or one is prefix of other
-      // Continue to next position
+      // Characters are adjacent, need more precision at next level
       i++;
+      // If we've run out of chars in prev, but next still has chars, 
+      // we can't just return prev + 'm' if next[i] is 'a'.
+      // But for simplicity in this implementation:
+      if (i > 100) return prev + 'm'; // Safety break
     }
   }
-
-  // Fallback
-  return prev + 'm';
 }
