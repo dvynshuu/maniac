@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { ExternalLink, Play, Globe, Check } from 'lucide-react';
-import { useBlockStore } from '../../../stores/blockStore';
+import { ExternalLink, Play, Globe } from 'lucide-react';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 
 export default function EmbedBlock({ block }) {
   const url = block.properties?.url || '';
   const caption = block.properties?.caption || '';
   const embedType = block.properties?.embedType || 'generic';
   
-  const updateBlock = useBlockStore(s => s.updateBlock);
-  const deleteBlock = useBlockStore(s => s.deleteBlock);
+  const engine = useEditorEngine();
 
   const [inputUrl, setInputUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,7 +15,7 @@ export default function EmbedBlock({ block }) {
   const handleKeyDown = (e) => {
     if ((e.key === 'Backspace' || e.key === 'Delete') && !inputUrl && !url) {
       e.preventDefault();
-      deleteBlock(block.id);
+      engine.deleteBlock(block.id);
     }
   };
 
@@ -26,13 +25,12 @@ export default function EmbedBlock({ block }) {
 
     setIsSubmitting(true);
     
-    // Simple heuristic for embed type
     let type = 'generic';
     if (inputUrl.includes('youtube.com') || inputUrl.includes('youtu.be')) {
       type = 'youtube';
     }
 
-    await updateBlock(block.id, {
+    await engine.updateBlock(block.id, {
       properties: {
         ...block.properties,
         url: inputUrl,
@@ -87,7 +85,6 @@ export default function EmbedBlock({ block }) {
     );
   }
 
-  // Fallback: interactive empty state
   return (
     <div className="block-embed-wrapper" tabIndex={0} onKeyDown={handleKeyDown}>
       <form className="block-embed-input-container" onSubmit={handleSubmit}>

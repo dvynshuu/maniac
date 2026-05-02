@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTrackerStore } from '../../stores/trackerStore';
-import { useBlockStore } from '../../stores/blockStore';
+import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { Database, LayoutGrid, List, Plus, Settings } from 'lucide-react';
 import TrackerTable from './TrackerTable';
 import TrackerCards from './TrackerCards';
@@ -11,14 +11,13 @@ export default function TrackerBlock({ block }) {
     const trackers = useTrackerStore(s => s.trackers);
     const addTracker = useTrackerStore(s => s.addTracker);
     const updateTracker = useTrackerStore(s => s.updateTracker);
-    const loadEntries = useTrackerStore(s => s.loadEntries);
-    const entries = useTrackerStore(s => s.entries);
     
-    // We bind a tracker to this block via property
+    const engine = useEditorEngine();
+    
     const trackerId = block.properties?.trackerId;
     const tracker = trackers.find(t => t.id === trackerId);
 
-    const [viewType, setViewType] = useState('table'); // table | card
+    const [viewType, setViewType] = useState('table');
     const [isEditingFields, setIsEditingFields] = useState(false);
     const [entryModalOpen, setEntryModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
@@ -33,7 +32,6 @@ export default function TrackerBlock({ block }) {
         });
     }, [trackerId, entryModalOpen]);
 
-    // If block doesn't have a tracker yet, show setup UI
     if (!trackerId || !tracker) {
         return (
             <div className="tracker-container" contentEditable={false}>
@@ -44,7 +42,7 @@ export default function TrackerBlock({ block }) {
                         className="btn btn-primary btn-sm"
                         onClick={async () => {
                             const t = await addTracker();
-                            useBlockStore.getState().updateBlock(block.id, {
+                            engine.updateBlock(block.id, {
                                 properties: { ...block.properties, trackerId: t.id }
                             });
                         }}

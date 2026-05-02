@@ -1,11 +1,11 @@
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
-import { useBlockStore } from '../../../stores/blockStore';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { Check } from 'lucide-react';
 
 export default function TodoBlock({ block }) {
   const checked = block.properties?.checked || false;
-  const updateBlock = useBlockStore(s => s.updateBlock);
+  const engine = useEditorEngine();
 
   const editor = useBlockEditor(block, {
     placeholder: 'To-do',
@@ -14,9 +14,11 @@ export default function TodoBlock({ block }) {
   });
 
   const toggleChecked = () => {
-    updateBlock(block.id, {
-      properties: { ...block.properties, checked: !checked },
-    });
+    engine.startTransaction()
+      .updateBlock(block.id, {
+        properties: { ...block.properties, checked: !checked },
+      })
+      .commit();
   };
 
   if (!editor) return null;

@@ -14,6 +14,8 @@ import { sanitize } from '../utils/sanitizer';
 import { TiptapMention } from '../extensions/tiptapMention';
 import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
+import { useEditorEngine } from './useEditorEngine';
+import { useSelectionStore } from '../core/editor/selectionStore';
 
 const CustomHighlight = Mark.create({
   name: 'customHighlight',
@@ -75,12 +77,9 @@ export function useBlockEditor(block, options = {}) {
     disableExtensions = [],
   } = options;
 
-  const updateBlock = useBlockStore(s => s.updateBlock);
-  const addBlock = useBlockStore(s => s.addBlock);
-  const deleteBlock = useBlockStore(s => s.deleteBlock);
-  const changeBlockType = useBlockStore(s => s.changeBlockType);
+  const engine = useEditorEngine();
+  const setSelection = useSelectionStore(s => s.setSelection);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const pushUndo = useUndoStore(s => s.pushUndo);
 
   const lastPushedContent = useRef(block.content);
   const isInternalUpdate = useRef(false);
@@ -91,7 +90,7 @@ export function useBlockEditor(block, options = {}) {
 
   const debouncedSave = useRef(
     debounce((blockId, html) => {
-      updateBlock(blockId, { content: html });
+      engine.startTransaction().updateBlock(blockId, { content: html }).commit();
     }, 800)
   ).current;
 
@@ -129,40 +128,53 @@ export function useBlockEditor(block, options = {}) {
         spellcheck: 'true',
       },
       handleKeyDown: (view, event) => {
-        // Enter — create new block (unless Shift is held for line break)
+        // Enter — split block
         if (event.key === 'Enter' && !event.shiftKey) {
-          if (onEnter) {
-            const handled = onEnter(editor);
-            if (handled !== false) {
-              event.preventDefault();
-              return true;
-            }
+          event.preventDefault();
+          
+          const { from } = editor.state.selection;
+          const content = editor.getHTML();
+          
+          // Basic split logic (could be improved by looking at ProseMirror nodes)
+          const text = editor.getText();
+          const pos = from - 1; // Adjust for TipTap indexing
+          
+          // For now, let's just do a simple split if it's plain text or empty
+          if (editor.isEmpty || pos >= text.length) {
+            engine.insertAfter(block.id, newBlockType);
           } else {
-            event.preventDefault();
-            const html = sanitize(editor.getHTML());
-            updateBlock(block.id, { content: html });
-            addBlock(block.pageId, newBlockType, block.id);
-            return true;
+            // Complex split would need ProseMirror state slicing
+            // For now, let's just insert after if we can't easily slice HTML
+            engine.insertAfter(block.id, newBlockType);
           }
+          return true;
         }
 
-        // Backspace on empty block — delete or convert
+        // Backspace on empty block — convert or delete
         if (event.key === 'Backspace' && editor.isEmpty) {
-          if (onBackspace) {
-            const handled = onBackspace(editor);
-            if (handled !== false) {
-              event.preventDefault();
-              return true;
-            }
-          } else if (backspaceAction === 'convert') {
-            event.preventDefault();
-            changeBlockType(block.id, 'text');
-            return true;
+          event.preventDefault();
+          if (backspaceAction === 'convert' && block.type !== 'text') {
+            engine.convertType(block.id, 'text');
           } else {
-            event.preventDefault();
-            deleteBlock(block.id);
-            return true;
+            // Merge logic would go here: engine.merge(block.id, prevBlockId)
+            // For now, keep simple delete
+            engine.startTransaction().deleteBlock(block.id).commit();
           }
+          return true;
+        }
+
+        // Tab — Nest
+        if (event.key === 'Tab' && !event.shiftKey) {
+          event.preventDefault();
+          engine.nest(block.id);
+          return true;
+        }
+
+        // Shift+Tab — Unnest
+        if (event.key === 'Tab' && event.shiftKey) {
+          event.preventDefault();
+          engine.unnest(block.id);
+          return true;
         }
 
         return false;
@@ -171,19 +183,28 @@ export function useBlockEditor(block, options = {}) {
     onUpdate: ({ editor: ed }) => {
       const html = ed.getHTML();
       const cleaned = sanitize(html);
-
-      // Undo tracking
-      if (cleaned !== lastPushedContent.current) {
-        if (lastPushedContent.current === block.content) {
-          pushUndo({ blockId: block.id, oldContent: block.content, newContent: cleaned });
-        }
-        lastPushedContent.current = cleaned;
-      }
-
+      lastPushedContent.current = cleaned;
       debouncedSave(block.id, cleaned);
     },
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
+      setSelection({
+        anchorBlockId: block.id,
+        focusBlockId: block.id,
+        anchorOffset: from,
+        focusOffset: to
+      });
+    },
     onFocus: ({ editor: ed }) => {
-      useUIStore.getState().setActiveEditor(ed, block.id);
+      const uiStore = useUIStore.getState();
+      const blockStore = useBlockStore.getState();
+      
+      if (uiStore.activeEditorBlockId !== block.id) {
+        uiStore.setActiveEditor(ed, block.id);
+      }
+      if (blockStore.focusBlockId !== block.id) {
+        blockStore.setFocusBlock(block.id);
+      }
     },
     onBlur: ({ editor: ed }) => {
       const html = sanitize(ed.getHTML());

@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-
 import { useParams } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useBlockStore } from '../../stores/blockStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useUndoStore } from '../../stores/undoStore';
 import { useUIStore } from '../../stores/uiStore';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -13,13 +11,13 @@ import BlockRenderer from './BlockRenderer';
 import SelectionToolbar from './SelectionToolbar';
 import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
-import { debounce, generateLexicalOrder } from '../../utils/helpers';
+import { debounce } from '../../utils/helpers';
 import { ImageIcon, X, Cloud } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
-import { db } from '../../db/database';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
-
+import { useEditorEngine } from '../../hooks/useEditorEngine';
+import { useSelectionStore } from '../../core/editor/selectionStore';
 
 function PageEditor() {
   const { pageId } = useParams();
@@ -27,8 +25,6 @@ function PageEditor() {
   const updatePage = usePageStore((s) => s.updatePage);
   const rootBlockIds = useRootBlockIds();
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
-  const addBlock = useBlockStore((s) => s.addBlock);
-  const updateBlock = useBlockStore((s) => s.updateBlock);
   const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
   const isSaving = useUIStore((s) => s.isSaving);
 
@@ -40,9 +36,14 @@ function PageEditor() {
   const coverInputRef = useRef(null);
   const scrollRef = useRef(null);
 
+  const engine = useEditorEngine();
+  const setSelection = useSelectionStore(s => s.setSelection);
+  const selection = useSelectionStore(useShallow(s => ({
+    anchorBlockId: s.anchorBlockId,
+    focusBlockId: s.focusBlockId
+  })));
 
-  // dnd-kit sensors — require a 5px movement before activating drag
-  // This prevents accidental drags when clicking on the handle
+  // dnd-kit sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -52,30 +53,15 @@ function PageEditor() {
     if (!active || !over || active.id === over.id) return;
 
     const store = useBlockStore.getState();
-    const { blockMap, blockOrder } = store;
+    const { blockOrder } = store;
 
     const overIndex = blockOrder.indexOf(over.id);
     const prevBlockId = overIndex > 0 ? blockOrder[overIndex - 1] : null;
     
-    // Don't move if already in position
     if (prevBlockId === active.id) return;
 
-    const prevSort = prevBlockId ? blockMap[prevBlockId]?.sortOrder : null;
-    const overSort = blockMap[over.id]?.sortOrder;
-    const newSortOrder = generateLexicalOrder(prevSort, overSort);
-    const now = Date.now();
-
-    // Optimistic update
-    const updatedBlock = { ...blockMap[active.id], sortOrder: newSortOrder, updatedAt: now };
-    const newBlockMap = { ...blockMap, [active.id]: updatedBlock };
-    const allBlocks = blockOrder.map(id => id === active.id ? updatedBlock : newBlockMap[id]).filter(Boolean);
-    allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
-
-    useBlockStore.setState({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
-
-    // Persist
-    db.blocks.update(active.id, { sortOrder: newSortOrder, updatedAt: now });
-  }, []);
+    engine.move(active.id, null, prevBlockId);
+  }, [engine]);
 
   const debouncedUpdatePage = useRef(
     debounce((id, updates) => {
@@ -110,7 +96,6 @@ function PageEditor() {
   useEffect(() => {
     if (page) {
       setTitle(page.title);
-      // Auto-resize title textarea
       if (titleInputRef.current) {
         titleInputRef.current.style.height = 'auto';
         titleInputRef.current.style.height = titleInputRef.current.scrollHeight + 'px';
@@ -139,23 +124,17 @@ function PageEditor() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        const snapshot = useUndoStore.getState().undo();
-        if (snapshot) {
-          e.preventDefault();
-          updateBlock(snapshot.blockId, { content: snapshot.oldContent });
-        }
+        e.preventDefault();
+        engine.undo();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
-        const snapshot = useUndoStore.getState().redo();
-        if (snapshot) {
-          e.preventDefault();
-          updateBlock(snapshot.blockId, { content: snapshot.newContent });
-        }
+        e.preventDefault();
+        engine.redo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [updateBlock]);
+  }, [engine]);
 
   if (!page) {
     return <div className="editor-container">Page not found.</div>;
@@ -164,11 +143,8 @@ function PageEditor() {
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
-    
-    // Auto-resize
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
-
     debouncedUpdatePage(pageId, { title: newTitle });
   };
 
@@ -176,7 +152,7 @@ function PageEditor() {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (rootBlockIds.length === 0) {
-        await addBlock(pageId, 'text');
+        await engine.insertAfter(null, 'text');
       } else {
         const firstBlockEl = document.querySelector(`[data-block-id="${rootBlockIds[0]}"] .block-content [contenteditable="true"]`);
         if (firstBlockEl) {
@@ -227,7 +203,6 @@ function PageEditor() {
         </div>
       </div>
 
-      {/* Cover Image */}
       {page.coverImage ? (
         <div 
           className="page-cover"
@@ -288,7 +263,7 @@ function PageEditor() {
             <div 
               className="block-text text-placeholder" 
               style={{ padding: '4px 0', cursor: 'text', color: 'var(--text-placeholder)' }}
-              onClick={() => addBlock(pageId, 'text')}
+              onClick={() => engine.insertAfter(null, 'text')}
             >
               Click here or press Enter to add a block...
             </div>
@@ -311,13 +286,12 @@ function PageEditor() {
           )}
         </div>
         
-        {/* Extra padding at bottom for easier clicking to add new block */}
         <div 
           style={{ height: '20vh', cursor: 'text' }} 
           onClick={(e) => {
              if (e.target === e.currentTarget && rootBlockIds.length > 0) {
                  const lastId = rootBlockIds[rootBlockIds.length - 1];
-                 addBlock(pageId, 'text', lastId);
+                 engine.insertAfter(lastId, 'text');
              }
           }}
         />

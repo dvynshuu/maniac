@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { Image as ImageIcon } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../../utils/blobService';
-import { EditorEngine } from '../../../core/editor/Engine';
+import { useEditorEngine } from '../../../hooks/useEditorEngine';
 
 export default function ImageBlock({ block }) {
-  const engine = new EditorEngine(block.pageId);
+  const engine = useEditorEngine();
   const [renderUrl, setRenderUrl] = useState(null);
   const [caption, setCaption] = useState(block.properties?.caption || '');
   const fileInputRef = useRef(null);
@@ -18,7 +18,7 @@ export default function ImageBlock({ block }) {
   const width = block.properties?.width;
   const alignment = block.properties?.alignment || 'left';
 
-  // Resolve blob references or hash-based references
+  // Resolve blob references
   useEffect(() => {
     let cancelled = false;
     blobRefRef.current = src;
@@ -144,7 +144,6 @@ export default function ImageBlock({ block }) {
       >
         <img src={renderUrl} alt={caption || 'Image'} draggable={false} />
         
-        {/* Resize Handle (Right only for left-anchored images) */}
         <div className="image-resizer-handle right" onMouseDown={(e) => startResizing(e, 'right')} />
 
         <textarea

@@ -2,11 +2,12 @@
  * ─── Core: Editor Engine ────────────────────────────────────────
  * High-level API for UI components to trigger state changes.
  * Acts as a factory for operations that are dispatched via the CommandBus.
+ * Follows the "Editor engine design" principles.
  */
 
-import { dispatch } from '../commandBus';
-import { useGraphStore } from '../store/graphStore';
-import { createId } from '../ids/identity';
+import { Transaction } from './Transaction';
+import { useBlockStore } from '../../stores/blockStore';
+import { generateLexicalOrder } from '../../utils/helpers';
 
 export class EditorEngine {
   constructor(pageId, actorId = 'local-user') {
@@ -14,69 +15,146 @@ export class EditorEngine {
     this.actorId = actorId;
   }
 
-  // ─── Block Operations ───────────────────────────────────────────
-
   /**
-   * Create a new block.
+   * Start a new transaction.
    */
-  async createBlock(type = 'text', parentId = null, orderKey = 'a0') {
-    return dispatch({
-      type: 'block/create',
-      payload: { type, parentId, sortOrder: orderKey, pageId: this.pageId }
-    });
+  startTransaction() {
+    return new Transaction(this);
   }
 
   /**
-   * Update block content or properties.
+   * Convenience: Update a single block.
    */
   async updateBlock(blockId, updates) {
-    return dispatch({
-      type: 'block/update',
-      payload: { blockId, updates }
-    });
+    return this.startTransaction().updateBlock(blockId, updates).commit();
   }
 
   /**
-   * Move a block within the same parent or to a new parent.
-   */
-  async moveBlock(blockId, targetParentId, targetOrderKey) {
-    // Legacy bus uses block/reorder and manual parent updates
-    // For now, let's just update properties via block/update
-    return dispatch({
-      type: 'block/update',
-      payload: { blockId, updates: { parentId: targetParentId, sortOrder: targetOrderKey } }
-    });
-  }
-
-  /**
-   * Delete a block.
+   * Convenience: Delete a single block.
    */
   async deleteBlock(blockId) {
-    return dispatch({
-      type: 'block/delete',
-      payload: { blockId }
-    });
+    return this.startTransaction().deleteBlock(blockId).commit();
   }
 
-  // ─── Page Operations ────────────────────────────────────────────
+  // ─── Typed Commands ─────────────────────────────────────────────
 
-  async updatePage(updates) {
-    return dispatch({
-      type: 'page/update',
-      payload: { pageId: this.pageId, updates }
+  /**
+   * Insert a new block after an existing one.
+   */
+  async insertAfter(blockId, type = 'text', properties = {}) {
+    const tx = this.startTransaction();
+    const block = useBlockStore.getState().blockMap[blockId];
+    const parentId = block ? block.parentId : null;
+    
+    tx.createBlock(type, parentId, blockId, properties);
+    return tx.commit();
+  }
+
+  /**
+   * Move a block to a new location.
+   */
+  async move(blockId, targetParentId, targetAfterId) {
+    const tx = this.startTransaction();
+    tx.moveBlock(blockId, targetParentId, targetAfterId);
+    return tx.commit();
+  }
+
+  /**
+   * Nest a block under the block above it (Tab).
+   */
+  async nest(blockId) {
+    const store = useBlockStore.getState();
+    const { blockOrder, blockMap } = store;
+    const index = blockOrder.indexOf(blockId);
+    if (index <= 0) return;
+
+    const prevBlockId = blockOrder[index - 1];
+    const prevBlock = blockMap[prevBlockId];
+    const currentBlock = blockMap[blockId];
+
+    // Only nest if they share the same parent or if prevBlock is a valid parent
+    if (currentBlock.parentId === prevBlock.parentId) {
+      const tx = this.startTransaction();
+      tx.moveBlock(blockId, prevBlockId, null); // Move to end of prevBlock's children
+      return tx.commit();
+    }
+  }
+
+  /**
+   * Un-nest a block (Shift+Tab).
+   */
+  async unnest(blockId) {
+    const store = useBlockStore.getState();
+    const { blockMap } = store;
+    const currentBlock = blockMap[blockId];
+    if (!currentBlock.parentId) return;
+
+    const parentBlock = blockMap[currentBlock.parentId];
+    const grandParentId = parentBlock ? parentBlock.parentId : null;
+
+    const tx = this.startTransaction();
+    tx.moveBlock(blockId, grandParentId, currentBlock.parentId);
+    return tx.commit();
+  }
+
+  /**
+   * Split a block at the current cursor position.
+   */
+  async split(blockId, contentBefore, contentAfter) {
+    const tx = this.startTransaction();
+    const block = useBlockStore.getState().blockMap[blockId];
+    
+    // Update current block with content before the split
+    tx.updateBlock(blockId, { content: contentBefore });
+    
+    // Create new block with content after the split
+    tx.createBlock(block.type, block.parentId, blockId, { 
+      content: contentAfter,
+      properties: { ...block.properties } 
     });
+    
+    return tx.commit();
+  }
+
+  /**
+   * Merge a block with the one above it (Backspace at start).
+   */
+  async merge(blockId, targetId) {
+    const store = useBlockStore.getState();
+    const block = store.blockMap[blockId];
+    const target = store.blockMap[targetId];
+    if (!block || !target) return;
+
+    const tx = this.startTransaction();
+    
+    // Append content
+    const combinedContent = target.content + block.content;
+    tx.updateBlock(targetId, { content: combinedContent });
+    
+    // Delete merged block
+    tx.deleteBlock(blockId);
+    
+    return tx.commit();
+  }
+
+  /**
+   * Change the type of a block (e.g. text -> h1).
+   */
+  async convertType(blockId, newType) {
+    const tx = this.startTransaction();
+    tx.convertType(blockId, newType);
+    return tx.commit();
   }
 
   // ─── History ──────────────────────────────────────────────────
 
-  undo() {
-    // Legacy bus exports undo/redo directly
-    const { undo: legacyUndo } = require('../commandBus');
-    return legacyUndo();
+  async undo() {
+    const { undo } = await import('../commandBus');
+    return undo();
   }
 
-  redo() {
-    const { redo: legacyRedo } = require('../commandBus');
-    return legacyRedo();
+  async redo() {
+    const { redo } = await import('../commandBus');
+    return redo();
   }
 }

@@ -255,6 +255,59 @@ registerHandler('block/changeType', async (payload) => {
   return { ops: [op], inverseOps: [inverseOp] };
 });
 
+registerHandler('block/move', async (payload) => {
+  const { blockId, targetParentId, targetAfterBlockId } = payload;
+  const store = useBlockStore.getState();
+  const block = store.blockMap[blockId];
+  if (!block) return null;
+
+  const prevParentId = block.parentId;
+  const prevSortOrder = block.sortOrder;
+
+  // Compute new sort order
+  const { blockMap, blockOrder } = store;
+  const siblings = blockOrder.filter(id => 
+    (blockMap[id]?.parentId || null) === (targetParentId || null) && id !== blockId
+  );
+
+  let sortOrder;
+  if (targetAfterBlockId && siblings.includes(targetAfterBlockId)) {
+    const afterIdx = siblings.indexOf(targetAfterBlockId);
+    const prev = blockMap[siblings[afterIdx]]?.sortOrder || null;
+    const next = siblings[afterIdx + 1] ? blockMap[siblings[afterIdx + 1]]?.sortOrder : null;
+    sortOrder = generateLexicalOrder(prev, next);
+  } else if (siblings.length > 0) {
+    const last = blockMap[siblings[siblings.length - 1]]?.sortOrder || null;
+    sortOrder = generateLexicalOrder(last, null);
+  } else {
+    sortOrder = 'm'; // Default middle key
+  }
+
+  const now = Date.now();
+  const updates = { parentId: targetParentId || null, sortOrder, updatedAt: now };
+
+  // Optimistic update
+  useBlockStore.setState(s => {
+    const updatedBlock = { ...block, ...updates };
+    const newMap = { ...s.blockMap, [blockId]: updatedBlock };
+    const newOrder = [...s.blockOrder].filter(id => id !== blockId);
+    // Find insertion index in sorted order
+    let insertIdx = newOrder.findIndex(id => String(newMap[id]?.sortOrder || '').localeCompare(sortOrder) > 0);
+    if (insertIdx === -1) newOrder.push(blockId);
+    else newOrder.splice(insertIdx, 0, blockId);
+
+    return { blockMap: newMap, blockOrder: newOrder };
+  });
+
+  const dbUpd = await encryptForDB(updates, true);
+  await db.blocks.update(blockId, dbUpd);
+
+  const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, updates, { parentId: prevParentId, sortOrder: prevSortOrder });
+  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { parentId: prevParentId, sortOrder: prevSortOrder }, updates);
+
+  return { ops: [op], inverseOps: [inverseOp] };
+});
+
 // ═══════════════════════════════════════════════════════════════
 // PAGE HANDLERS
 // ═══════════════════════════════════════════════════════════════
