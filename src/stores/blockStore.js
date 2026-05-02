@@ -36,7 +36,9 @@ export const useBlockStore = create((set, get) => ({
       initialOrder.push(b.id);
       initialMap[b.id] = { 
         ...b, 
-        content: b._isEncrypted && key ? 'Decrypting...' : b.content 
+        content: b._isEncrypted && key ? 'Decrypting...' : b.content,
+        // Prevent double-encryption bug: don't put encrypted string in properties field
+        properties: b._isEncrypted && key ? {} : (b.properties || {})
       };
     });
     set({ blockMap: initialMap, blockOrder: initialOrder });

@@ -127,8 +127,28 @@ registerHandler('block/create', async (payload) => {
 registerHandler('block/update', async (payload) => {
   const { blockId, updates } = payload;
   const store = useBlockStore.getState();
-  const currentBlock = store.blockMap[blockId];
-  if (!currentBlock) return null;
+  
+  // Fetch fresh from DB to ensure we have the most stable state (possibly encrypted)
+  let dbBlock = await db.blocks.get(blockId);
+  if (!dbBlock) return null;
+
+  const key = useSecurityStore.getState().derivedKey;
+  let currentBlock = { ...dbBlock };
+
+  // Decrypt if necessary so we can merge properties safely
+  if (dbBlock._isEncrypted && key) {
+    if (dbBlock.content) {
+      try { currentBlock.content = await SecurityService.decrypt(dbBlock.content, key); } catch { /* ignore */ }
+    }
+    if (dbBlock.properties && typeof dbBlock.properties === 'string') {
+      try {
+        const decryptedProps = await SecurityService.decrypt(dbBlock.properties, key);
+        currentBlock.properties = JSON.parse(decryptedProps);
+      } catch {
+        currentBlock.properties = {};
+      }
+    }
+  }
 
   const safeUpdates = JSON.parse(JSON.stringify(updates));
   if (safeUpdates.content !== undefined) safeUpdates.content = content_sanitizer(safeUpdates.content);

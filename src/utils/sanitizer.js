@@ -42,12 +42,18 @@ export const content_sanitizer = sanitize;
 export const sanitizeObject = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) {
-    return obj.map(item => (typeof item === 'string' ? sanitize(item) : (typeof item === 'object' ? sanitizeObject(item) : item)));
+    return obj.map(item => (typeof item === 'string' ? (item.startsWith('http') ? sanitizeUrl(item) : sanitize(item)) : (typeof item === 'object' ? sanitizeObject(item) : item)));
   }
   const cleanProps = {};
   for (const key in obj) {
     if (typeof obj[key] === 'string') {
-      cleanProps[key] = sanitize(obj[key]);
+      const val = obj[key];
+      // If it looks like a URL, use URL sanitizer, otherwise use HTML sanitizer
+      if (val.startsWith('http') || key.toLowerCase().includes('url')) {
+        cleanProps[key] = sanitizeUrl(val);
+      } else {
+        cleanProps[key] = sanitize(val);
+      }
     } else if (typeof obj[key] === 'object') {
       cleanProps[key] = sanitizeObject(obj[key]);
     } else if (typeof obj[key] === 'boolean' || typeof obj[key] === 'number') {
