@@ -171,7 +171,7 @@ export default function DatabaseBlock({ block }) {
         properties: { schema: newSchema, rows: newRows }
       });
     }
-  }, [block, updateBlock]);
+  }, [block, engine]);
 
   const handleCellInteraction = useCallback((type, rowId, colId) => {
     if (type === 'edit') setEditingCell({ rowId, colId });
