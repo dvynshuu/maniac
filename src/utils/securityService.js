@@ -109,6 +109,22 @@ export class SecurityService {
     }
   }
 
+  /**
+   * Basic heuristic to check if a string is likely encrypted.
+   * Checks if it's valid Base64 and has minimum IV length.
+   * @param {string} val 
+   */
+  static isEncrypted(val) {
+    if (typeof val !== 'string' || val.length < 24) return false;
+    try {
+      // Basic Base64 check
+      if (!/^[A-Za-z0-9+/=]+$/.test(val)) return false;
+      return true; // We assume it's encrypted if it passes Base64 and length
+    } catch {
+      return false;
+    }
+  }
+
   // ─── Encrypt / Decrypt ─────────────────────────────────────
 
   /**

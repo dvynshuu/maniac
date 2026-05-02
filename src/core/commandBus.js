@@ -23,6 +23,7 @@ import { validate, ensureDefaults } from './schemaRegistry';
 import { trace, event } from './observability';
 import { db } from '../db/database';
 import { nanoid } from 'nanoid';
+import { encryptForDB } from './persistence';
 
 // ─── Undo / Redo Stacks ────────────────────────────────────────
 
@@ -282,7 +283,8 @@ export async function executeOp(operation) {
           blockMap: newMap,
           blockOrder: newOrder,
         });
-        await db.blocks.put(block);
+        const dbBlock = await encryptForDB(block, true);
+        await db.blocks.put(dbBlock);
         break;
       }
 
@@ -330,7 +332,8 @@ export async function executeOp(operation) {
           });
 
           // Persist the primary change
-          await db.blocks.update(entityId, payload);
+          const dbUpd = await encryptForDB(payload, true);
+          await db.blocks.update(entityId, dbUpd);
           
           // Persist synced changes if any
           if (sourceId && payload.content !== undefined) {

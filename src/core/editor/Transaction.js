@@ -21,7 +21,7 @@ export class Transaction {
   createBlock(type, parentId, afterBlockId, properties = {}) {
     this.ops.push({
       type: 'block/create',
-      payload: { type, parentId, afterBlockId, properties }
+      payload: { pageId: this.engine.pageId, type, parentId, afterBlockId, properties }
     });
     return this;
   }

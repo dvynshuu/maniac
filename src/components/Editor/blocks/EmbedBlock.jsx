@@ -5,12 +5,28 @@ import { useEditorEngine } from '../../../hooks/useEditorEngine';
 export default function EmbedBlock({ block }) {
   const url = block.properties?.url || '';
   const caption = block.properties?.caption || '';
-  const embedType = block.properties?.embedType || 'generic';
+  const storedType = block.properties?.embedType || 'generic';
   
   const engine = useEditorEngine();
 
   const [inputUrl, setInputUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-detect type if missing or generic
+  const effectiveType = (storedType === 'generic' && (url.includes('youtube.com') || url.includes('youtu.be'))) 
+    ? 'youtube' 
+    : storedType;
+
+  if (block._isDecrypting) {
+    return (
+      <div className="block-embed-wrapper loading">
+        <div className="block-embed-loading">
+          <div className="spinner-small" />
+          <span>Decrypting embed...</span>
+        </div>
+      </div>
+    );
+  }
 
   const handleKeyDown = (e) => {
     if ((e.key === 'Backspace' || e.key === 'Delete') && !inputUrl && !url) {
@@ -21,19 +37,20 @@ export default function EmbedBlock({ block }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!inputUrl) return;
+    const targetUrl = inputUrl.trim();
+    if (!targetUrl) return;
 
     setIsSubmitting(true);
     
     let type = 'generic';
-    if (inputUrl.includes('youtube.com') || inputUrl.includes('youtu.be')) {
+    if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
       type = 'youtube';
     }
 
     await engine.updateBlock(block.id, {
       properties: {
         ...block.properties,
-        url: inputUrl,
+        url: targetUrl,
         embedType: type
       }
     });
@@ -41,19 +58,21 @@ export default function EmbedBlock({ block }) {
   };
 
   // YouTube embed
-  if (embedType === 'youtube' && url) {
+  if (effectiveType === 'youtube' && url) {
     const videoId = extractYouTubeId(url);
     if (videoId) {
       return (
         <div className="block-embed-wrapper" tabIndex={0} onKeyDown={handleKeyDown}>
-          <iframe
-            className="block-embed-iframe"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title={caption || 'YouTube video'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ aspectRatio: '16/9' }}
-          />
+          <div className="block-embed-container">
+            <iframe
+              className="block-embed-iframe"
+              src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+              title={caption || 'YouTube video'}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ aspectRatio: '16/9', width: '100%', borderRadius: '8px', border: 'none' }}
+            />
+          </div>
         </div>
       );
     }
@@ -93,7 +112,7 @@ export default function EmbedBlock({ block }) {
             autoFocus
             type="text"
             className="block-embed-input"
-            placeholder="Paste a link to embed..."
+            placeholder="Paste a YouTube or web link..."
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
           />
@@ -116,6 +135,9 @@ export default function EmbedBlock({ block }) {
 }
 
 function extractYouTubeId(url) {
-  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (!url) return null;
+  // Robust regex for all YouTube variants
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/live\/)([^"&?\/\s]{11})/i;
+  const match = url.match(regex);
   return match ? match[1] : null;
 }

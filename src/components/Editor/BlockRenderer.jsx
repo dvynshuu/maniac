@@ -150,13 +150,12 @@ const BlockRenderer = memo(({ blockId, index }) => {
     await dispatch({
       type: 'block/create',
       payload: {
+        pageId: block.pageId,
         type: block.type,
         parentId: block.parentId,
         afterBlockId: block.id,
-        properties: {
-          content: block.content,
-          properties: { ...block.properties },
-        }
+        content: block.content,
+        properties: { ...block.properties }
       }
     });
   };

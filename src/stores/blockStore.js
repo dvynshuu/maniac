@@ -7,13 +7,27 @@ import { useSecurityStore } from './securityStore';
 import { useUIStore } from './uiStore';
 import { invalidateStore } from '../core/derivedCache';
 
+/**
+ * Safely resolve a block's properties from raw DB data.
+ * Handles: plain object, encrypted string, null, undefined.
+ */
+function resolveProperties(raw, isEncrypted) {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  // If it's a string but the block isn't marked encrypted, try to JSON.parse it
+  if (typeof raw === 'string' && !isEncrypted) {
+    try { return JSON.parse(raw); } catch { return {}; }
+  }
+  // Encrypted string — return empty, decryption will fill it later
+  return {};
+}
+
 export const useBlockStore = create((set, get) => ({
   blockMap: {},
   blockOrder: [],
   focusBlockId: null,
+  lastLoadId: 0,
 
-  // Helper to get blocks array for backward compat if needed,
-  // but we prefer using blockMap directly for O(1) lookups
   getBlocks: () => {
     const { blockMap, blockOrder } = get();
     return blockOrder.map(id => blockMap[id]).filter(Boolean);
@@ -26,63 +40,103 @@ export const useBlockStore = create((set, get) => ({
       set({ blockMap: {}, blockOrder: [] });
       return;
     }
-    const key = useSecurityStore.getState().derivedKey;
-    const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
+    const loadId = (get().lastLoadId || 0) + 1;
+    set({ lastLoadId: loadId });
 
-    // Optimistic fast load: Render immediately with raw (encrypted) content or placeholders
-    const initialMap = {};
-    const initialOrder = [];
-    blocksRaw.forEach(b => {
-      initialOrder.push(b.id);
-      initialMap[b.id] = { 
-        ...b, 
-        content: b._isEncrypted && key ? 'Decrypting...' : b.content,
-        // Prevent double-encryption bug: don't put encrypted string in properties field
-        properties: b._isEncrypted && key ? {} : (b.properties || {})
-      };
-    });
-    set({ blockMap: initialMap, blockOrder: initialOrder });
-    invalidateStore('blockStore');
+    try {
+      const key = useSecurityStore.getState().derivedKey;
+      const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
 
-    if (key) {
-      const decryptFn = async (b, k) => {
-        if (b._isEncrypted) {
-          let content = b.content;
+      const initialMap = {};
+      const initialOrder = [];
+      const needsDecryption = [];
+
+      blocksRaw.forEach(b => {
+        initialOrder.push(b.id);
+        const encrypted = !!(b._isEncrypted && key);
+        initialMap[b.id] = {
+          ...b,
+          content: encrypted ? '' : (b.content || ''),
+          properties: encrypted ? {} : resolveProperties(b.properties, false),
+          _isDecrypting: encrypted,
+        };
+        if (encrypted) needsDecryption.push(b);
+      });
+
+      // Stale load guard
+      if (get().lastLoadId !== loadId) return;
+
+      set({ blockMap: initialMap, blockOrder: initialOrder });
+      invalidateStore('blockStore');
+
+      // Decrypt encrypted blocks in background
+      if (needsDecryption.length > 0 && key) {
+        const decryptOne = async (b) => {
+          let content = b.content || '';
           let properties = b.properties;
 
-          if (b.content) {
-             try { content = await SecurityService.decrypt(b.content, k); } 
-             catch { content = '🔒 Decryption Failed'; }
+          try {
+            if (b.content && typeof b.content === 'string') {
+              const dec = await SecurityService.decrypt(b.content, key);
+              if (dec != null) content = dec;
+            }
+          } catch {
+            content = '🔒 Decryption Failed';
           }
-          if (b.properties && typeof b.properties === 'string') {
-            try {
-              const decryptedProps = await SecurityService.decrypt(b.properties, k);
-              properties = JSON.parse(decryptedProps);
-            } catch {
+
+          try {
+            if (typeof properties === 'string' && properties.length > 0) {
+              const decProps = await SecurityService.decrypt(properties, key);
+              if (decProps != null) {
+                properties = JSON.parse(decProps);
+              } else {
+                properties = {};
+              }
+            } else if (typeof properties === 'object' && properties !== null) {
+              // Already an object — no decryption needed (edge case: mixed state)
+            } else {
               properties = {};
             }
+          } catch {
+            properties = {};
           }
-          return { ...b, content, properties };
+
+          return { ...b, content, properties, _isDecrypting: false };
+        };
+
+        // Process in small batches to keep UI responsive
+        const BATCH = 10;
+        const allDecrypted = [];
+
+        for (let i = 0; i < needsDecryption.length; i += BATCH) {
+          if (get().lastLoadId !== loadId) return; // stale
+
+          const batch = needsDecryption.slice(i, i + BATCH);
+          const decBatch = await Promise.all(batch.map(decryptOne));
+          allDecrypted.push(...decBatch);
+
+          // Incremental UI update
+          set(state => {
+            if (state.lastLoadId !== loadId) return state;
+            const newMap = { ...state.blockMap };
+            let changed = false;
+            decBatch.forEach(b => {
+              if (newMap[b.id] && newMap[b.id]._isDecrypting) {
+                newMap[b.id] = b;
+                changed = true;
+              }
+            });
+            return changed ? { blockMap: newMap } : state;
+          });
+
+          // Yield to main thread
+          if (i + BATCH < needsDecryption.length) {
+            await new Promise(r => setTimeout(r, 0));
+          }
         }
-        return b;
-      };
-
-      const { batchDecrypt } = await import('../utils/cryptoWorker');
-
-      const onProgress = (currentDecrypted) => {
-         // Update blockMap incrementally so user sees progress
-         const newMap = { ...get().blockMap };
-         currentDecrypted.forEach(b => {
-            if (newMap[b.id]) newMap[b.id] = b;
-         });
-         set({ blockMap: newMap });
-      };
-
-      const fullyDecrypted = await batchDecrypt(blocksRaw, key, decryptFn, 20, onProgress);
-      
-      const finalMap = { ...get().blockMap };
-      fullyDecrypted.forEach(b => { finalMap[b.id] = b; });
-      set({ blockMap: finalMap });
+      }
+    } catch (error) {
+      console.error('[blockStore] loadBlocks failed:', error);
     }
   },
 

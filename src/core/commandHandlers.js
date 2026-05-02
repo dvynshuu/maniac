@@ -18,44 +18,9 @@ import { useUIStore } from '../stores/uiStore';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from '../stores/securityStore';
 import { extractWords } from '../db/database';
+import { encryptForDB } from './persistence';
 
-// ─── Helper: Encrypt for DB ────────────────────────────────────
-
-async function encryptForDB(data, isBlock = true) {
-  const key = useSecurityStore.getState().derivedKey;
-  const hmacKey = useSecurityStore.getState().hmacKey;
-  const dbObj = { ...data };
-
-  if (key) {
-    if (isBlock) {
-      if (hmacKey && dbObj.content !== undefined) {
-        const words = extractWords(dbObj.content);
-        const hashedWords = await Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)));
-        dbObj.words = hashedWords.filter(Boolean);
-      } else if (dbObj.content !== undefined) {
-        dbObj.words = [];
-      }
-      if (dbObj.content) {
-        dbObj.content = await SecurityService.encrypt(dbObj.content, key);
-      }
-      if (dbObj.properties !== undefined) {
-        dbObj.properties = await SecurityService.encrypt(JSON.stringify(dbObj.properties), key);
-      }
-    } else {
-      // Page
-      if (dbObj.title !== undefined) {
-        dbObj.title = await SecurityService.encrypt(dbObj.title, key);
-      }
-    }
-    if (dbObj.content !== undefined || dbObj.properties !== undefined || dbObj.title !== undefined) {
-      dbObj._isEncrypted = true;
-    }
-  } else if (isBlock && dbObj.content !== undefined) {
-    dbObj.words = extractWords(dbObj.content);
-  }
-
-  return dbObj;
-}
+// ─── Handlers ──────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════
 // BLOCK HANDLERS
@@ -126,28 +91,32 @@ registerHandler('block/create', async (payload) => {
 
 registerHandler('block/update', async (payload) => {
   const { blockId, updates } = payload;
-  const store = useBlockStore.getState();
-  
-  // Fetch fresh from DB to ensure we have the most stable state (possibly encrypted)
+
+  // Fetch fresh record from DB (may be encrypted)
   let dbBlock = await db.blocks.get(blockId);
   if (!dbBlock) return null;
 
   const key = useSecurityStore.getState().derivedKey;
   let currentBlock = { ...dbBlock };
 
-  // Decrypt if necessary so we can merge properties safely
+  // Decrypt fields so we can merge safely
   if (dbBlock._isEncrypted && key) {
-    if (dbBlock.content) {
-      try { currentBlock.content = await SecurityService.decrypt(dbBlock.content, key); } catch { /* ignore */ }
+    if (dbBlock.content && typeof dbBlock.content === 'string') {
+      try { currentBlock.content = await SecurityService.decrypt(dbBlock.content, key) || ''; }
+      catch { /* keep raw */ }
     }
     if (dbBlock.properties && typeof dbBlock.properties === 'string') {
       try {
-        const decryptedProps = await SecurityService.decrypt(dbBlock.properties, key);
-        currentBlock.properties = JSON.parse(decryptedProps);
+        const dec = await SecurityService.decrypt(dbBlock.properties, key);
+        currentBlock.properties = dec ? JSON.parse(dec) : {};
       } catch {
         currentBlock.properties = {};
       }
     }
+  }
+  // Ensure properties is always an object
+  if (!currentBlock.properties || typeof currentBlock.properties !== 'object') {
+    currentBlock.properties = {};
   }
 
   const safeUpdates = JSON.parse(JSON.stringify(updates));
@@ -156,21 +125,22 @@ registerHandler('block/update', async (payload) => {
 
   const now = Date.now();
   const prevPayload = {};
-  for (const key of Object.keys(safeUpdates)) {
-    prevPayload[key] = currentBlock[key];
+  for (const k of Object.keys(safeUpdates)) {
+    prevPayload[k] = currentBlock[k];
   }
   prevPayload.updatedAt = currentBlock.updatedAt;
 
   // Optimistic update
+  const mergedBlock = { ...currentBlock, ...safeUpdates, updatedAt: now };
   useBlockStore.setState(s => ({
-    blockMap: { ...s.blockMap, [blockId]: { ...currentBlock, ...safeUpdates, updatedAt: now } },
+    blockMap: { ...s.blockMap, [blockId]: mergedBlock },
   }));
 
-  // Persist
+  // Persist (encrypt if needed)
   const dbUpd = await encryptForDB({ ...safeUpdates, updatedAt: now }, true);
   await db.blocks.update(blockId, dbUpd);
 
-  // Operation
+  // Operation log
   const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { ...safeUpdates, updatedAt: now }, prevPayload);
   const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, prevPayload, safeUpdates);
 
