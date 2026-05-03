@@ -27,6 +27,8 @@ function PageEditor() {
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
   const isSaving = useUIStore((s) => s.isSaving);
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+
 
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -186,7 +188,7 @@ function PageEditor() {
 
   return (
     <div className="editor-scroll" ref={scrollRef}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
         <Breadcrumb />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
           {isSaving ? (

@@ -14,6 +14,7 @@ import { SettingsModal } from '../Settings/SettingsModal';
 import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
+import GraphView from './GraphView';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -25,6 +26,7 @@ function Dashboard() {
   const [activePopover, setActivePopover] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState('Appearance');
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
   const openSettings = (tab = 'Appearance') => {
     setSettingsTab(tab);
@@ -42,7 +44,7 @@ function Dashboard() {
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} initialTab={settingsTab} />}
 
       {/* Dashboard Topbar */}
-      <div className="dashboard-topbar">
+      <div className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
         <div className="dashboard-brand-container">
           <div className="dashboard-brand-title">Maniac OS</div>
           <div className="dashboard-tabs" role="tablist">
@@ -365,24 +367,7 @@ function WorkspaceTab({ pages, navigate }) {
 
         {/* Graph View Card */}
         <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-            <div>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '4px' }}>Graph View</h3>
-              <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: 0, fontWeight: 'bold', letterSpacing: '0.05em' }}>{pages.length} NODES DETECTED</p>
-            </div>
-            <button aria-label="Maximize Graph" className="icon-btn-subtle"><Maximize2 size={16} /></button>
-          </div>
-
-          <div style={{ flex: 1, background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: '30%', left: '30%', width: 6, height: 6, background: 'var(--accent-primary)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-primary)' }}></div>
-              <div style={{ position: 'absolute', top: '70%', left: '70%', width: 8, height: 8, background: 'var(--accent-secondary)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-secondary)' }}></div>
-              <div style={{ position: 'absolute', top: '40%', left: '80%', width: 5, height: 5, background: 'var(--text-tertiary)', borderRadius: '50%' }}></div>
-              <svg width="100%" height="100%" style={{ position: 'absolute' }}>
-                  <line x1="30%" y1="30%" x2="70%" y2="70%" stroke="var(--border-strong)" strokeWidth="1" strokeDasharray="4 4" />
-                  <line x1="70%" y1="70%" x2="80%" y2="40%" stroke="var(--border-subtle)" strokeWidth="1" />
-              </svg>
-              <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Interactive mapping offline</div>
-          </div>
+          <GraphView pages={pages} />
         </div>
       </div>
       
