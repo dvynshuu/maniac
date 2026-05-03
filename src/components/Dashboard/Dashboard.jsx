@@ -98,7 +98,7 @@ function Dashboard() {
 // Intelligence Tab (Decision Engine)
 // ==========================================
 function IntelligenceTab({ navigate }) {
-  const { nextActions, forgetting, weeklyFocus, analyze, isAnalyzing } = useIntelligenceStore();
+  const { nextActions, forgetting, weeklyFocus, knowledgeVelocity, analyze, isAnalyzing } = useIntelligenceStore();
   const key = useSecurityStore(s => s.derivedKey);
 
   useEffect(() => {
@@ -216,11 +216,11 @@ function IntelligenceTab({ navigate }) {
       <div className="intelligence-card" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
         <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Knowledge Growth Curve</h3>
         <div style={{ height: '200px', width: '100%', background: 'var(--bg-elevated)', borderRadius: '12px', display: 'flex', alignItems: 'flex-end', padding: '20px', gap: '10px' }}>
-           {[30, 45, 40, 60, 75, 70, 90].map((h, i) => (
-             <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0' }}></div>
+           {(knowledgeVelocity?.dailyActivity || [5,5,5,5,5,5,5]).map((h, i) => (
+             <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out' }}></div>
            ))}
         </div>
-        <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Maniac is becoming more personalized as you add more nodes. Current personalization depth: <b>Level 3</b></p>
+        <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Maniac is becoming more personalized as you add more nodes. Current personalization depth: <b>Level {knowledgeVelocity?.depthLevel || 1}</b></p>
       </div>
     </div>
   );

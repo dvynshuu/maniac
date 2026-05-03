@@ -150,21 +150,43 @@ export class IntelligenceService {
     const dayAgo = now - (24 * 60 * 60 * 1000);
     const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
 
-    const [dayBlocks, weekBlocks, totalBlocks] = await Promise.all([
+    const [dayBlocks, weekBlocks, totalBlocks, totalRelations] = await Promise.all([
         db.blocks.where('updatedAt').above(dayAgo).count(),
         db.blocks.where('updatedAt').above(weekAgo).count(),
-        db.blocks.count()
+        db.blocks.count(),
+        db.relations.count()
     ]);
 
-    // Velocity = growth rate + interaction density
-    // Simple mock metric for now: (new blocks today / 10) + (new blocks this week / 50)
+    // Calculate daily block additions for the last 7 days
+    const dailyActivity = [0, 0, 0, 0, 0, 0, 0];
+    const weeklyBlocks = await db.blocks.where('updatedAt').above(weekAgo).toArray();
+    
+    weeklyBlocks.forEach(b => {
+        const daysAgo = Math.floor((now - b.updatedAt) / (24 * 60 * 60 * 1000));
+        if (daysAgo >= 0 && daysAgo < 7) {
+            dailyActivity[6 - daysAgo]++;
+        }
+    });
+
+    const maxActivity = Math.max(...dailyActivity, 1);
+    const normalizedActivity = dailyActivity.map(count => Math.max(5, Math.round((count / maxActivity) * 100)));
+
+    let depthLevel = 1;
+    if (totalBlocks > 2000 && totalRelations > 200) depthLevel = 5;
+    else if (totalBlocks > 500 && totalRelations > 50) depthLevel = 4;
+    else if (totalBlocks > 100 && totalRelations > 10) depthLevel = 3;
+    else if (totalBlocks > 50) depthLevel = 2;
+
     const velocity = Math.min(100, Math.round((dayBlocks * 5) + (weekBlocks * 0.5)));
     
     return {
         velocity,
         dayBlocks,
         weekBlocks,
-        totalBlocks
+        totalBlocks,
+        totalRelations,
+        dailyActivity: normalizedActivity,
+        depthLevel
     };
   }
 }

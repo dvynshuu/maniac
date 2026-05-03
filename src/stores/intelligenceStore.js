@@ -6,7 +6,7 @@ export const useIntelligenceStore = create((set, get) => ({
   nextActions: [],
   forgetting: { stalePages: [], abandonedTodos: [] },
   weeklyFocus: null,
-  knowledgeVelocity: { velocity: 0, dayBlocks: 0, weekBlocks: 0, totalBlocks: 0 },
+  knowledgeVelocity: { velocity: 0, dayBlocks: 0, weekBlocks: 0, totalBlocks: 0, dailyActivity: [5, 5, 5, 5, 5, 5, 5], depthLevel: 1 },
   isAnalyzing: false,
   lastAnalysisAt: null,
 
