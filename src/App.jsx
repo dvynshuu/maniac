@@ -10,7 +10,7 @@ import { useCrossTabSync } from './hooks/useCrossTabSync';
 import { undo, redo } from './core/commandBus';
 import { startCompaction, stopCompaction } from './core/sortKeyCompaction';
 import { terminateWorker } from './core/transformWorker';
-import { writeCoalescer } from './core/writeCoalescer';
+import { persistenceWorker } from './core/commandBus';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
 import UnlockScreen from './components/Layout/UnlockScreen';
@@ -65,7 +65,7 @@ function App() {
       // Cleanup performance services on unmount
       stopCompaction();
       terminateWorker();
-      writeCoalescer.forceFlush();
+      persistenceWorker.postMessage({ type: 'FORCE_FLUSH' });
     };
   }, [isLocked]);
 

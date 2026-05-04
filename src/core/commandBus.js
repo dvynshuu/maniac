@@ -15,15 +15,25 @@
  * Stores become read-only projections. They no longer write to Dexie directly.
  */
 
-import { createOp, appendOp, OpType, EntityType } from '../db/opLog';
-import { broadcastOp } from '../db/crossTabChannel';
+import { OpType, EntityType } from '../db/opLog';
 import { getActorId } from '../db/actorId';
 import { can, Permission } from './permissions';
-import { validate, ensureDefaults } from './schemaRegistry';
 import { trace, event } from './observability';
-import { db } from '../db/database';
 import { nanoid } from 'nanoid';
-import { encryptForDB } from './persistence';
+import PersistenceWorker from './persistenceWorker?worker';
+import { useSecurityStore } from '../stores/securityStore';
+
+export const persistenceWorker = new PersistenceWorker();
+
+// Send keys whenever they change
+useSecurityStore.subscribe((state) => {
+  if (state.derivedKey) {
+    persistenceWorker.postMessage({
+      type: 'INIT_KEYS',
+      payload: { derivedKey: state.derivedKey, hmacKey: state.hmacKey }
+    });
+  }
+});
 
 // ─── Undo / Redo Stacks ────────────────────────────────────────
 
@@ -36,10 +46,6 @@ let _activeTransaction = null;
 
 const _middleware = [];
 
-/**
- * Register a middleware function.
- * Middleware shape: (command, next) => next(command)
- */
 export function use(middlewareFn) {
   _middleware.push(middlewareFn);
 }
@@ -57,17 +63,15 @@ use(async (command, next) => {
       const store = useBlockStore.getState();
       const parent = store.blockMap[targetParentId];
       
-      // 1. Constraint Check: Can this parent have children?
       if (parent && !Normalizer.canHaveChildren(parent.type)) {
         console.warn(`[Normalizer] Parent ${parent.type} cannot have children. Redirecting to root.`);
         if (payload.targetParentId !== undefined) payload.targetParentId = null;
         if (payload.parentId !== undefined) payload.parentId = null;
       }
 
-      // 2. Cycle Prevention (for moves)
       if (type === 'block/move' && !Normalizer.isSafeMove(payload.blockId, targetParentId)) {
         console.error(`[Normalizer] Cyclic move detected. Blocking command.`);
-        return null; // Block the command
+        return null; 
       }
     }
   }
@@ -76,33 +80,19 @@ use(async (command, next) => {
 });
 
 // ─── Command Handlers ───────────────────────────────────────────
-// Each command type maps to a handler that returns { ops, inverseOps, zustandUpdate }.
 
 const _handlers = new Map();
 
-/**
- * Register a command handler.
- *
- * @param {string} type - Command type (e.g. 'block/create')
- * @param {Function} handler - async (payload, meta) => { ops, inverseOps, apply, persist }
- */
 export function registerHandler(type, handler) {
   _handlers.set(type, handler);
 }
 
 // ─── Core Dispatch ──────────────────────────────────────────────
 
-/**
- * Dispatch a command through the bus.
- *
- * @param {object} command - { type, payload, meta }
- * @returns {Promise<any>} Result from the handler
- */
 export async function dispatch(command) {
   return trace(`command:${command.type}`, async () => {
     const { type, payload, meta = {} } = command;
 
-    // Run middleware pipeline
     let finalCommand = command;
     for (const mw of _middleware) {
       finalCommand = await mw(finalCommand, (c) => c);
@@ -112,14 +102,12 @@ export async function dispatch(command) {
       }
     }
 
-    // Find handler
     const handler = _handlers.get(type);
     if (!handler) {
       console.error(`[CommandBus] No handler registered for: ${type}`);
       return null;
     }
 
-    // Permission check
     const actorId = getActorId();
     if (payload.entityType && payload.entityId) {
       const requiredPerm = type.includes('/delete') ? Permission.ADMIN : Permission.WRITE;
@@ -129,7 +117,6 @@ export async function dispatch(command) {
       }
     }
 
-    // Execute the handler
     const transactionId = _activeTransaction?.id || nanoid(8);
     const result = await handler(payload, { ...meta, actorId, transactionId });
 
@@ -137,13 +124,11 @@ export async function dispatch(command) {
 
     const { ops = [], inverseOps = [], returnValue } = result;
 
-    // Write to operation log
     for (const op of ops) {
       op.meta = { ...op.meta, transactionId };
-      await appendOp(op);
+      persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op } });
     }
 
-    // Undo stack
     if (ops.length > 0) {
       const undoEntry = { ops, inverseOps, transactionId, type };
       if (_activeTransaction) {
@@ -153,13 +138,8 @@ export async function dispatch(command) {
         if (_undoStack.length > MAX_UNDO) {
           _undoStack = _undoStack.slice(-MAX_UNDO);
         }
-        _redoStack = []; // Clear redo on new action
+        _redoStack = []; 
       }
-    }
-
-    // Cross-tab broadcast
-    for (const op of ops) {
-      broadcastOp(op);
     }
 
     event('command:dispatched', { type, opsCount: ops.length });
@@ -170,15 +150,8 @@ export async function dispatch(command) {
 
 // ─── Transactions ───────────────────────────────────────────────
 
-/**
- * Group multiple dispatches into a single undoable transaction.
- *
- * @param {Function} fn - async () => { ... dispatch calls ... }
- * @returns {Promise<any>} Result of fn
- */
 export async function transaction(fn) {
   if (_activeTransaction) {
-    // Nested transactions just merge into the parent
     return fn();
   }
 
@@ -190,10 +163,8 @@ export async function transaction(fn) {
   try {
     const result = await fn();
 
-    // Merge all entries into a single undo unit
     if (_activeTransaction.entries.length > 0) {
       const mergedOps = _activeTransaction.entries.flatMap(e => e.ops);
-      // Inverse operations should be applied in reverse order
       const mergedInverse = _activeTransaction.entries.flatMap(e => e.inverseOps).reverse();
       _undoStack.push({
         ops: mergedOps,
@@ -215,15 +186,10 @@ export async function transaction(fn) {
 
 // ─── Undo / Redo ────────────────────────────────────────────────
 
-/**
- * Undo the last command (or transaction).
- * Dispatches the inverse operations.
- */
 export async function undo() {
   if (_undoStack.length === 0) return null;
   const entry = _undoStack.pop();
 
-  // Execute inverse operations directly
   for (const inverseOp of entry.inverseOps) {
     await executeOp(inverseOp);
   }
@@ -233,14 +199,10 @@ export async function undo() {
   return entry;
 }
 
-/**
- * Redo the last undone command.
- */
 export async function redo() {
   if (_redoStack.length === 0) return null;
   const entry = _redoStack.pop();
 
-  // Re-execute the original operations
   for (const op of entry.ops) {
     await executeOp(op);
   }
@@ -254,11 +216,9 @@ export function canUndo() { return _undoStack.length > 0; }
 export function canRedo() { return _redoStack.length > 0; }
 
 // ─── Operation Execution ────────────────────────────────────────
-// Single entry point for applying operations to state and DB.
-// Used by Undo, Redo, and Cross-tab replay.
 
 export async function executeOp(operation) {
-  const { entityType, entityId, op: opType, payload, prevPayload } = operation;
+  const { entityType, entityId, op: opType, payload } = operation;
 
   if (entityType === EntityType.BLOCK) {
     const { useBlockStore } = await import('../stores/blockStore');
@@ -283,8 +243,6 @@ export async function executeOp(operation) {
           blockMap: newMap,
           blockOrder: newOrder,
         });
-        const dbBlock = await encryptForDB(block, true);
-        await db.blocks.put(dbBlock);
         break;
       }
 
@@ -295,7 +253,6 @@ export async function executeOp(operation) {
           blockMap: newMap,
           blockOrder: store.blockOrder.filter(id => id !== entityId),
         });
-        await db.blocks.delete(entityId);
         break;
       }
 
@@ -307,12 +264,18 @@ export async function executeOp(operation) {
           const updated = { ...current, ...payload };
           const newMap = { ...store.blockMap, [entityId]: updated };
           
-          // DAG Synchronization: If this is a synced block, update all other instances
           const sourceId = current.properties?.sourceBlockId;
+          const syncedOps = [];
           if (sourceId && payload.content !== undefined) {
             Object.values(newMap).forEach(b => {
               if (b.properties?.sourceBlockId === sourceId && b.id !== entityId) {
                 newMap[b.id] = { ...b, content: payload.content };
+                syncedOps.push({
+                  entityType: EntityType.BLOCK,
+                  entityId: b.id,
+                  op: OpType.UPDATE,
+                  payload: { content: payload.content }
+                });
               }
             });
           }
@@ -331,17 +294,10 @@ export async function executeOp(operation) {
             blockOrder: newOrder,
           });
 
-          // Persist the primary change
-          const dbUpd = await encryptForDB(payload, true);
-          await db.blocks.update(entityId, dbUpd);
-          
-          // Persist synced changes if any
-          if (sourceId && payload.content !== undefined) {
-            const syncedIds = Object.values(store.blockMap)
-              .filter(b => b.properties?.sourceBlockId === sourceId && b.id !== entityId)
-              .map(b => b.id);
-            if (syncedIds.length > 0) {
-              await db.blocks.where('id').anyOf(syncedIds).modify({ content: payload.content });
+          // Enqueue DAG sync updates explicitly
+          if (operation.meta?.source !== 'remote') {
+            for (const sOp of syncedOps) {
+              persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op: sOp } });
             }
           }
         }
@@ -355,13 +311,11 @@ export async function executeOp(operation) {
       case OpType.CREATE: {
         if (!payload) break;
         usePageStore.setState(s => ({ pages: [...s.pages, payload] }));
-        await db.pages.put(payload);
         break;
       }
 
       case OpType.DELETE: {
         usePageStore.setState(s => ({ pages: s.pages.filter(p => p.id !== entityId) }));
-        await db.pages.delete(entityId);
         break;
       }
 
@@ -370,7 +324,6 @@ export async function executeOp(operation) {
         usePageStore.setState(s => ({
           pages: s.pages.map(p => p.id === entityId ? { ...p, ...payload } : p),
         }));
-        await db.pages.update(entityId, payload);
         break;
       }
     }
@@ -381,10 +334,9 @@ export async function executeOp(operation) {
     }
   }
 
-  // Cross-tab broadcast (only if it's a local execution like undo/redo)
-  // ReplayRemoteOp will NOT call executeOp to avoid loops.
+  // Cross-tab broadcast & persistence for local actions
   if (operation.meta?.source !== 'remote') {
-    broadcastOp(operation);
+    persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op: operation } });
   }
 }
 

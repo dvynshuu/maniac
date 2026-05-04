@@ -18,7 +18,6 @@ import { useUIStore } from '../stores/uiStore';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from '../stores/securityStore';
 import { extractWords } from '../db/database';
-import { encryptForDB } from './persistence';
 
 // ─── Handlers ──────────────────────────────────────────────────
 
@@ -77,9 +76,6 @@ registerHandler('block/create', async (payload) => {
     focusBlockId: block.id,
   });
 
-  // Persist
-  const dbBlock = await encryptForDB(block, true);
-  await db.blocks.add(dbBlock);
   useUIStore.getState().updateOnboarding('blocksCreated');
 
   // Operation
@@ -136,9 +132,7 @@ registerHandler('block/update', async (payload) => {
     blockMap: { ...s.blockMap, [blockId]: mergedBlock },
   }));
 
-  // Persist (encrypt if needed)
-  const dbUpd = await encryptForDB({ ...safeUpdates, updatedAt: now }, true);
-  await db.blocks.update(blockId, dbUpd);
+  // Removed direct DB write and encryption to defer to persistenceWorker
 
   // Operation log
   const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { ...safeUpdates, updatedAt: now }, prevPayload);
@@ -164,7 +158,7 @@ registerHandler('block/delete', async (payload) => {
 
   useBlockStore.setState({ blockMap: newBlockMap, blockOrder: newBlockOrder, focusBlockId: newFocus });
 
-  await db.blocks.delete(blockId);
+  // DB delete deferred to persistenceWorker
 
   // Operation
   const op = createOp(EntityType.BLOCK, blockId, OpType.DELETE, null, blockToDelete);
@@ -205,8 +199,7 @@ registerHandler('block/reorder', async (payload) => {
 
   useBlockStore.setState({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
 
-  const dbUpd = await encryptForDB({ sortOrder: newSortOrder, updatedAt: now }, true);
-  await db.blocks.update(blockId, dbUpd);
+  // DB update deferred to persistenceWorker
 
   const op = createOp(EntityType.BLOCK, blockId, OpType.REORDER, { sortOrder: newSortOrder }, { sortOrder: prevSortOrder });
   const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.REORDER, { sortOrder: prevSortOrder }, { sortOrder: newSortOrder });
@@ -230,8 +223,7 @@ registerHandler('block/changeType', async (payload) => {
     blockMap: { ...s.blockMap, [blockId]: { ...block, type: newType, properties, updatedAt: now } },
   }));
 
-  const dbUpd = await encryptForDB({ type: newType, properties, updatedAt: now }, true);
-  await db.blocks.update(blockId, dbUpd);
+  // DB update deferred to persistenceWorker
 
   const op = createOp(EntityType.BLOCK, blockId, OpType.CHANGE_TYPE,
     { type: newType, properties },
@@ -289,8 +281,7 @@ registerHandler('block/move', async (payload) => {
     return { blockMap: newMap, blockOrder: newOrder };
   });
 
-  const dbUpd = await encryptForDB(updates, true);
-  await db.blocks.update(blockId, dbUpd);
+  // DB update deferred to persistenceWorker
 
   const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, updates, { parentId: prevParentId, sortOrder: prevSortOrder });
   const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { parentId: prevParentId, sortOrder: prevSortOrder }, updates);
@@ -314,8 +305,6 @@ registerHandler('page/create', async (payload) => {
 
   usePageStore.setState(s => ({ pages: [...s.pages, page] }));
 
-  const dbPage = await encryptForDB(page, false);
-  await db.pages.add(dbPage);
   useUIStore.getState().updateOnboarding('pagesCreated');
 
   const op = createOp(EntityType.PAGE, page.id, OpType.CREATE, page);
@@ -341,8 +330,7 @@ registerHandler('page/update', async (payload) => {
     archivedPages: s.archivedPages.map(p => p.id === pageId ? { ...p, ...updates, updatedAt: now } : p),
   }));
 
-  const dbUpdates = await encryptForDB({ ...updates, updatedAt: now }, false);
-  await db.pages.update(pageId, dbUpdates);
+  // DB update deferred to persistenceWorker
 
   const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { ...updates, updatedAt: now }, prevPayload);
   const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, prevPayload, updates);
@@ -373,10 +361,7 @@ registerHandler('page/delete', async (payload) => {
     archivedPages: s.archivedPages.filter(p => !idsToDelete.includes(p.id)),
   }));
 
-  await db.transaction('rw', [db.pages, db.blocks], async () => {
-    await db.blocks.where('pageId').anyOf(idsToDelete).delete();
-    await db.pages.bulkDelete(idsToDelete);
-  });
+  // DB delete deferred to persistenceWorker
 
   const op = createOp(EntityType.PAGE, pageId, OpType.DELETE, null, { pages: pagesBackup, ids: idsToDelete });
   const inverseOp = createOp(EntityType.PAGE, pageId, OpType.CREATE, { pages: pagesBackup, ids: idsToDelete });
@@ -391,12 +376,7 @@ registerHandler('page/delete', async (payload) => {
 registerHandler('crdt/update', async (payload) => {
   const { pageId, update } = payload;
   
-  // Persist the update
-  await db.crdt_updates.add({
-    pageId,
-    timestamp: Date.now(),
-    update
-  });
+  // DB addition deferred to persistenceWorker
 
   // Since crdt/update doesn't need to mutate Zustand directly (Yjs handles that),
   // we just create an op so it gets broadcasted to other tabs.
