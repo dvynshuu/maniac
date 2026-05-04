@@ -4,6 +4,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
+import Collaboration from '@tiptap/extension-collaboration';
 import { Mark, mergeAttributes } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBlockStore } from '../stores/blockStore';
@@ -15,6 +16,7 @@ import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
 import { useEditorEngine } from './useEditorEngine';
 import { useSelectionStore } from '../core/editor/selectionStore';
+import { getBlockFragment } from '../core/crdtManager';
 
 const CustomHighlight = Mark.create({
   name: 'customHighlight',
@@ -57,13 +59,6 @@ const CustomHighlight = Mark.create({
  *
  * @param {object} block - The block data from the store
  * @param {object} options
- * @param {string} options.placeholder - Placeholder text
- * @param {string} options.newBlockType - Block type to create on Enter (default: 'text')
- * @param {string} options.backspaceAction - 'delete' | 'convert' (default: 'delete')
- * @param {boolean} options.multiline - Allow Shift+Enter line breaks (default: false for headings, true for text)
- * @param {Function} options.onEnter - Custom Enter handler (overrides default)
- * @param {Function} options.onBackspace - Custom Backspace handler (overrides default)
- * @param {string[]} options.disableExtensions - StarterKit extensions to disable
  */
 export function useBlockEditor(block, options = {}) {
   const {
@@ -80,8 +75,7 @@ export function useBlockEditor(block, options = {}) {
   const setSelection = useSelectionStore(s => s.setSelection);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
 
-  const lastPushedContent = useRef(block.content);
-  const isInternalUpdate = useRef(false);
+  const isFirstLoad = useRef(true);
 
   // Build StarterKit config — disable extensions the caller doesn't want
   const starterKitConfig = {};
@@ -96,7 +90,6 @@ export function useBlockEditor(block, options = {}) {
   const extensions = useMemo(() => [
     StarterKit.configure({
       ...starterKitConfig,
-      // We handle our own block-level structure — disable TipTap's heading/list nodes
       heading: false,
       bulletList: false,
       orderedList: false,
@@ -104,6 +97,10 @@ export function useBlockEditor(block, options = {}) {
       blockquote: false,
       codeBlock: false,
       horizontalRule: false,
+      history: false, // Collaboration extension brings its own history or we rely on CommandBus for structural undo
+    }),
+    Collaboration.configure({
+      fragment: getBlockFragment(block.pageId, block.id),
     }),
     Link.configure({
       openOnClick: false,
@@ -116,11 +113,10 @@ export function useBlockEditor(block, options = {}) {
     TiptapMention,
     TiptapBacklink,
     TiptapDatabaseChip,
-  ], [placeholder, JSON.stringify(starterKitConfig)]);
+  ], [placeholder, JSON.stringify(starterKitConfig), block.id, block.pageId]);
 
   const editor = useEditor({
     extensions,
-    content: block.content || '',
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
@@ -132,18 +128,12 @@ export function useBlockEditor(block, options = {}) {
           event.preventDefault();
           
           const { from } = editor.state.selection;
-          const content = editor.getHTML();
-          
-          // Basic split logic (could be improved by looking at ProseMirror nodes)
           const text = editor.getText();
           const pos = from - 1; // Adjust for TipTap indexing
           
-          // For now, let's just do a simple split if it's plain text or empty
           if (editor.isEmpty || pos >= text.length) {
             engine.insertAfter(block.id, newBlockType);
           } else {
-            // Complex split would need ProseMirror state slicing
-            // For now, let's just insert after if we can't easily slice HTML
             engine.insertAfter(block.id, newBlockType);
           }
           return true;
@@ -155,8 +145,6 @@ export function useBlockEditor(block, options = {}) {
           if (backspaceAction === 'convert' && block.type !== 'text') {
             engine.convertType(block.id, 'text');
           } else {
-            // Merge logic would go here: engine.merge(block.id, prevBlockId)
-            // For now, keep simple delete
             engine.startTransaction().deleteBlock(block.id).commit();
           }
           return true;
@@ -180,10 +168,10 @@ export function useBlockEditor(block, options = {}) {
       },
     },
     onUpdate: ({ editor: ed }) => {
+      // Yjs handles the real-time sync, but we still debounce save to CommandBus 
+      // so it goes into db.blocks for full-text search and previews.
       const html = ed.getHTML();
-      const cleaned = sanitize(html);
-      lastPushedContent.current = cleaned;
-      debouncedSave(block.id, cleaned);
+      debouncedSave(block.id, sanitize(html));
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to } = ed.state.selection;
@@ -213,18 +201,15 @@ export function useBlockEditor(block, options = {}) {
     },
   });
 
-  // Sync content from store → editor (when external changes arrive, e.g. decryption)
+  // Seed the Yjs fragment on first load if it's empty but we have block.content
   useEffect(() => {
-    if (editor && block.content !== undefined && !editor.isFocused) {
-      const currentHTML = editor.getHTML();
-      if (currentHTML !== block.content && block.content !== lastPushedContent.current) {
-        isInternalUpdate.current = true;
-        editor.commands.setContent(block.content || '', false);
-        lastPushedContent.current = block.content;
-        isInternalUpdate.current = false;
+    if (editor && isFirstLoad.current) {
+      if (editor.isEmpty && block.content) {
+        editor.commands.setContent(block.content, false);
       }
+      isFirstLoad.current = false;
     }
-  }, [block.content, editor]);
+  }, [editor, block.content]);
 
   // Focus management
   useEffect(() => {

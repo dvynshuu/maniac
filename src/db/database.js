@@ -87,6 +87,10 @@ db.version(9).stores({
   });
 });
 
+db.version(10).stores({
+  crdt_updates: '++id, pageId, timestamp'
+});
+
 export const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';

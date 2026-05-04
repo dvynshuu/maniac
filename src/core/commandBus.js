@@ -374,6 +374,11 @@ export async function executeOp(operation) {
         break;
       }
     }
+  } else if (entityType === 'CRDT') {
+    if (opType === 'CRDT_UPDATE') {
+      const { applyRemoteUpdate } = await import('./crdtManager');
+      await applyRemoteUpdate(entityId, payload.update);
+    }
   }
 
   // Cross-tab broadcast (only if it's a local execution like undo/redo)

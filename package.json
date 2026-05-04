@@ -17,6 +17,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@tiptap/extension-code-block-lowlight": "^3.22.4",
+    "@tiptap/extension-collaboration": "^3.22.4",
     "@tiptap/extension-highlight": "^3.22.4",
     "@tiptap/extension-link": "^3.22.4",
     "@tiptap/extension-placeholder": "^3.22.4",
@@ -33,6 +34,7 @@
     "nanoid": "^5.1.7",
     "react-force-graph-2d": "^1.29.1",
     "react-router-dom": "^7.14.0",
+    "yjs": "^13.6.30",
     "zustand": "^5.0.12"
   }
 }

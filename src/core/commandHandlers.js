@@ -383,3 +383,24 @@ registerHandler('page/delete', async (payload) => {
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
+
+// ═══════════════════════════════════════════════════════════════
+// CRDT HANDLERS
+// ═══════════════════════════════════════════════════════════════
+
+registerHandler('crdt/update', async (payload) => {
+  const { pageId, update } = payload;
+  
+  // Persist the update
+  await db.crdt_updates.add({
+    pageId,
+    timestamp: Date.now(),
+    update
+  });
+
+  // Since crdt/update doesn't need to mutate Zustand directly (Yjs handles that),
+  // we just create an op so it gets broadcasted to other tabs.
+  const op = createOp('CRDT', pageId, 'CRDT_UPDATE', { update });
+  
+  return { ops: [op], inverseOps: [] };
+});
