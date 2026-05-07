@@ -10,7 +10,7 @@ import BoardView from './views/BoardView';
 import CalendarView from './views/CalendarView';
 import TimelineView from './views/TimelineView';
 import GalleryView from './views/GalleryView';
-import { applyFilters, applySorts } from '../../core/queryEngine';
+import { useFilteredDatabaseRows } from '../../core/queryEngine';
 import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
@@ -90,11 +90,7 @@ export default function DatabaseBlock({ block }) {
   }, [dbData, block.properties]);
 
   // Use query engine for filter & sort
-  const processedRows = useMemo(() => {
-    let result = applyFilters(rawRows, filters, schema);
-    result = applySorts(result, sorts, schema);
-    return result;
-  }, [rawRows, filters, sorts, schema]);
+  const processedRows = useFilteredDatabaseRows(block.id, filters, sorts);
 
   // Include just-added rows even if filtered out
   const rows = useMemo(() => {

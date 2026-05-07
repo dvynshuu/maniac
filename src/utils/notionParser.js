@@ -361,9 +361,17 @@ function parseHtmlToBlocks(html, pageId) {
     // Toggle (details/summary)
     if (tag === 'details') {
       const summary = node.querySelector('summary');
-      const summaryText = summary ? getTextContent(summary) : 'Toggle';
-      const childContent = getTextContent(node).replace(summaryText, '').trim();
-      blocks.push(makeBlock(pageId, 'toggle', summaryText, { expanded: false, childContent }, nextSort(), parentId));
+      const summaryText = summary ? getInnerHtml(summary) : 'Toggle';
+      const toggleBlock = makeBlock(pageId, 'toggle', summaryText, { expanded: false }, nextSort(), parentId);
+      blocks.push(toggleBlock);
+      
+      for (const child of node.children) {
+        if (child.tagName && child.tagName.toLowerCase() !== 'summary') {
+          processNode(child, toggleBlock.id);
+        } else if (!child.tagName && child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
+          blocks.push(makeBlock(pageId, 'text', child.textContent.trim(), {}, nextSort(), toggleBlock.id));
+        }
+      }
       return;
     }
 
@@ -378,8 +386,20 @@ function parseHtmlToBlocks(html, pageId) {
 
     // Lists — handle nesting recursively
     if (tag === 'ul' || tag === 'ol') {
+      const isToggleList = classList.some(c => c.includes('toggle'));
       const items = node.querySelectorAll(':scope > li');
+      
       items.forEach(li => {
+        if (isToggleList) {
+          const detailsEl = li.querySelector(':scope > details');
+          if (detailsEl) {
+            processNode(detailsEl, parentId);
+          } else {
+            for (const child of li.children) processNode(child, parentId);
+          }
+          return;
+        }
+
         const checkbox = li.querySelector(':scope > input[type="checkbox"], :scope > label > input[type="checkbox"]');
         let blockType;
         let props = {};
@@ -392,43 +412,37 @@ function parseHtmlToBlocks(html, pageId) {
           blockType = 'bullet';
         }
 
-        // Get direct text content (exclude nested lists)
+        // Get direct text content and inline elements
         const textParts = [];
+        const nestedNodes = [];
+        const inlineTags = ['strong', 'b', 'em', 'i', 'u', 's', 'del', 'strike', 'code', 'mark', 'a', 'span'];
+
         for (const child of li.childNodes) {
           if (child.nodeType === Node.TEXT_NODE) {
             textParts.push(child.textContent);
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const childTag = child.tagName.toLowerCase();
-            if (childTag !== 'ul' && childTag !== 'ol') {
-              textParts.push(child.outerHTML || child.textContent);
+            
+            if (inlineTags.includes(childTag)) {
+              textParts.push(child.outerHTML);
+            } else if (childTag === 'input' && child.getAttribute('type') === 'checkbox') {
+              // skip
+            } else if (childTag === 'label' && child.querySelector('input[type="checkbox"]')) {
+              // skip
+            } else {
+              // Block-level nested node (e.g., ul, ol, figure, details)
+              nestedNodes.push(child);
             }
           }
         }
+        
         const content = textParts.join('').trim();
         const listBlock = makeBlock(pageId, blockType, content, props, nextSort(), parentId);
         blocks.push(listBlock);
 
-        // Process nested lists as children
-        const nestedList = li.querySelector(':scope > ul, :scope > ol');
-        if (nestedList) {
-          // Recurse: create child blocks with parentId pointing to this list item
-          const nestedTag = nestedList.tagName.toLowerCase();
-          const nestedItems = nestedList.querySelectorAll(':scope > li');
-          nestedItems.forEach(nestedLi => {
-            const nestedCheckbox = nestedLi.querySelector(':scope > input[type="checkbox"]');
-            let nestedType;
-            let nestedProps = { depth: 1 };
-            if (nestedCheckbox) {
-              nestedType = 'todo';
-              nestedProps.checked = nestedCheckbox.checked || nestedCheckbox.hasAttribute('checked');
-            } else if (nestedTag === 'ol') {
-              nestedType = 'numbered';
-            } else {
-              nestedType = 'bullet';
-            }
-            const nestedContent = getInnerHtml(nestedLi).replace(/<(ul|ol)[\s\S]*$/i, '').trim();
-            blocks.push(makeBlock(pageId, nestedType, nestedContent, nestedProps, nextSort(), listBlock.id));
-          });
+        // Process all nested block-level elements
+        for (const nested of nestedNodes) {
+          processNode(nested, listBlock.id);
         }
       });
       return;
@@ -612,27 +626,20 @@ function parseCsvToDatabase(csvText, pageId) {
     // For select/multi_select, extract unique options with cycling colors
     if (type === 'select' || type === 'multi_select') {
       const SELECT_COLORS = [
-        'gray', 'blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal',
+        'default', 'blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal',
       ];
-      const COLOR_MAP = {
-        gray:   { bg: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.7)' },
-        blue:   { bg: 'rgba(96,165,250,0.15)',  text: '#60a5fa' },
-        purple: { bg: 'rgba(167,139,250,0.15)', text: '#a78bfa' },
-        pink:   { bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
-        red:    { bg: 'rgba(248,113,113,0.15)', text: '#f87171' },
-        orange: { bg: 'rgba(251,146,60,0.15)',  text: '#fb923c' },
-        yellow: { bg: 'rgba(250,204,21,0.15)',  text: '#facc15' },
-        green:  { bg: 'rgba(74,222,128,0.15)',  text: '#4ade80' },
-        teal:   { bg: 'rgba(45,212,191,0.15)',  text: '#2dd4bf' },
-      };
       
       const allValues = type === 'multi_select'
         ? [...new Set(values.flatMap(v => v.split(',').map(s => s.trim())).filter(Boolean))]
         : [...new Set(values)];
       
-      config.options = allValues.map((value, i) => {
+      config.options = allValues.map((val, i) => {
         const colorName = SELECT_COLORS[i % SELECT_COLORS.length];
-        return { value, color: colorName, ...COLOR_MAP[colorName] };
+        return {
+          id: `opt_${createId()}`,
+          label: val,
+          color: colorName,
+        };
       });
     }
 
@@ -658,7 +665,18 @@ function parseCsvToDatabase(csvText, pageId) {
 
     schema.forEach((prop, colIdx) => {
       const rawValue = (dataRow[colIdx] || '').trim();
-      const value = coerceValue(rawValue, prop.type);
+      let value = coerceValue(rawValue, prop.type);
+      
+      if (prop.type === 'select' && value) {
+        const opt = prop.config.options?.find(o => o.label === value);
+        if (opt) value = opt.id;
+      } else if (prop.type === 'multi_select' && Array.isArray(value)) {
+        value = value.map(val => {
+          const opt = prop.config.options?.find(o => o.label === val);
+          return opt ? opt.id : val;
+        });
+      }
+
       dbCells.push({
         id: `${rowId}_${prop.id}`,
         rowId,

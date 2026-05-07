@@ -23,13 +23,17 @@ export default function SelectDropdown({
   const options = property.config.options || [];
 
   const filteredOptions = useMemo(() => {
-    return options.filter(opt => 
-      opt.label.toLowerCase().includes(search.toLowerCase())
-    );
+    return options.filter(opt => {
+      const label = opt.label || opt.value || '';
+      return label.toLowerCase().includes(search.toLowerCase());
+    });
   }, [options, search]);
 
   const selectedOptions = useMemo(() => {
-    return options.filter(opt => selectedValues.includes(opt.id));
+    return options.filter(opt => {
+      const optId = opt.id || opt.value;
+      return selectedValues.includes(optId);
+    });
   }, [options, selectedValues]);
 
   useEffect(() => {
@@ -85,10 +89,10 @@ export default function SelectDropdown({
         {selectedOptions.length > 0 ? (
           selectedOptions.map(opt => (
             <span 
-              key={opt.id} 
+              key={opt.id || opt.value} 
               className={`db-tag db-tag-${opt.color || 'default'}`}
             >
-              {opt.label}
+              {opt.label || opt.value || 'Untitled'}
             </span>
           ))
         ) : (
@@ -118,16 +122,20 @@ export default function SelectDropdown({
 
       <div className="db-select-options max-h-60 overflow-y-auto p-1">
         {filteredOptions.length > 0 ? (
-          filteredOptions.map(opt => (
-            <button
-              key={opt.id}
-              className={`db-select-option flex items-center justify-between w-full h-8 px-2 rounded-md transition-colors ${selectedValues.includes(opt.id) ? 'is-selected' : ''}`}
-              onClick={() => handleToggleOption(opt.id)}
-            >
-              <span className={`db-tag db-tag-${opt.color || 'default'}`}>{opt.label}</span>
-              {selectedValues.includes(opt.id) && <Check size={14} className="text-accent-primary" />}
-            </button>
-          ))
+          filteredOptions.map(opt => {
+            const optId = opt.id || opt.value;
+            const isSelected = selectedValues.includes(optId);
+            return (
+              <button
+                key={optId}
+                className={`db-select-option flex items-center justify-between w-full h-8 px-2 rounded-md transition-colors ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => handleToggleOption(optId)}
+              >
+                <span className={`db-tag db-tag-${opt.color || 'default'}`}>{opt.label || opt.value || 'Untitled'}</span>
+                {isSelected && <Check size={14} className="text-accent-primary" />}
+              </button>
+            );
+          })
         ) : (
           search ? (
             <button 
