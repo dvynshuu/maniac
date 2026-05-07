@@ -271,6 +271,8 @@ export function useBacklinks(blockId) {
   );
 }
 
+const EMPTY_DETAILS = [];
+
 /**
  * 4. useMentionReferences
  * Derived cache for blocks mentioning the current block.
@@ -278,7 +280,8 @@ export function useBacklinks(blockId) {
 export function useMentionReferences(blockId) {
   // Uses backlinkStore's forwardLinks to find where this block is mentioned.
   return useBacklinkStore(state => {
-    const details = state.backlinkDetails[blockId] || [];
-    return details;
+    const details = state.backlinkDetails[blockId];
+    return details || EMPTY_DETAILS;
   }, shallowArrayEqual);
 }
+

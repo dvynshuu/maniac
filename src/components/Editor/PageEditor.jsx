@@ -18,6 +18,7 @@ import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useSelectionStore } from '../../core/editor/selectionStore';
+import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
 
 function PageEditor() {
   const { pageId } = useParams();
@@ -44,6 +45,9 @@ function PageEditor() {
     anchorBlockId: s.anchorBlockId,
     focusBlockId: s.focusBlockId
   })));
+
+  // Block virtualization — only renders blocks within viewport + overscan
+  const virtualizer = useBlockVirtualizer(scrollRef, rootBlockIds);
 
   // dnd-kit sensors
   const sensors = useSensors(
@@ -270,21 +274,23 @@ function PageEditor() {
               Click here or press Enter to add a block...
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={rootBlockIds} strategy={verticalListSortingStrategy}>
-                {rootBlockIds.map((id, index) => (
-                  <BlockRenderer
-                    key={id}
-                    blockId={id}
-                    index={index}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+            <VirtualizerProvider value={virtualizer}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={rootBlockIds} strategy={verticalListSortingStrategy}>
+                  {rootBlockIds.map((id, index) => (
+                    <BlockRenderer
+                      key={id}
+                      blockId={id}
+                      index={index}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </VirtualizerProvider>
           )}
         </div>
         

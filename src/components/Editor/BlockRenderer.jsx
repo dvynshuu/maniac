@@ -1,5 +1,4 @@
-import React, { useState, memo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import React, { useState, memo, useRef, useEffect, useCallback } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
@@ -24,12 +23,56 @@ import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
+import { useVirtualizerContext, useBlockVisible, getCachedHeight, setCachedHeight } from '../../hooks/useBlockVirtualizer';
 
 const BlockRenderer = memo(({ blockId, index }) => {
   const block = useBlockStore(s => s.blockMap[blockId]);
   // Performance: incremental child map instead of O(n) filter
   const childBlockIds = useChildBlockIds(blockId);
   const engine = useEditorEngine();
+  const virtualizer = useVirtualizerContext();
+
+  // ── ALL hooks must be called unconditionally (Rules of Hooks) ──
+  const wrapperRef = useRef(null);
+  const resizeObserverRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+
+  // Per-block visibility via useSyncExternalStore
+  const isVisible = useBlockVisible(blockId);
+
+  // Register with IntersectionObserver
+  const setWrapperRef = useCallback((node) => {
+    if (wrapperRef.current && virtualizer) {
+      virtualizer.unobserve(wrapperRef.current);
+    }
+    wrapperRef.current = node;
+    if (node && virtualizer) {
+      virtualizer.observe(node, blockId);
+    }
+  }, [virtualizer, blockId]);
+
+  // ResizeObserver: cache measured heights for placeholders
+  useEffect(() => {
+    if (!isVisible || !wrapperRef.current) return;
+
+    const element = wrapperRef.current;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        if (height > 0) {
+          setCachedHeight(blockId, height);
+        }
+      }
+    });
+
+    ro.observe(element);
+    resizeObserverRef.current = ro;
+
+    return () => {
+      ro.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [isVisible, blockId]);
 
   const {
     attributes,
@@ -40,13 +83,40 @@ const BlockRenderer = memo(({ blockId, index }) => {
     isDragging,
   } = useSortable({ id: blockId });
 
+  // Combine sortable ref with our virtualizer ref
+  const combinedRef = useCallback((node) => {
+    setNodeRef(node);
+    setWrapperRef(node);
+  }, [setNodeRef, setWrapperRef]);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.3 : 1,
   };
 
+  // ── Early returns AFTER all hooks ─────────────────────────────
   if (!block) return null;
+
+  // Placeholder for offscreen blocks
+  if (!isVisible) {
+    const placeholderHeight = getCachedHeight(blockId);
+    return (
+      <div
+        ref={combinedRef}
+        style={{
+          ...style,
+          height: placeholderHeight,
+          minHeight: 28,
+        }}
+        className="block-wrapper block-placeholder"
+        data-block-id={block.id}
+        {...attributes}
+      />
+    );
+  }
+
+  // ── Full render for visible blocks ────────────────────────────
 
   const renderBlockContent = () => {
     switch (block.type) {
@@ -98,8 +168,6 @@ const BlockRenderer = memo(({ blockId, index }) => {
     }
   };
 
-  const [menuPos, setMenuPos] = useState(null);
-
   const handleMenuClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -110,12 +178,10 @@ const BlockRenderer = memo(({ blockId, index }) => {
     const { blockOrder, blockMap } = useBlockStore.getState();
     const idx = blockOrder.indexOf(block.id);
     if (idx <= 0) return;
-    // Find the previous sibling with the same parent
     for (let i = idx - 1; i >= 0; i--) {
       const candidateId = blockOrder[i];
       const candidate = blockMap[candidateId];
       if ((candidate?.parentId || null) === (block.parentId || null)) {
-        // Move before this sibling by finding what's before it
         const prevIdx = i - 1;
         let afterId = null;
         for (let j = prevIdx; j >= 0; j--) {
@@ -133,12 +199,10 @@ const BlockRenderer = memo(({ blockId, index }) => {
   const handleMoveDown = () => {
     const { blockOrder, blockMap } = useBlockStore.getState();
     const idx = blockOrder.indexOf(block.id);
-    // Find the next sibling with the same parent
     for (let i = idx + 1; i < blockOrder.length; i++) {
       const candidateId = blockOrder[i];
       const candidate = blockMap[candidateId];
       if ((candidate?.parentId || null) === (block.parentId || null)) {
-        // Move after this sibling
         engine.move(block.id, block.parentId || null, candidateId);
         return;
       }
@@ -175,7 +239,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       style={style}
       className={`block-wrapper ${isDragging ? 'dragging' : ''}`}
       data-block-id={block.id}

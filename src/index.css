@@ -638,6 +638,13 @@ a:hover {
   opacity: 1;
 }
 
+/* Virtualized placeholder — preserves height for scroll stability */
+.block-placeholder {
+  min-height: 28px;
+  contain: layout style paint;
+  overflow: hidden;
+}
+
 .block-handle {
   width: 24px;
   height: 24px;

@@ -90,6 +90,11 @@ registerHandler('block/update', async (payload) => {
 
   // Fetch fresh record from DB (may be encrypted)
   let dbBlock = await db.blocks.get(blockId);
+  
+  // Fallback: if not yet persisted to IndexedDB, use in-memory store
+  if (!dbBlock) {
+    dbBlock = useBlockStore.getState().blockMap[blockId];
+  }
   if (!dbBlock) return null;
 
   const key = useSecurityStore.getState().derivedKey;
