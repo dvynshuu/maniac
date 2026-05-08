@@ -11,14 +11,15 @@ import { invalidateStore } from '../core/derivedCache';
  * Safely resolve a block's properties from raw DB data.
  * Handles: plain object, encrypted string, null, undefined.
  */
-function resolveProperties(raw, isEncrypted) {
+function resolveProperties(raw) {
   if (!raw) return {};
   if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
-  // If it's a string but the block isn't marked encrypted, try to JSON.parse it
-  if (typeof raw === 'string' && !isEncrypted) {
+  if (typeof raw === 'string') {
+    if (SecurityService.isEncrypted(raw)) {
+      return {}; // Encrypted string — return empty, decryption will fill it later
+    }
     try { return JSON.parse(raw); } catch { return {}; }
   }
-  // Encrypted string — return empty, decryption will fill it later
   return {};
 }
 
@@ -56,8 +57,8 @@ export const useBlockStore = create((set, get) => ({
         const encrypted = !!(b._isEncrypted && key);
         initialMap[b.id] = {
           ...b,
-          content: encrypted ? '' : (b.content || ''),
-          properties: encrypted ? {} : resolveProperties(b.properties, false),
+          content: (encrypted && SecurityService.isEncrypted(b.content)) ? '' : (b.content || ''),
+          properties: (encrypted && SecurityService.isEncrypted(b.properties)) ? {} : resolveProperties(b.properties),
           _isDecrypting: encrypted,
         };
         if (encrypted) needsDecryption.push(b);
@@ -77,8 +78,12 @@ export const useBlockStore = create((set, get) => ({
 
           try {
             if (b.content && typeof b.content === 'string') {
-              const dec = await SecurityService.decrypt(b.content, key);
-              if (dec != null) content = dec;
+              if (SecurityService.isEncrypted(b.content)) {
+                const dec = await SecurityService.decrypt(b.content, key);
+                if (dec != null) content = dec;
+              } else {
+                content = b.content;
+              }
             }
           } catch {
             content = '🔒 Decryption Failed';
@@ -86,11 +91,15 @@ export const useBlockStore = create((set, get) => ({
 
           try {
             if (typeof properties === 'string' && properties.length > 0) {
-              const decProps = await SecurityService.decrypt(properties, key);
-              if (decProps != null) {
-                properties = JSON.parse(decProps);
+              if (SecurityService.isEncrypted(properties)) {
+                const decProps = await SecurityService.decrypt(properties, key);
+                if (decProps != null) {
+                  properties = JSON.parse(decProps);
+                } else {
+                  properties = {};
+                }
               } else {
-                properties = {};
+                try { properties = JSON.parse(properties); } catch { properties = {}; }
               }
             } else if (typeof properties === 'object' && properties !== null) {
               // Already an object — no decryption needed (edge case: mixed state)

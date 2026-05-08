@@ -90,23 +90,31 @@ async function encryptForDB(data, isBlock) {
   if (derivedKey) {
     if (isBlock) {
       if (dbObj.content !== undefined && typeof dbObj.content === 'string') {
-        if (hmacKey) {
-          const words = extractWords(dbObj.content);
-          const hashed = await Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)));
-          dbObj.words = hashed.filter(Boolean);
-        } else {
-          dbObj.words = [];
-        }
-        if (dbObj.content.length > 0) {
-          dbObj.content = await SecurityService.encrypt(dbObj.content, derivedKey);
+        if (!SecurityService.isEncrypted(dbObj.content)) {
+          if (hmacKey) {
+            const words = extractWords(dbObj.content);
+            const hashed = await Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)));
+            dbObj.words = hashed.filter(Boolean);
+          } else {
+            dbObj.words = [];
+          }
+          if (dbObj.content.length > 0) {
+            dbObj.content = await SecurityService.encrypt(dbObj.content, derivedKey);
+          }
         }
       }
-      if (dbObj.properties !== undefined && typeof dbObj.properties === 'object' && dbObj.properties !== null) {
-        dbObj.properties = await SecurityService.encrypt(JSON.stringify(dbObj.properties), derivedKey);
+      if (dbObj.properties !== undefined) {
+        if (typeof dbObj.properties === 'object' && dbObj.properties !== null) {
+          dbObj.properties = await SecurityService.encrypt(JSON.stringify(dbObj.properties), derivedKey);
+        } else if (typeof dbObj.properties === 'string' && !SecurityService.isEncrypted(dbObj.properties)) {
+          dbObj.properties = await SecurityService.encrypt(dbObj.properties, derivedKey);
+        }
       }
     } else {
       if (dbObj.title !== undefined && typeof dbObj.title === 'string') {
-        dbObj.title = await SecurityService.encrypt(dbObj.title, derivedKey);
+        if (!SecurityService.isEncrypted(dbObj.title)) {
+          dbObj.title = await SecurityService.encrypt(dbObj.title, derivedKey);
+        }
       }
     }
     dbObj._isEncrypted = true;
@@ -133,11 +141,6 @@ async function flushQueue() {
       const isBlock = table === 'blocks';
       for (const [id, item] of map) {
         const { op, payload, meta } = item;
-        
-        let dbPayload = payload;
-        if (op !== 'delete' && (table === 'blocks' || table === 'pages')) {
-          dbPayload = await encryptForDB(payload, isBlock);
-        }
 
         transactions.push(async () => {
           if (op === 'delete') {
@@ -146,11 +149,25 @@ async function flushQueue() {
               broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'delete' });
             }
           } else if (op === 'update' || op === 'reorder' || op === 'change_type') {
-            await db[table].update(id, dbPayload);
+            let dbPayload = payload;
+            if (table === 'blocks' || table === 'pages') {
+              const existing = await db[table].get(id);
+              if (existing) {
+                const merged = { ...existing, ...payload };
+                dbPayload = await encryptForDB(merged, isBlock);
+                await db[table].put(dbPayload);
+              } else {
+                dbPayload = await encryptForDB(payload, isBlock);
+                await db[table].update(id, dbPayload);
+              }
+            } else {
+              await db[table].update(id, dbPayload);
+            }
             if (meta?.source !== 'remote') {
               broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'update', payload }); 
             }
           } else if (op === 'create') {
+            const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
             await db[table].put(dbPayload);
             if (meta?.source !== 'remote') {
               broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'create', payload });

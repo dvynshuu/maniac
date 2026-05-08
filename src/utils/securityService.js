@@ -24,7 +24,7 @@ export class SecurityService {
     if (b64) {
       return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     }
-    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const salt = crypto.getRandomValues(new Uint8Array(16));
     localStorage.setItem(MASTER_SALT_KEY, btoa(String.fromCharCode(...salt)));
     return salt;
   }
@@ -37,7 +37,7 @@ export class SecurityService {
    */
   static async deriveKeys(password, salt) {
     const encoder = new TextEncoder();
-    const passwordKey = await window.crypto.subtle.importKey(
+    const passwordKey = await crypto.subtle.importKey(
       'raw',
       encoder.encode(password),
       'PBKDF2',
@@ -45,7 +45,7 @@ export class SecurityService {
       ['deriveKey']
     );
 
-    const aesKey = await window.crypto.subtle.deriveKey(
+    const aesKey = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: salt, iterations: ITERATIONS, hash: 'SHA-256' },
       passwordKey,
       { name: 'AES-GCM', length: 256 },
@@ -57,7 +57,7 @@ export class SecurityService {
     const hmacSalt = new Uint8Array(salt);
     hmacSalt[0] ^= 0xFF; // Slightly modify salt to get a different key
 
-    const hmacKey = await window.crypto.subtle.deriveKey(
+    const hmacKey = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: hmacSalt, iterations: ITERATIONS, hash: 'SHA-256' },
       passwordKey,
       { name: 'HMAC', hash: 'SHA-256', length: 256 },
@@ -170,9 +170,9 @@ export class SecurityService {
     if (!text) return text;
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
-    const iv = window.crypto.getRandomValues(new Uint8Array(IV_SIZE));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
 
-    const encrypted = await window.crypto.subtle.encrypt(
+    const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
       key,
       data
@@ -208,7 +208,7 @@ export class SecurityService {
       const iv = combined.slice(0, IV_SIZE);
       const data = combined.slice(IV_SIZE);
 
-      const decrypted = await window.crypto.subtle.decrypt(
+      const decrypted = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv },
         key,
         data
@@ -234,7 +234,7 @@ export class SecurityService {
     if (!word || !hmacKey) return word;
     const encoder = new TextEncoder();
     const data = encoder.encode(word);
-    const signature = await window.crypto.subtle.sign('HMAC', hmacKey, data);
+    const signature = await crypto.subtle.sign('HMAC', hmacKey, data);
     
     // Convert first 16 bytes to hex string for smaller DB storage
     const hashArray = Array.from(new Uint8Array(signature).slice(0, 16));

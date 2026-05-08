@@ -38,14 +38,15 @@ export const useDatabaseStore = create((set, get) => ({
         const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
         await db.database_rows.bulkPut(rowsToInsert);
         
-        if (block) {
-          const newProps = { ...block.properties };
-          delete newProps.rows;
-          await dispatch({
-            type: 'block/update',
-            payload: { blockId, updates: { properties: newProps } }
-          });
-        }
+      const block = useBlockStore.getState().getBlock(blockId);
+      if (block) {
+        const newProps = { ...block.properties };
+        delete newProps.rows;
+        await dispatch({
+          type: 'block/update',
+          payload: { blockId, updates: { properties: newProps } }
+        });
+      }
       }
 
       const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
