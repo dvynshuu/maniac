@@ -16,6 +16,7 @@
 
 import { createContext, useContext, useCallback, useEffect, useRef, useSyncExternalStore, createElement } from 'react';
 import { useBlockStore } from '../stores/blockStore';
+import { BLOCK_TYPES } from '../utils/constants';
 
 // ─── Module-level height cache ──────────────────────────────────
 const heightCache = new Map();
@@ -46,7 +47,7 @@ const MIN_BLOCKS_TO_VIRTUALIZE = 20;
 
 // ─── Main Hook ──────────────────────────────────────────────────
 
-export function useBlockVirtualizer(scrollContainerRef, blockIds) {
+export function useBlockVirtualizer(scrollElement, blockIds, pageId) {
   // Subscribers: Set of callbacks to notify on visibility changes
   const subscribersRef = useRef(new Set());
 
@@ -65,11 +66,66 @@ export function useBlockVirtualizer(scrollContainerRef, blockIds) {
   // Force-visible set
   const pinnedRef = useRef(new Set());
 
+  // Track the last pageId we performed a full reset for
+  const lastResetPageIdRef = useRef(null);
+  
+  // Track previous block IDs to detect when the new page's blocks arrive
+  const prevBlockIdsRef = useRef(null);
+
   // Read focusBlockId directly from store via ref (avoids PageEditor re-renders)
   const focusBlockIdRef = useRef(null);
   focusBlockIdRef.current = useBlockStore.getState().focusBlockId;
 
   const enabled = blockIds.length >= MIN_BLOCKS_TO_VIRTUALIZE;
+
+  // ── Reset virtualizer state on page navigation ────────────────
+  // We only reset the virtualizer when the URL changes AND the new blocks have loaded.
+  // This prevents resetting during block insertion/deletion, which would wipe pins.
+  const isDifferentPage = lastResetPageIdRef.current !== pageId;
+  const prevIds = prevBlockIdsRef.current;
+  const idsChanged = !prevIds || prevIds.length !== blockIds.length || 
+    (blockIds.length > 0 && prevIds[0] !== blockIds[0]);
+
+  let shouldReset = false;
+
+  if (isDifferentPage) {
+    if (idsChanged) {
+      // The block IDs have changed, meaning the new page's blocks have arrived from the DB!
+      shouldReset = true;
+    }
+  }
+  
+  if (shouldReset && enabled) {
+    // Clear stale state from previous page
+    for (const timer of unmountTimersRef.current.values()) {
+      clearTimeout(timer);
+    }
+    unmountTimersRef.current.clear();
+    pinnedRef.current.clear();
+    elementMapRef.current.clear();
+
+    // Pre-populate renderSet with ALL block IDs (root + children) so every block
+    // renders immediately.
+    const allBlockIds = useBlockStore.getState().blockOrder;
+    const newRenderSet = new Set(allBlockIds);
+    renderSetRef.current = newRenderSet;
+
+    // Notify subscribers so useBlockVisible returns true for all new blocks
+    queueMicrotask(() => {
+      for (const cb of subscribersRef.current) {
+        cb();
+      }
+    });
+  }
+  
+  if (shouldReset) {
+    lastResetPageIdRef.current = pageId;
+  }
+
+  // Update prevIds for the NEXT render to detect changes correctly
+  useEffect(() => {
+    prevBlockIdsRef.current = blockIds;
+  }, [blockIds]);
 
   /** Notify all subscribers that visibility may have changed */
   const notify = useCallback(() => {
@@ -82,7 +138,7 @@ export function useBlockVirtualizer(scrollContainerRef, blockIds) {
   useEffect(() => {
     if (!enabled) return;
 
-    const root = scrollContainerRef.current;
+    const root = scrollElement;
     if (!root) return;
 
     observerRef.current?.disconnect();
@@ -141,7 +197,7 @@ export function useBlockVirtualizer(scrollContainerRef, blockIds) {
       observer.disconnect();
       observerRef.current = null;
     };
-  }, [enabled, scrollContainerRef, notify]);
+  }, [enabled, scrollElement, notify]);
 
   // ── Cleanup timers on unmount ─────────────────────────────────
   useEffect(() => {
@@ -204,6 +260,12 @@ export function useBlockVirtualizer(scrollContainerRef, blockIds) {
 export function useBlockVisible(blockId) {
   const virtualizer = useVirtualizerContext();
 
+  // Natively check if the block needs pinning to avoid 1-frame unmounts
+  const type = useBlockStore(s => s.blockMap[blockId]?.type);
+  const needsPinning = type === BLOCK_TYPES.EMBED || 
+                       type === BLOCK_TYPES.DATABASE || 
+                       type === BLOCK_TYPES.TRACKER;
+
   const subscribe = useCallback(
     (onStoreChange) => {
       if (!virtualizer) return () => {};
@@ -214,8 +276,9 @@ export function useBlockVisible(blockId) {
 
   const getSnapshot = useCallback(() => {
     if (!virtualizer) return true;
+    if (needsPinning) return true;
     return virtualizer.getBlockVisible(blockId);
-  }, [virtualizer, blockId]);
+  }, [virtualizer, blockId, needsPinning]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

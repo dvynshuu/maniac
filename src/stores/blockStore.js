@@ -46,7 +46,8 @@ export const useBlockStore = create((set, get) => ({
 
     try {
       const key = useSecurityStore.getState().derivedKey;
-      const blocksRaw = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
+      const blocksRaw = await db.blocks.where('pageId').equals(pageId).toArray();
+      blocksRaw.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
 
       const initialMap = {};
       const initialOrder = [];

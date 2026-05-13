@@ -74,6 +74,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
     };
   }, [isVisible, blockId]);
 
+
   const {
     attributes,
     listeners,

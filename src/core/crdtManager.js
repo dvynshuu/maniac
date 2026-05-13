@@ -10,6 +10,11 @@ const _docs = new Map();
  * Loads existing updates from IndexedDB in the background.
  */
 export function getCrdtDoc(pageId) {
+  if (!pageId || typeof pageId !== 'string') {
+    console.warn('[CRDT] getCrdtDoc called with invalid pageId:', pageId);
+    return new Y.Doc(); // Return a throwaway doc to avoid crashes
+  }
+
   if (_docs.has(pageId)) {
     return _docs.get(pageId);
   }
@@ -56,6 +61,10 @@ export function getBlockFragment(pageId, blockId) {
  * Apply a remote update to a Y.Doc.
  */
 export function applyRemoteUpdate(pageId, update) {
+  if (!pageId || typeof pageId !== 'string') {
+    console.warn('[CRDT] applyRemoteUpdate called with invalid pageId:', pageId);
+    return;
+  }
   const doc = getCrdtDoc(pageId);
   Y.applyUpdate(doc, update, 'remote');
 }

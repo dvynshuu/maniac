@@ -30,6 +30,10 @@ function PageEditor() {
   const isSaving = useUIStore((s) => s.isSaving);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
+  useEffect(() => {
+    console.log('[DEBUG] PageEditor rendered. pageId:', pageId, 'rootBlockIds length:', rootBlockIds.length);
+  }, [pageId, rootBlockIds.length]);
+
 
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -37,7 +41,7 @@ function PageEditor() {
   const [coverUrl, setCoverUrl] = useState(null);
   const titleInputRef = useRef(null);
   const coverInputRef = useRef(null);
-  const scrollRef = useRef(null);
+  const [scrollElement, setScrollElement] = useState(null);
 
   const engine = useEditorEngine();
   const setSelection = useSelectionStore(s => s.setSelection);
@@ -47,7 +51,7 @@ function PageEditor() {
   })));
 
   // Block virtualization — only renders blocks within viewport + overscan
-  const virtualizer = useBlockVirtualizer(scrollRef, rootBlockIds);
+  const virtualizer = useBlockVirtualizer(scrollElement, rootBlockIds, pageId);
 
   // dnd-kit sensors
   const sensors = useSensors(
@@ -191,7 +195,7 @@ function PageEditor() {
   };
 
   return (
-    <div className="editor-scroll" ref={scrollRef}>
+    <div className="editor-scroll" ref={setScrollElement}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
         <Breadcrumb />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>

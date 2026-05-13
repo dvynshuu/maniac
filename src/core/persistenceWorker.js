@@ -41,8 +41,8 @@ function enqueueOperation(operation) {
 
   // 2. Determine target table for the actual entity
   let table = null;
-  if (entityType === 'BLOCK') table = 'blocks';
-  else if (entityType === 'PAGE') table = 'pages';
+  if (entityType === 'block' || entityType === 'BLOCK') table = 'blocks';
+  else if (entityType === 'page' || entityType === 'PAGE') table = 'pages';
   else if (entityType === 'CRDT') table = 'crdt_updates';
 
   if (!table) {
@@ -56,21 +56,23 @@ function enqueueOperation(operation) {
 
   const tableQueue = pendingQueue.get(table);
 
-  if (op === 'delete') {
-    tableQueue.set(entityId, { op: 'delete', meta });
-  } else if (op === 'update' || op === 'reorder' || op === 'change_type') {
+  const opUpper = String(op).toUpperCase();
+
+  if (opUpper === 'DELETE') {
+    tableQueue.set(entityId, { op: opUpper, meta });
+  } else if (opUpper === 'UPDATE' || opUpper === 'REORDER' || opUpper === 'CHANGE_TYPE') {
     if (tableQueue.has(entityId)) {
       const existing = tableQueue.get(entityId);
-      if (existing.op === 'delete') {
+      if (existing.op === 'DELETE') {
         // If it was deleted, an update is ignored
       } else {
         tableQueue.set(entityId, { op: existing.op, payload: { ...existing.payload, ...payload }, meta: { ...existing.meta, ...meta } });
       }
     } else {
-      tableQueue.set(entityId, { op: 'update', payload: { ...payload }, meta });
+      tableQueue.set(entityId, { op: opUpper, payload: { ...payload }, meta });
     }
-  } else if (op === 'create' || op === 'CRDT_UPDATE') {
-    tableQueue.set(entityId, { op, payload: { ...payload }, meta });
+  } else if (opUpper === 'CREATE' || opUpper === 'CRDT_UPDATE') {
+    tableQueue.set(entityId, { op: opUpper, payload: { ...payload }, meta });
   }
 
   scheduleFlush();
@@ -143,12 +145,14 @@ async function flushQueue() {
         const { op, payload, meta } = item;
 
         transactions.push(async () => {
-          if (op === 'delete') {
+          const opUpper = String(op).toUpperCase();
+
+          if (opUpper === 'DELETE') {
             await db[table].delete(id);
             if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'delete' });
+              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete' });
             }
-          } else if (op === 'update' || op === 'reorder' || op === 'change_type') {
+          } else if (opUpper === 'UPDATE' || opUpper === 'REORDER' || opUpper === 'CHANGE_TYPE') {
             let dbPayload = payload;
             if (table === 'blocks' || table === 'pages') {
               const existing = await db[table].get(id);
@@ -164,15 +168,15 @@ async function flushQueue() {
               await db[table].update(id, dbPayload);
             }
             if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'update', payload }); 
+              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'update', payload }); 
             }
-          } else if (op === 'create') {
+          } else if (opUpper === 'CREATE') {
             const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
             await db[table].put(dbPayload);
             if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'BLOCK' : 'PAGE', entityId: id, op: 'create', payload });
+              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload });
             }
-          } else if (op === 'CRDT_UPDATE') {
+          } else if (opUpper === 'CRDT_UPDATE') {
             await db[table].put({
               id: `${payload.pageId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
               pageId: payload.pageId,

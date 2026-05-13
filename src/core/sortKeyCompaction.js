@@ -64,7 +64,8 @@ function needsCompaction(blocks) {
  * Re-assigns clean, evenly-spaced keys while preserving current order.
  */
 async function compactPage(pageId) {
-  const blocks = await db.blocks.where('pageId').equals(pageId).sortBy('sortOrder');
+  const blocksRaw = await db.blocks.where('pageId').equals(pageId).toArray();
+  const blocks = blocksRaw.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
 
   if (!needsCompaction(blocks)) return { compacted: false };
 

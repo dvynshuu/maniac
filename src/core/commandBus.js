@@ -328,7 +328,7 @@ export async function executeOp(operation) {
       }
     }
   } else if (entityType === 'CRDT') {
-    if (opType === 'CRDT_UPDATE') {
+    if (opType === 'CRDT_UPDATE' && entityId && typeof entityId === 'string') {
       const { applyRemoteUpdate } = await import('./crdtManager');
       await applyRemoteUpdate(entityId, payload.update);
     }
