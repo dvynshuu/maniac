@@ -210,8 +210,15 @@
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .popover-header {
@@ -285,13 +292,25 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .onboarding-widget {
@@ -375,9 +394,17 @@
   color: white;
 }
 
-.p-1 { background: var(--accent-primary); }
-.p-2 { background: var(--warning); }
-.p-3 { background: var(--error); }
+.p-1 {
+  background: var(--accent-primary);
+}
+
+.p-2 {
+  background: var(--warning);
+}
+
+.p-3 {
+  background: var(--error);
+}
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out;
@@ -393,5 +420,7 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

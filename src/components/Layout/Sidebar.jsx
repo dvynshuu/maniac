@@ -41,13 +41,13 @@ function Sidebar() {
   const handleBulkDelete = async () => {
     const idsToDelete = [...selectedPageIds];
     if (idsToDelete.length === 0) return;
-    
+
     // Clear selection immediately
     clearSelectedPages();
 
     // Start bulk delete process
     const { undo, commit } = await usePageStore.getState().bulkDeletePages(idsToDelete);
-    
+
     let undone = false;
     useUIStore.getState().addToast(`Deleted ${idsToDelete.length} pages`, 'success', {
       label: 'Undo',
@@ -83,7 +83,7 @@ function Sidebar() {
     const trackers = await db.trackers.toArray();
     const entries = await db.tracker_entries.toArray();
     const blobsRaw = await db.blobs.toArray();
-    
+
     // Convert Blobs to base64 strings for the JSON export
     const serializedBlobs = await Promise.all(blobsRaw.map(async (b) => {
       const base64 = await new Promise((resolve) => {
@@ -117,7 +117,7 @@ function Sidebar() {
       } catch {
         throw new Error('Invalid JSON format.');
       }
-      
+
       const validatedData = validateBackupData(file, data);
       useUIStore.getState().setPendingRestoreData(validatedData);
     } catch (err) {
@@ -137,7 +137,7 @@ function Sidebar() {
       const startY = e.clientY;
       const localX = startX - rect.left + navRef.current.scrollLeft;
       const localY = startY - rect.top + navRef.current.scrollTop;
-      
+
       // Cache layout once on start
       const items = navRef.current.querySelectorAll('.page-item-wrapper');
       cachedLayout.current = Array.from(items).map(item => ({
@@ -147,7 +147,7 @@ function Sidebar() {
 
       setDragStart({ x: localX, y: localY, startX, startY, isDragging: false });
       setDragCurrent({ x: localX, y: localY, currentX: startX, currentY: startY });
-      
+
       if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
         clearSelectedPages();
       }
@@ -164,9 +164,9 @@ function Sidebar() {
         cleanup();
         return;
       }
-      
+
       if (!navRef.current) return;
-      
+
       const currentX = e.clientX;
       const currentY = e.clientY;
 
@@ -185,7 +185,7 @@ function Sidebar() {
       // Handle auto-scroll
       const SCROLL_THRESHOLD = 40;
       const SCROLL_SPEED = 15;
-      
+
       if (currentY < rect.top + SCROLL_THRESHOLD) {
         startAutoScroll(-SCROLL_SPEED);
       } else if (currentY > rect.bottom - SCROLL_THRESHOLD) {
@@ -264,7 +264,7 @@ function Sidebar() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         // Only if sidebar or search is active or generally when in sidebar context
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-        
+
         e.preventDefault();
         const allPageIds = pages.filter(p => !p.isArchived).map(p => p.id);
         selectAllPages(allPageIds);
@@ -309,8 +309,8 @@ function Sidebar() {
           </button>
         </div>
 
-        <div 
-          className="sidebar-nav" 
+        <div
+          className="sidebar-nav"
           style={{ padding: '0 12px', position: 'relative' }}
           ref={navRef}
           onMouseDown={handleMouseDown}
@@ -333,9 +333,9 @@ function Sidebar() {
           )}
 
           <div className="sidebar-section-label" style={{ marginTop: 8 }}>WORKSPACE</div>
-          
-          <div 
-            className={`sidebar-page-item page-item-wrapper ${location.pathname === '/' ? 'active' : ''}`} 
+
+          <div
+            className={`sidebar-page-item page-item-wrapper ${location.pathname === '/' ? 'active' : ''}`}
             style={{ padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: location.pathname === '/' ? 'var(--text-primary)' : 'var(--text-secondary)', background: location.pathname === '/' ? 'var(--bg-active)' : 'transparent', marginBottom: 2 }}
             onClick={() => navigate('/')}
             data-page-id="dashboard"
@@ -349,11 +349,11 @@ function Sidebar() {
             <>
               <div className="sidebar-section-label" style={{ marginTop: 16 }}>FAVORITES</div>
               {favoritePages.map(page => (
-                <div 
+                <div
                   key={page.id}
                   className={`sidebar-page-item page-item-wrapper ${location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
-                  style={{ 
-                    padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', 
+                  style={{
+                    padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
                     color: 'var(--text-secondary)', marginBottom: 2,
                     background: selectedPageIds.includes(page.id) ? 'rgba(35, 131, 226, 0.15)' : undefined
                   }}
@@ -379,7 +379,7 @@ function Sidebar() {
 
         {/* Bulk Action Bar - Short Pop */}
         {selectedPageIds.length > 0 && (
-          <div 
+          <div
             onMouseDown={e => e.stopPropagation()}
             style={{
               position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
@@ -393,7 +393,7 @@ function Sidebar() {
               {selectedPageIds.length}
             </span>
             <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
-            <button 
+            <button
               onClick={handleBulkArchive}
               title="Archive"
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
@@ -402,7 +402,7 @@ function Sidebar() {
             >
               <Archive size={14} />
             </button>
-            <button 
+            <button
               onClick={handleBulkDelete}
               title="Delete"
               style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
@@ -412,7 +412,7 @@ function Sidebar() {
               <Trash2 size={14} />
             </button>
             <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
-            <button 
+            <button
               onClick={clearSelectedPages}
               title="Clear Selection"
               style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
@@ -422,7 +422,7 @@ function Sidebar() {
               <X size={14} />
             </button>
             <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
-            <button 
+            <button
               onClick={() => {
                 const allPageIds = pages.filter(p => !p.isArchived).map(p => p.id);
                 selectAllPages(allPageIds);
@@ -457,25 +457,25 @@ function Sidebar() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings size={14} />
-                <span>All data stored locally</span>
+              <Settings size={14} />
+              <span>All data stored locally</span>
             </div>
             <div style={{ display: 'flex', gap: '4px' }}>
-              <button 
-                  className="btn btn-icon" 
-                  onClick={() => importInputRef.current?.click()} 
-                  title="Import Data from JSON"
-                  style={{ width: '24px', height: '24px' }}
+              <button
+                className="btn btn-icon"
+                onClick={() => importInputRef.current?.click()}
+                title="Import Data from JSON"
+                style={{ width: '24px', height: '24px' }}
               >
-                  <Upload size={12} />
+                <Upload size={12} />
               </button>
-              <button 
-                  className="btn btn-icon" 
-                  onClick={handleExport} 
-                  title="Export Data as JSON"
-                  style={{ width: '24px', height: '24px' }}
+              <button
+                className="btn btn-icon"
+                onClick={handleExport}
+                title="Export Data as JSON"
+                style={{ width: '24px', height: '24px' }}
               >
-                  <Download size={12} />
+                <Download size={12} />
               </button>
             </div>
           </div>

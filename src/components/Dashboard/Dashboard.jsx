@@ -37,7 +37,7 @@ function Dashboard() {
     if (activePopover === popover) setActivePopover(null);
     else setActivePopover(popover);
   };
-  
+
   return (
     <div className="editor-scroll bg-primary" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
       {/* Settings Modal */}
@@ -49,7 +49,7 @@ function Dashboard() {
           <div className="dashboard-brand-title">Maniac OS</div>
           <div className="dashboard-tabs" role="tablist">
             {['Workspace', 'Intelligence', 'Calendar', 'Archives'].map(tab => (
-              <button 
+              <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
@@ -65,7 +65,7 @@ function Dashboard() {
           <button aria-label="Settings" className="icon-btn" onClick={() => openSettings('Appearance')}>
             <Settings size={18} />
           </button>
-          
+
           <div style={{ position: 'relative' }}>
             <button aria-label="Notifications" className="icon-btn" onClick={() => togglePopover('notifications')}>
               <Bell size={18} />
@@ -134,14 +134,14 @@ function IntelligenceTab({ navigate }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {nextActions.length > 0 ? nextActions.map(action => (
-              <div 
-                key={action.id} 
+              <div
+                key={action.id}
                 className="intelligence-item"
                 onClick={() => navigate(`/page/${action.pageId}`)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                   {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
-                   <span style={{ fontSize: '14px', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
+                  {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
+                  <span style={{ fontSize: '14px', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
                 </div>
               </div>
             )) : (
@@ -216,9 +216,9 @@ function IntelligenceTab({ navigate }) {
       <div className="intelligence-card" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
         <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Knowledge Growth Curve</h3>
         <div style={{ height: '200px', width: '100%', background: 'var(--bg-elevated)', borderRadius: '12px', display: 'flex', alignItems: 'flex-end', padding: '20px', gap: '10px' }}>
-           {(knowledgeVelocity?.dailyActivity || [5,5,5,5,5,5,5]).map((h, i) => (
-             <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out' }}></div>
-           ))}
+          {(knowledgeVelocity?.dailyActivity || [5, 5, 5, 5, 5, 5, 5]).map((h, i) => (
+            <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out' }}></div>
+          ))}
         </div>
         <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Maniac is becoming more personalized as you add more nodes. Current personalization depth: <b>Level {knowledgeVelocity?.depthLevel || 1}</b></p>
       </div>
@@ -227,7 +227,7 @@ function IntelligenceTab({ navigate }) {
 }
 
 // ==========================================
-// Workspace Tab
+// WorkspaceTab
 // ==========================================
 function WorkspaceTab({ pages, navigate }) {
   const [recentPages, setRecentPages] = useState([]);
@@ -236,27 +236,32 @@ function WorkspaceTab({ pages, navigate }) {
   const onboardingStatus = useUIStore(s => s.onboardingStatus);
   const lastVisitedPage = lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId) : null;
   const key = useSecurityStore(s => s.derivedKey);
+  const sidebarOpen = useUIStore(s => s.sidebarOpen);
+  const { nextActions, analyze, knowledgeVelocity } = useIntelligenceStore();
+
+  useEffect(() => {
+    analyze();
+  }, [key]);
 
   useEffect(() => {
     const fetchPages = async () => {
       try {
-        const recent = await db.pages.orderBy('updatedAt').reverse().limit(4).toArray();
-        // Since isFavorite isn't indexed yet, we'll fetch mock pinned via createdAt limit
-        const pinned = await db.pages.orderBy('createdAt').limit(3).toArray();
-        
+        const recent = await db.pages.orderBy('updatedAt').reverse().limit(6).toArray();
+        const pinned = await db.pages.orderBy('createdAt').limit(4).toArray();
+
         // Decrypt titles if needed
         const decryptTitles = async (list) => {
-           return Promise.all(list.map(async p => {
-             if (key && p._isEncrypted && p.title) {
-               try {
-                 const decrypted = await SecurityService.decrypt(p.title, key);
-                 return { ...p, title: decrypted || '🔒 Decryption Failed' };
-               } catch {
-                 return { ...p, title: '🔒 Decryption Failed' };
-               }
-             }
-             return p;
-           }));
+          return Promise.all(list.map(async p => {
+            if (key && p._isEncrypted && p.title) {
+              try {
+                const decrypted = await SecurityService.decrypt(p.title, key);
+                return { ...p, title: decrypted || '🔒 Decryption Failed' };
+              } catch {
+                return { ...p, title: '🔒 Decryption Failed' };
+              }
+            }
+            return p;
+          }));
         };
 
         setRecentPages(await decryptTitles(recent));
@@ -269,16 +274,16 @@ function WorkspaceTab({ pages, navigate }) {
   }, [key, pages.length]); // Re-run when new pages are created
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '64px' }}>
       {/* Smart Resurfacing */}
       {lastVisitedPage && (
-        <div 
+        <div
           className="interactive-card"
           onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
-          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px 24px', marginBottom: '24px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '16px 24px', marginBottom: '24px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <RotateCcw size={18} color="var(--accent-primary)" />
@@ -296,113 +301,163 @@ function WorkspaceTab({ pages, navigate }) {
         <OnboardingNarrative onComplete={() => useUIStore.getState().updateOnboarding('isComplete')} />
       )}
 
-      {/* Header Section */}
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '8px' }}>CURATOR SYSTEM V1.0</div>
-        <h1 style={{ fontSize: '48px', fontWeight: 'bold', color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '32px' }}>Welcome back, Maniac.</h1>
+      {/* Split-Pane Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', flex: 1 }}>
         
-        {/* Metrics */}
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>KNOWLEDGE VELOCITY</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{useIntelligenceStore.getState().knowledgeVelocity.velocity} <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>%</span></div>
-          </div>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>TOTAL NODES</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{pages.length} <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>obj</span></div>
-          </div>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', width: '140px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '8px' }}>STATUS</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></div>
-              Decision Engine Active
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        
-        {/* Pinned Pages */}
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: '16px', padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-            <div>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '4px' }}>Pinned Pages</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>Your immediate priority nodes</p>
-            </div>
-            <button className="text-link-btn">View Workspace</button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {pinnedPages.length > 0 ? pinnedPages.map(page => (
-              <div 
-                key={page.id} 
-                onClick={() => navigate(`/page/${page.id}`)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
-                className="interactive-card"
-                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all var(--transition-fast)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '24px' }}>{page.icon || '📄'}</div>
-                  <Pin size={14} color="var(--text-tertiary)" />
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {page.title || 'Untitled'}
-                </div>
+        {/* LEFT PANE: Pinned & Recent */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Pinned Pages */}
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Pin size={18} color="var(--text-primary)" />
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Pinned Nodes</h3>
               </div>
-            )) : (
-              <div className="empty-state-container" style={{ gridColumn: '1 / -1', padding: '24px' }}>
-                <Pin className="empty-state-icon" size={24} style={{ marginBottom: '8px' }} />
-                <div className="empty-state-title" style={{ fontSize: '14px', marginBottom: '4px' }}>No pinned pages</div>
-                <div className="empty-state-desc" style={{ fontSize: '12px' }}>Important nodes will appear here.</div>
-              </div>
-            )}
-          </div>
-        </div>
+              <button className="text-link-btn" style={{ fontSize: '12px' }}>View All</button>
+            </div>
 
-        {/* Graph View Card */}
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column' }}>
-          <GraphView pages={pages} />
-        </div>
-      </div>
-      
-      {/* Recent Pages List */}
-      <div style={{ marginTop: '8px', paddingBottom: '32px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>Recent Activity</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {recentPages.length > 0 ? recentPages.map(page => (
-                <div 
-                  key={page.id} 
-                  onClick={() => navigate(`/page/${page.id}`)} 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {pinnedPages.length > 0 ? pinnedPages.map(page => (
+                <div
+                  key={page.id}
+                  onClick={() => navigate(`/page/${page.id}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
                   className="interactive-card"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-tertiary)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-secondary)' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ fontSize: '18px' }}>{page.icon || '📄'}</div>
-                        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '16px' }}>{page.icon || '📄'}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {page.title || 'Untitled'}
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{new Date(page.updatedAt).toLocaleDateString()}</div>
+                  </div>
+                  <ChevronRight size={14} color="var(--text-tertiary)" />
                 </div>
-            )) : (
-              <div className="empty-state-container" style={{ padding: '24px' }}>
-                <Clock className="empty-state-icon" size={32} style={{ marginBottom: '12px' }} />
-                <div className="empty-state-title" style={{ fontSize: '16px', marginBottom: '4px' }}>No recent activity</div>
-                <div className="empty-state-desc">Workspace nodes you view or edit will appear here.</div>
-              </div>
-            )}
+              )) : (
+                <div className="empty-state-container" style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-subtle)' }}>
+                  <div className="empty-state-title" style={{ fontSize: '13px', marginBottom: '4px' }}>No pinned pages</div>
+                  <div className="empty-state-desc" style={{ fontSize: '12px' }}>Important nodes will appear here.</div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Recent Pages List */}
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '4px' }}>Recent Activity</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {recentPages.length > 0 ? recentPages.map(page => (
+                <div
+                  key={page.id}
+                  onClick={() => navigate(`/page/${page.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                  className="interactive-card"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)', border: '1px solid transparent' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '16px', opacity: 0.8 }}>{page.icon || '📄'}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{new Date(page.updatedAt).toLocaleDateString()}</div>
+                </div>
+              )) : (
+                <div className="empty-state-container" style={{ padding: '24px' }}>
+                  <div className="empty-state-title" style={{ fontSize: '14px', marginBottom: '4px' }}>No recent activity</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* RIGHT PANE: Intelligence & Graph */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Decision Engine Mini */}
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Zap size={16} color="var(--accent-primary)" />
+              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Suggested Actions</h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {nextActions.slice(0, 4).map(action => (
+                <div
+                  key={action.id}
+                  className="interactive-card"
+                  onClick={() => navigate(`/page/${action.pageId}`)}
+                  style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all var(--transition-fast)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+                >
+                  {action.priority > 0 && <span className={`priority-tag p-${action.priority}`} style={{ width: 14, height: 14, fontSize: '9px' }}>!</span>}
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
+                </div>
+              ))}
+              {nextActions.length === 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '12px', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-lg)' }}>
+                  No immediate actions needed.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Graph View Card */}
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '20px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: '300px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Activity size={16} color="var(--text-tertiary)" />
+              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Network</h3>
+            </div>
+            <div style={{ flex: 1, position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+              <GraphView pages={pages} />
+            </div>
+          </div>
+
+        </div>
       </div>
-    </>
+
+      {/* SYSTEM STATUS BAR */}
+      <div style={{ 
+        position: 'fixed', 
+        bottom: 0, 
+        left: sidebarOpen ? 'var(--sidebar-width)' : '0px', 
+        right: 0, 
+        height: '40px', 
+        background: 'var(--bg-primary)', 
+        borderTop: '1px solid var(--border-subtle)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        padding: '0 24px', 
+        gap: '32px', 
+        zIndex: 40,
+        transition: 'left var(--transition-slow)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }}></div>
+          Decision Engine Active
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+          <HardDrive size={12} />
+          <span>Nodes: <strong style={{ color: 'var(--text-primary)' }}>{pages.length}</strong></span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+          <Zap size={12} color="var(--accent-primary)" />
+          <span>Velocity: <strong style={{ color: 'var(--text-primary)' }}>{knowledgeVelocity?.velocity || 0}%</strong></span>
+        </div>
+      </div>
+
+    </div>
   );
 }
 
@@ -472,11 +527,11 @@ function CalendarTab({ pages, navigate }) {
           const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
 
           return (
-            <div key={day} style={{ 
-              background: 'var(--bg-elevated)', 
-              border: isToday ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)', 
-              borderRadius: '8px', 
-              padding: '12px', 
+            <div key={day} style={{
+              background: 'var(--bg-elevated)',
+              border: isToday ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '12px',
               minHeight: '120px',
               display: 'flex',
               flexDirection: 'column'
@@ -487,8 +542,8 @@ function CalendarTab({ pages, navigate }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
                 {activities.map(a => (
-                  <button 
-                    key={a.id} 
+                  <button
+                    key={a.id}
                     onClick={() => navigate(`/page/${a.id}`)}
                     className="calendar-event-btn"
                     title={a.title || 'Untitled'}
@@ -539,11 +594,11 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
 
       <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
         {archivedPages.map((page, i) => (
-          <div key={page.id} style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            padding: '16px 24px', 
+          <div key={page.id} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 24px',
             borderBottom: i < archivedPages.length - 1 ? '1px solid var(--border-subtle)' : 'none',
             background: 'var(--bg-secondary)'
           }}>
@@ -555,13 +610,13 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
+              <button
                 onClick={() => restore(page.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
               >
                 <RotateCcw size={14} /> Restore
               </button>
-              <button 
+              <button
                 onClick={() => {
                   if (confirmDeleteId === page.id) {
                     permaDelete(page.id);
@@ -570,16 +625,16 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
                     setConfirmDeleteId(page.id);
                   }
                 }}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  background: confirmDeleteId === page.id ? 'var(--error)' : 'var(--error-subtle)', 
-                  border: '1px solid transparent', 
-                  color: confirmDeleteId === page.id ? 'white' : 'var(--error)', 
-                  padding: '6px 12px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: confirmDeleteId === page.id ? 'var(--error)' : 'var(--error-subtle)',
+                  border: '1px solid transparent',
+                  color: confirmDeleteId === page.id ? 'white' : 'var(--error)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
                   fontSize: '13px',
                   transition: 'all 0.2s ease'
                 }}
