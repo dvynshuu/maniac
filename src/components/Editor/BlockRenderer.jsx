@@ -19,6 +19,9 @@ import EmbedBlock from './blocks/EmbedBlock';
 import SyncedBlock from './blocks/SyncedBlock';
 import DatabaseBlock from '../Database/DatabaseBlock';
 import TrackerBlock from '../Tracker/TrackerBlock';
+import MathBlock from './blocks/MathBlock';
+import ColumnListBlock from './blocks/ColumnListBlock';
+import ColumnBlock from './blocks/ColumnBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
@@ -148,6 +151,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
       case BLOCK_TYPES.IMAGE:
         return <ImageBlock block={block} index={index} />;
 
+      case BLOCK_TYPES.MATH:
+        return <MathBlock block={block} index={index} />;
+
       case BLOCK_TYPES.TRACKER:
         return <TrackerBlock block={block} index={index} />;
         
@@ -163,6 +169,12 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
       case BLOCK_TYPES.SYNCED_REFERENCE:
         return <SyncedBlock block={block} index={index} />;
+
+      case BLOCK_TYPES.COLUMN_LIST:
+        return <ColumnListBlock block={block} index={index} />;
+
+      case BLOCK_TYPES.COLUMN:
+        return <ColumnBlock block={block} index={index} />;
         
       default:
         return <TextBlock block={block} index={index} />;
@@ -242,7 +254,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
     <div
       ref={combinedRef}
       style={style}
-      className={`block-wrapper ${isDragging ? 'dragging' : ''}`}
+      className={`block-wrapper block-${block.type.replace('_', '-')} ${isDragging ? 'dragging' : ''}`}
       data-block-id={block.id}
       {...attributes}
     >
@@ -267,7 +279,11 @@ const BlockRenderer = memo(({ blockId, index }) => {
         {renderBlockContent()}
       </div>
       {/* Skip generic child rendering for blocks that manage their own children */}
-      {childBlockIds.length > 0 && block.type !== BLOCK_TYPES.TOGGLE && block.type !== BLOCK_TYPES.DATABASE && (
+      {childBlockIds.length > 0 && 
+       block.type !== BLOCK_TYPES.TOGGLE && 
+       block.type !== BLOCK_TYPES.DATABASE && 
+       block.type !== BLOCK_TYPES.COLUMN_LIST && 
+       block.type !== BLOCK_TYPES.COLUMN && (
         <div className="block-children">
           {childBlockIds.map((childId, i) => (
             <BlockRenderer key={childId} blockId={childId} index={i} />

@@ -83,6 +83,8 @@ export default function SlashMenu({ query, onSelect, onClose, onLinkPage }) {
       onSelect(item.type);
     } else if (item.action === 'change_type') {
       onSelect(item.type, 'change_type');
+    } else if (item.action === 'create_columns') {
+      onSelect(item.type, { action: 'create_columns', count: item.count });
     } else {
       onSelect(item.type);
     }

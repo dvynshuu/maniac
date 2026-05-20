@@ -34,9 +34,9 @@ function Sidebar() {
   const scrollInterval = useRef(null);
 
   // Memoize expensive page tree build
-  const activePages = useMemo(() => pages.filter((p) => !p.isArchived), [pages]);
+  const activePages = useMemo(() => pages.filter((p) => !p.isArchived && !p.isDatabaseRow), [pages]);
   const pageTree = useMemo(() => buildPageTree(activePages), [activePages]);
-  const favoritePages = useMemo(() => pages.filter(p => p.isFavorite), [pages]);
+  const favoritePages = useMemo(() => pages.filter(p => p.isFavorite && !p.isDatabaseRow), [pages]);
 
   const handleBulkDelete = async () => {
     const idsToDelete = [...selectedPageIds];

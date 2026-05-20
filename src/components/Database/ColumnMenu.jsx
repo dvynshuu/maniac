@@ -1,8 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PROPERTY_TYPES, PROPERTY_TYPE_META } from '../../utils/constants';
 import { useDatabaseStore } from '../../stores/databaseStore';
+import { db } from '../../db/database';
 import * as Icons from 'lucide-react';
 import { Trash2, Type, Hash, Tag, Tags, Calendar, CheckSquare, Link, Mail, Phone, Clock, ChevronRight } from 'lucide-react';
+
+const ROLLUP_CALCULATIONS = [
+  { value: 'show_original', label: 'Show original' },
+  { value: 'count_all', label: 'Count all' },
+  { value: 'count_unique', label: 'Count unique' },
+  { value: 'count_empty', label: 'Count empty' },
+  { value: 'count_not_empty', label: 'Count not empty' },
+  { value: 'sum', label: 'Sum' },
+  { value: 'average', label: 'Average' },
+  { value: 'min', label: 'Min' },
+  { value: 'max', label: 'Max' },
+];
 
 export default function ColumnMenu({ property, blockId, position, onClose }) {
   const [isChangingType, setIsChangingType] = useState(false);
@@ -20,12 +33,53 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  const [dbBlocks, setDbBlocks] = useState([]);
+  const [targetSchema, setTargetSchema] = useState([]);
+
+  useEffect(() => {
+    db.blocks.where('type').equals('database').toArray().then(async (blocks) => {
+      const blocksWithTitles = await Promise.all(blocks.map(async (b) => {
+        const page = await db.pages.get(b.pageId);
+        const name = b.properties?.name || page?.title || 'Untitled Database';
+        return { id: b.id, name: `${name} (in ${page?.title || 'Untitled Page'})` };
+      }));
+      setDbBlocks(blocksWithTitles.filter(d => d.id !== blockId));
+    }).catch(err => console.error('Failed to load database blocks:', err));
+  }, [blockId]);
+
+  const relationPropertyId = property.config?.relationPropertyId;
+  useEffect(() => {
+    if (property.type !== PROPERTY_TYPES.ROLLUP || !relationPropertyId) {
+      setTargetSchema([]);
+      return;
+    }
+    const currentSchema = useDatabaseStore.getState().getDatabaseData(blockId)?.schema || [];
+    const relProp = currentSchema.find(p => p.id === relationPropertyId);
+    const targetDbId = relProp?.config?.relatedDatabaseId;
+    if (!targetDbId) {
+      setTargetSchema([]);
+      return;
+    }
+    
+    const cachedDb = useDatabaseStore.getState().databases[targetDbId];
+    if (cachedDb?.schema) {
+      setTargetSchema(cachedDb.schema);
+    } else {
+      db.blocks.get(targetDbId).then(targetBlock => {
+        setTargetSchema(targetBlock?.properties?.schema || []);
+      }).catch(err => console.error('Failed to load target database schema:', err));
+    }
+  }, [property.type, relationPropertyId, blockId]);
+
+  const currentSchema = useDatabaseStore.getState().getDatabaseData(blockId)?.schema || [];
+  const relationProperties = currentSchema.filter(p => p.type === PROPERTY_TYPES.RELATION);
+
   const handleRename = (e) => {
     updateProperty(blockId, property.id, { name: e.target.value });
   };
 
   const handleChangeType = (newType) => {
-    updateProperty(blockId, property.id, { type: newType });
+    updateProperty(blockId, property.id, { type: newType, config: {} });
     onClose();
   };
 
@@ -66,6 +120,132 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
               <ChevronRight size={14} />
             </div>
           </button>
+
+          {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP) && (
+            <div className="db-menu-divider" />
+          )}
+
+          {property.type === PROPERTY_TYPES.RELATION && (
+            <div style={{ padding: '8px' }}>
+              <label className="db-field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                Connect to Database
+              </label>
+              <select 
+                className="db-menu-select"
+                value={property.config?.relatedDatabaseId || ''}
+                onChange={(e) => {
+                  updateProperty(blockId, property.id, {
+                    config: { ...property.config, relatedDatabaseId: e.target.value }
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  padding: '4px 6px'
+                }}
+              >
+                <option value="">Select a database...</option>
+                {dbBlocks.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {property.type === PROPERTY_TYPES.ROLLUP && (
+            <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label className="db-field-label" style={{ display: 'block', marginBottom: '2px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                  Relation Property
+                </label>
+                <select 
+                  className="db-menu-select"
+                  value={property.config?.relationPropertyId || ''}
+                  onChange={(e) => {
+                    updateProperty(blockId, property.id, {
+                      config: { ...property.config, relationPropertyId: e.target.value, targetPropertyId: '' }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    padding: '4px 6px'
+                  }}
+                >
+                  <option value="">Select relation...</option>
+                  {relationProperties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="db-field-label" style={{ display: 'block', marginBottom: '2px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                  Target Property
+                </label>
+                <select 
+                  className="db-menu-select"
+                  value={property.config?.targetPropertyId || ''}
+                  onChange={(e) => {
+                    updateProperty(blockId, property.id, {
+                      config: { ...property.config, targetPropertyId: e.target.value }
+                    });
+                  }}
+                  disabled={!property.config?.relationPropertyId}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    padding: '4px 6px'
+                  }}
+                >
+                  <option value="">Select target column...</option>
+                  {targetSchema.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="db-field-label" style={{ display: 'block', marginBottom: '2px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                  Calculate
+                </label>
+                <select 
+                  className="db-menu-select"
+                  value={property.config?.calculate || 'show_original'}
+                  onChange={(e) => {
+                    updateProperty(blockId, property.id, {
+                      config: { ...property.config, calculate: e.target.value }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    padding: '4px 6px'
+                  }}
+                >
+                  {ROLLUP_CALCULATIONS.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div className="db-menu-divider" />
 

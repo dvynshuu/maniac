@@ -20,8 +20,9 @@ import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useSelectionStore } from '../../core/editor/selectionStore';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
 
-function PageEditor() {
-  const { pageId } = useParams();
+function PageEditor({ pageId: pageIdProp } = {}) {
+  const { pageId: paramPageId } = useParams();
+  const pageId = pageIdProp || paramPageId;
   const pages = usePageStore((s) => s.pages);
   const updatePage = usePageStore((s) => s.updatePage);
   const rootBlockIds = useRootBlockIds();
@@ -194,24 +195,28 @@ function PageEditor() {
     updatePage(pageId, { coverImage: null });
   };
 
+  const isModal = !!pageIdProp;
+
   return (
-    <div className="editor-scroll" ref={setScrollElement}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
-        <Breadcrumb />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-          {isSaving ? (
-            <>
-              <Cloud size={14} className="animate-pulse" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Cloud size={14} style={{ color: 'var(--success)' }} />
-              <span>Saved</span>
-            </>
-          )}
+    <div className={`editor-scroll ${isModal ? 'is-modal-editor' : ''}`} ref={setScrollElement}>
+      {!isModal && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
+          <Breadcrumb />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
+            {isSaving ? (
+              <>
+                <Cloud size={14} className="animate-pulse" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Cloud size={14} style={{ color: 'var(--success)' }} />
+                <span>Saved</span>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {page.coverImage ? (
         <div 

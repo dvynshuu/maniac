@@ -15,7 +15,7 @@ function daysBetween(a, b) {
   return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
 
-export default function TimelineView({ schema, rows, blockId }) {
+export default function TimelineView({ schema, rows, blockId, onOpenRow }) {
   const [zoom, setZoom] = useState('week');
   const scrollRef = useRef(null);
 
@@ -122,7 +122,12 @@ export default function TimelineView({ schema, rows, blockId }) {
             }
 
             return (
-              <div key={row.id} className="timeline-row">
+              <div 
+                key={row.id} 
+                className="timeline-row"
+                onClick={() => onOpenRow && onOpenRow(row)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="timeline-label-col timeline-row-label">
                   {titleProp ? (row.values[titleProp.id] || 'Untitled') : 'Row'}
                 </div>

@@ -12,7 +12,7 @@ const CARD_SIZES = {
   large: { width: 320, imageHeight: 180 },
 };
 
-export default function GalleryView({ schema, rows, blockId }) {
+export default function GalleryView({ schema, rows, blockId, onOpenRow }) {
   const [cardSize, setCardSize] = useState('medium');
   const config = CARD_SIZES[cardSize];
 
@@ -50,7 +50,12 @@ export default function GalleryView({ schema, rows, blockId }) {
           const imageUrl = imageProp ? row.values[imageProp.id] : null;
 
           return (
-            <div key={row.id} className="gallery-card">
+            <div 
+              key={row.id} 
+              className="gallery-card"
+              onClick={() => onOpenRow && onOpenRow(row)}
+              style={{ cursor: 'pointer' }}
+            >
               {imageUrl ? (
                 <div
                   className="gallery-card-image"

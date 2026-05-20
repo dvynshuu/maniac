@@ -287,6 +287,18 @@ export const useDatabaseStore = create((set, get) => ({
 
     get()._updateLocal(blockId, { rows: newRows });
     
+    // Sync title cell changes to corresponding page in pageStore
+    const { schema } = get().getDatabaseData(blockId);
+    if (schema.length > 0 && schema[0].id === propertyId) {
+      import('./pageStore').then(async ({ usePageStore }) => {
+        const store = usePageStore.getState();
+        const page = await store.ensureRowPage(rowId, blockId, value);
+        if (page.title !== value) {
+          await store.updatePage(rowId, { title: value });
+        }
+      }).catch(err => console.error('Failed to sync database cell to page:', err));
+    }
+
     // Background save to isolated table
     if (updatedRow) {
       const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
@@ -312,6 +324,22 @@ export const useDatabaseStore = create((set, get) => ({
       });
       
       get()._updateLocal(blockId, { rows: newRows });
+
+      // Sync title cell changes to corresponding page in pageStore
+      const { schema } = get().getDatabaseData(blockId);
+      if (schema.length > 0 && schema[0].id === propertyId) {
+        try {
+          const { usePageStore } = await import('./pageStore');
+          const store = usePageStore.getState();
+          const page = await store.ensureRowPage(rowId, blockId, value);
+          if (page.title !== value) {
+            await store.updatePage(rowId, { title: value });
+          }
+        } catch (err) {
+          console.error('Failed to sync database cell to page:', err);
+        }
+      }
+
       if (updatedRow) {
         const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
         const encryptedCell = await encryptCellForDB(cell);
@@ -326,6 +354,14 @@ export const useDatabaseStore = create((set, get) => ({
     get()._updateLocal(blockId, { rows: newRows });
     await db.database_rows.delete(rowId);
     await db.database_cells.where('rowId').equals(rowId).delete();
+
+    // Delete corresponding page record & its blocks
+    try {
+      const { usePageStore } = await import('./pageStore');
+      await usePageStore.getState().deletePage(rowId);
+    } catch (err) {
+      console.error('Failed to delete row page:', err);
+    }
   },
 
   duplicateRow: async (blockId, rowId) => {

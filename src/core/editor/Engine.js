@@ -148,6 +148,19 @@ export class EditorEngine {
     return tx.commit();
   }
 
+  /**
+   * Create a column layout with text blocks.
+   */
+  async createColumns(afterBlockId, count = 2) {
+    const store = useBlockStore.getState();
+    const block = afterBlockId ? store.blockMap[afterBlockId] : null;
+    const parentId = block ? block.parentId : null;
+
+    const tx = this.startTransaction();
+    tx.createColumns(parentId, afterBlockId, count);
+    return tx.commit();
+  }
+
   // ─── History ──────────────────────────────────────────────────
 
   async undo() {

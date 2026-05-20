@@ -12,6 +12,66 @@ import { useDatabaseStore } from '../stores/databaseStore';
 import { useBacklinkStore } from '../stores/backlinkStore';
 
 /**
+ * Resolves a property value, including dynamic aggregation for Rollups.
+ */
+export function resolvePropertyValue(row, prop, schema) {
+  if (!prop) return undefined;
+  if (prop.type === 'rollup') {
+    const { relationPropertyId, targetPropertyId, calculate } = prop.config || {};
+    if (!relationPropertyId || !targetPropertyId) return '';
+
+    const relationVal = row.values[relationPropertyId];
+    const relatedRowIds = Array.isArray(relationVal) ? relationVal : [];
+    if (relatedRowIds.length === 0) return '';
+
+    const relationProperty = schema.find(p => p.id === relationPropertyId);
+    const relatedDatabaseId = relationProperty?.config?.relatedDatabaseId;
+    if (!relatedDatabaseId) return '';
+
+    const relatedDb = useDatabaseStore.getState().databases[relatedDatabaseId];
+    const relatedRows = relatedDb?.rows || [];
+    if (relatedRows.length === 0) return '';
+
+    const values = relatedRowIds.map(id => {
+      const r = relatedRows.find(item => item.id === id);
+      return r ? r.values[targetPropertyId] : null;
+    }).filter(v => v !== undefined && v !== null && v !== '');
+
+    switch (calculate) {
+      case 'count_all':
+        return relatedRowIds.length;
+      case 'count_unique':
+        return new Set(values).size;
+      case 'count_empty':
+        return relatedRowIds.length - values.length;
+      case 'count_not_empty':
+        return values.length;
+      case 'sum': {
+        const nums = values.map(Number).filter(n => !isNaN(n));
+        return nums.reduce((sum, n) => sum + n, 0);
+      }
+      case 'average': {
+        const nums = values.map(Number).filter(n => !isNaN(n));
+        return nums.length > 0 ? (nums.reduce((sum, n) => sum + n, 0) / nums.length) : 0;
+      }
+      case 'min': {
+        const nums = values.map(Number).filter(n => !isNaN(n));
+        return nums.length > 0 ? Math.min(...nums) : 0;
+      }
+      case 'max': {
+        const nums = values.map(Number).filter(n => !isNaN(n));
+        return nums.length > 0 ? Math.max(...nums) : 0;
+      }
+      case 'show_original':
+      default:
+        return values.join(', ');
+    }
+  }
+
+  return row.values[prop.id];
+}
+
+/**
  * Apply filters to rows.
  * @param {Array} rows - Database rows
  * @param {Array} filters - [{ propertyId, operator, value }]
@@ -28,7 +88,7 @@ export function applyFilters(rows, filters, schema) {
     const prop = schema.find(p => p.id === f.propertyId);
 
     result = result.filter(row => {
-      const rawVal = row.values[f.propertyId];
+      const rawVal = resolvePropertyValue(row, prop, schema);
       const val = String(rawVal ?? '').toLowerCase();
 
       switch (f.operator) {
@@ -45,9 +105,9 @@ export function applyFilters(rows, filters, schema) {
         case 'empty':
           return val.length === 0;
         case 'greater_than':
-          return prop?.type === 'number' ? Number(rawVal) > Number(f.value) : false;
+          return prop?.type === 'number' || prop?.type === 'rollup' ? Number(rawVal) > Number(f.value) : false;
         case 'less_than':
-          return prop?.type === 'number' ? Number(rawVal) < Number(f.value) : false;
+          return prop?.type === 'number' || prop?.type === 'rollup' ? Number(rawVal) < Number(f.value) : false;
         case 'date_before':
           return prop?.type === 'date' && rawVal ? new Date(rawVal) < new Date(f.value) : false;
         case 'date_after':
@@ -80,11 +140,11 @@ export function applySorts(rows, sorts, schema) {
     for (const s of sorts) {
       if (!s.propertyId) continue;
       const prop = schema.find(p => p.id === s.propertyId);
-      const aVal = a.values[s.propertyId];
-      const bVal = b.values[s.propertyId];
+      const aVal = resolvePropertyValue(a, prop, schema);
+      const bVal = resolvePropertyValue(b, prop, schema);
 
       let cmp = 0;
-      if (prop?.type === 'number') {
+      if (prop?.type === 'number' || (prop?.type === 'rollup' && typeof aVal === 'number')) {
         cmp = (Number(aVal) || 0) - (Number(bVal) || 0);
       } else if (prop?.type === 'date') {
         cmp = (new Date(aVal || 0)).getTime() - (new Date(bVal || 0)).getTime();

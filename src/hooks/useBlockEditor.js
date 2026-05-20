@@ -123,6 +123,44 @@ export function useBlockEditor(block, options = {}) {
         spellcheck: 'true',
       },
       handleKeyDown: (view, event) => {
+        // Space — auto-convert markdown prefixes at start of block
+        if (event.key === ' ' && editor) {
+          const { selection } = editor.state;
+          const { from } = selection;
+          if (from <= 6) {
+            const text = editor.getText();
+            const trimText = text.trim();
+            let targetType = null;
+
+            if (trimText === '#') {
+              targetType = 'heading1';
+            } else if (trimText === '##') {
+              targetType = 'heading2';
+            } else if (trimText === '###') {
+              targetType = 'heading3';
+            } else if (trimText === '*' || trimText === '-') {
+              targetType = 'bullet';
+            } else if (trimText === '1.') {
+              targetType = 'numbered';
+            } else if (trimText === '[]' || trimText === '[ ]') {
+              targetType = 'todo';
+            } else if (trimText === '>') {
+              targetType = 'quote';
+            } else if (trimText === '$$') {
+              targetType = 'math';
+            } else if (trimText === '```') {
+              targetType = 'code';
+            }
+
+            if (targetType) {
+              event.preventDefault();
+              editor.commands.clearContent();
+              engine.convertType(block.id, targetType);
+              return true;
+            }
+          }
+        }
+
         // Enter — split block
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();

@@ -124,30 +124,66 @@ registerProvider({
   name: 'Basic Blocks',
   priority: 10,
   getItems: async (query) => {
-    return Object.entries(BLOCK_TYPE_META).map(([type, meta]) => {
-      const labelScore = fuzzyScore(query, meta.label);
-      const typeScore = fuzzyScore(query, type);
-      const descScore = fuzzyScore(query, meta.description || '');
-      const score = Math.max(labelScore, typeScore, descScore * 0.5);
+    const baseItems = Object.entries(BLOCK_TYPE_META)
+      .filter(([type]) => type !== 'column' && type !== 'column_list')
+      .map(([type, meta]) => {
+        const labelScore = fuzzyScore(query, meta.label);
+        const typeScore = fuzzyScore(query, type);
+        const descScore = fuzzyScore(query, meta.description || '');
+        const score = Math.max(labelScore, typeScore, descScore * 0.5);
 
-      // Categorize
-      let category = 'Basic';
-      if (['heading1', 'heading2', 'heading3'].includes(type)) category = 'Basic';
-      else if (['image', 'embed', 'code'].includes(type)) category = 'Media & Code';
-      else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
-      else if (['toggle', 'callout', 'quote', 'divider'].includes(type)) category = 'Advanced';
+        // Categorize
+        let category = 'Basic';
+        if (['heading1', 'heading2', 'heading3'].includes(type)) category = 'Basic';
+        else if (['image', 'embed', 'code', 'math'].includes(type)) category = 'Media & Code';
+        else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
+        else if (['toggle', 'callout', 'quote', 'divider'].includes(type)) category = 'Advanced';
 
-      return {
-        id: `block:${type}`,
-        type,
-        label: meta.label,
-        description: meta.description,
-        icon: meta.icon,
-        category,
-        score,
-        action: 'create_block',
-      };
-    });
+        return {
+          id: `block:${type}`,
+          type,
+          label: meta.label,
+          description: meta.description,
+          icon: meta.icon,
+          category,
+          score,
+          action: 'create_block',
+        };
+      });
+
+    // Add multi-column layout commands
+    const col2Score = Math.max(fuzzyScore(query, '2 columns'), fuzzyScore(query, 'columns'), fuzzyScore(query, 'col2'), fuzzyScore(query, 'two'));
+    const col3Score = Math.max(fuzzyScore(query, '3 columns'), fuzzyScore(query, 'columns'), fuzzyScore(query, 'col3'), fuzzyScore(query, 'three'));
+
+    if (col2Score > 0) {
+      baseItems.push({
+        id: 'columns:2',
+        type: 'column_list',
+        label: '2 Columns',
+        description: 'Create 2 side-by-side columns',
+        icon: 'Columns',
+        category: 'Advanced',
+        score: col2Score,
+        action: 'create_columns',
+        count: 2,
+      });
+    }
+
+    if (col3Score > 0) {
+      baseItems.push({
+        id: 'columns:3',
+        type: 'column_list',
+        label: '3 Columns',
+        description: 'Create 3 side-by-side columns',
+        icon: 'Columns',
+        category: 'Advanced',
+        score: col3Score,
+        action: 'create_columns',
+        count: 3,
+      });
+    }
+
+    return baseItems;
   },
 });
 

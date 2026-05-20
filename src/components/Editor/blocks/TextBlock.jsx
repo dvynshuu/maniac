@@ -60,7 +60,7 @@ export default function TextBlock({ block, index }) {
     return () => editor.off('update', handleUpdate);
   }, [editor]);
 
-  const handleSelectSlashItem = useCallback((type) => {
+  const handleSelectSlashItem = useCallback((type, options) => {
     if (!editor) return;
     const text = editor.getText();
     const lastSlashIndex = text.lastIndexOf('/');
@@ -68,7 +68,15 @@ export default function TextBlock({ block, index }) {
     const beforeSlash = text.substring(0, lastSlashIndex);
     editor.commands.setContent(beforeSlash ? `<p>${beforeSlash}</p>` : '', false);
     engine.updateBlock(block.id, { content: beforeSlash ? `<p>${beforeSlash}</p>` : '' });
-    engine.convertType(block.id, type);
+    
+    if (options && options.action === 'create_columns') {
+      engine.createColumns(block.id, options.count);
+      if (!beforeSlash || beforeSlash.trim() === '') {
+        engine.deleteBlock(block.id);
+      }
+    } else {
+      engine.convertType(block.id, type);
+    }
     setShowSlashMenu(false);
   }, [editor, block.id, engine]);
 

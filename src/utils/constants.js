@@ -17,10 +17,14 @@ export const BLOCK_TYPES = {
   DATABASE: 'database',
   TOGGLE: 'toggle',
   SYNCED_REFERENCE: 'synced_reference',
+  COLUMN_LIST: 'column_list',
+  COLUMN: 'column',
+  MATH: 'math',
 };
 
 export const BLOCK_TYPE_META = {
   [BLOCK_TYPES.TEXT]: { label: 'Text', icon: 'Type', description: 'Plain text block' },
+  [BLOCK_TYPES.MATH]: { label: 'Math Equation', icon: 'Sigma', description: 'TeX mathematical formula' },
   [BLOCK_TYPES.HEADING1]: { label: 'Heading 1', icon: 'Heading1', description: 'Large heading' },
   [BLOCK_TYPES.HEADING2]: { label: 'Heading 2', icon: 'Heading2', description: 'Medium heading' },
   [BLOCK_TYPES.HEADING3]: { label: 'Heading 3', icon: 'Heading3', description: 'Small heading' },
@@ -38,6 +42,8 @@ export const BLOCK_TYPE_META = {
   [BLOCK_TYPES.DATABASE]: { label: 'Database', icon: 'Database', description: 'Dynamic database table' },
   [BLOCK_TYPES.TOGGLE]: { label: 'Toggle', icon: 'ChevronRight', description: 'Collapsible content' },
   [BLOCK_TYPES.SYNCED_REFERENCE]: { label: 'Synced Block', icon: 'RefreshCw', description: 'Reference to another block' },
+  [BLOCK_TYPES.COLUMN_LIST]: { label: 'Columns', icon: 'Columns', description: 'Side-by-side columns' },
+  [BLOCK_TYPES.COLUMN]: { label: 'Column', icon: 'Columns', description: 'Vertical column container' },
 };
 
 export const TRACKER_FIELD_TYPES = {
@@ -88,6 +94,8 @@ export const PROPERTY_TYPES = {
   EMAIL: 'email',
   PHONE: 'phone',
   CREATED_AT: 'created_at',
+  RELATION: 'relation',
+  ROLLUP: 'rollup',
 };
 
 export const PROPERTY_TYPE_META = {
@@ -101,6 +109,8 @@ export const PROPERTY_TYPE_META = {
   [PROPERTY_TYPES.EMAIL]:        { label: 'Mail',         icon: 'Mail',       description: 'Email address' },
   [PROPERTY_TYPES.PHONE]:        { label: 'Phone',        icon: 'Phone',      description: 'Phone number' },
   [PROPERTY_TYPES.CREATED_AT]:   { label: 'Created',      icon: 'Clock',      description: 'Auto timestamp' },
+  [PROPERTY_TYPES.RELATION]:     { label: 'Relation',     icon: 'Database',   description: 'Link another database' },
+  [PROPERTY_TYPES.ROLLUP]:       { label: 'Rollup',       icon: 'Sigma',      description: 'Aggregate linked values' },
 };
 
 export const PROPERTY_COLORS = [

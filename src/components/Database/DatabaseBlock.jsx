@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabaseStore } from '../../stores/databaseStore';
-import { Plus, MoreHorizontal, Table as TableIcon, Columns3, Calendar, Clock, LayoutGrid } from 'lucide-react';
+import { usePageStore } from '../../stores/pageStore';
+import { Plus, MoreHorizontal, Table as TableIcon, Columns3, Calendar, Clock, LayoutGrid, X } from 'lucide-react';
 import ColumnHeader from './ColumnHeader';
 import CellRenderer from './CellRenderer';
 import AddPropertyPopover from './AddPropertyPopover';
@@ -14,6 +15,7 @@ import { useFilteredDatabaseRows } from '../../core/queryEngine';
 import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
+import PageEditor from '../Editor/PageEditor';
 
 const VIEW_TYPES = {
   table: { label: 'Table', icon: TableIcon },
@@ -24,9 +26,17 @@ const VIEW_TYPES = {
 };
 
 // Memoized Row for performance
-const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInteraction, onUpdateCell, onUpdateCellImmediate, isNew }) => {
+const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInteraction, onUpdateCell, onUpdateCellImmediate, isNew, onOpenRow }) => {
   return (
     <tr className={`db-tr group ${isNew ? 'db-tr-new' : ''}`}>
+      <td className="db-td-actions" style={{ width: '48px', minWidth: '48px', padding: '0 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+        <button 
+          className="db-row-open-btn opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => onOpenRow(row)}
+        >
+          Open
+        </button>
+      </td>
       {schema.map((prop) => (
         <td key={prop.id} className="db-td">
           <CellRenderer 
@@ -44,6 +54,8 @@ const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInt
             startEditing={() => onCellInteraction('edit', row.id, prop.id)}
             stopEditing={() => onCellInteraction('stop_edit')}
             onFocus={() => onCellInteraction('active', row.id, prop.id)}
+            blockId={blockId}
+            rowValues={row.values}
           />
         </td>
       ))}
@@ -100,6 +112,16 @@ export default function DatabaseBlock({ block }) {
     }
     return processedRows;
   }, [processedRows, justAddedRowId, rawRows]);
+
+  const [openRowId, setOpenRowId] = useState(null);
+
+  const handleOpenRow = useCallback(async (row) => {
+    const pageStore = usePageStore.getState();
+    const titleProp = schema?.[0];
+    const rowTitle = titleProp ? (row.values[titleProp.id] || '') : '';
+    await pageStore.ensureRowPage(row.id, block.id, rowTitle);
+    setOpenRowId(row.id);
+  }, [block.id, schema]);
 
   // Persist active view
   const switchView = useCallback((view) => {
@@ -219,23 +241,23 @@ export default function DatabaseBlock({ block }) {
   }, [schema, tempWidths]);
 
   // ─── Render Active View ──────────────────────────────────────
-
   const renderView = () => {
     switch (activeView) {
       case 'board':
-        return <BoardView schema={schema} rows={rows} blockId={block.id} groupByPropertyId={groupByPropertyId} />;
+        return <BoardView schema={schema} rows={rows} blockId={block.id} groupByPropertyId={groupByPropertyId} onOpenRow={handleOpenRow} />;
       case 'calendar':
-        return <CalendarView schema={schema} rows={rows} blockId={block.id} datePropertyId={datePropertyId} />;
+        return <CalendarView schema={schema} rows={rows} blockId={block.id} datePropertyId={datePropertyId} onOpenRow={handleOpenRow} />;
       case 'timeline':
-        return <TimelineView schema={schema} rows={rows} blockId={block.id} />;
+        return <TimelineView schema={schema} rows={rows} blockId={block.id} onOpenRow={handleOpenRow} />;
       case 'gallery':
-        return <GalleryView schema={schema} rows={rows} blockId={block.id} />;
+        return <GalleryView schema={schema} rows={rows} blockId={block.id} onOpenRow={handleOpenRow} />;
       default: // table
         return (
           <div className="db-scroll-wrapper">
             <table className="db-table" style={{ minWidth: tableWidth, width: '100%' }}>
               <thead>
                 <tr>
+                  <th className="db-th-actions" style={{ width: '48px', minWidth: '48px', padding: 0 }} />
                   {schema.map((prop, idx) => (
                     <ColumnHeader 
                       key={prop.id}
@@ -269,10 +291,11 @@ export default function DatabaseBlock({ block }) {
                     onUpdateCell={updateCell}
                     onUpdateCellImmediate={updateCellImmediate}
                     isNew={row.id === justAddedRowId}
+                    onOpenRow={handleOpenRow}
                   />
                 ))}
                 <tr className="db-tr">
-                  <td colSpan={schema.length + 1} className="db-td-new">
+                  <td colSpan={schema.length + 2} className="db-td-new">
                     <button 
                       className="db-add-row-btn"
                       onClick={handleAddRow}
@@ -327,6 +350,22 @@ export default function DatabaseBlock({ block }) {
           position={addPropPos}
           onClose={() => setAddPropPos(null)}
         />,
+        document.body
+      )}
+
+      {openRowId && createPortal(
+        <div className="peak-view-backdrop" onClick={() => setOpenRowId(null)}>
+          <div className="peak-view-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="peak-view-header">
+              <button className="peak-view-close" onClick={() => setOpenRowId(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="peak-view-content">
+              <PageEditor pageId={openRowId} />
+            </div>
+          </div>
+        </div>,
         document.body
       )}
     </div>

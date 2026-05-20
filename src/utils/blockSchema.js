@@ -140,6 +140,8 @@ export const BLOCK_PROPERTY_DEFAULTS = {
   database: { schema: [] },
   table:    { headers: [], rows: [] },
   tracker:  {},
+  column_list: {},
+  column:   { width: null },
 };
 
 /**

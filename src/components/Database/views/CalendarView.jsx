@@ -19,7 +19,7 @@ function getFirstDayOfMonth(year, month) {
   return new Date(year, month, 1).getDay();
 }
 
-export default function CalendarView({ schema, rows, blockId, datePropertyId }) {
+export default function CalendarView({ schema, rows, blockId, datePropertyId, onOpenRow }) {
   const updateCellImmediate = useDatabaseStore(s => s.updateCellImmediate);
   const addRow = useDatabaseStore(s => s.addRow);
 
@@ -85,7 +85,15 @@ export default function CalendarView({ schema, rows, blockId, datePropertyId }) 
         <div className="cal-day-number">{d}</div>
         <div className="cal-day-events">
           {dayRows.slice(0, 3).map(row => (
-            <div key={row.id} className="cal-event">
+            <div 
+              key={row.id} 
+              className="cal-event"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenRow && onOpenRow(row);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               {titleProp ? (row.values[titleProp.id] || 'Untitled') : 'Row'}
             </div>
           ))}

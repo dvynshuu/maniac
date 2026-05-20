@@ -9,7 +9,7 @@ import { useDatabaseStore } from '../../../stores/databaseStore';
 import { Plus, MoreHorizontal } from 'lucide-react';
 import { PROPERTY_COLORS } from '../../../utils/constants';
 
-export default function BoardView({ schema, rows, blockId, groupByPropertyId }) {
+export default function BoardView({ schema, rows, blockId, groupByPropertyId, onOpenRow }) {
   const updateCell = useDatabaseStore(s => s.updateCell);
   const addRow = useDatabaseStore(s => s.addRow);
   const [draggedRow, setDraggedRow] = useState(null);
@@ -111,6 +111,8 @@ export default function BoardView({ schema, rows, blockId, groupByPropertyId }) 
                   className="board-card"
                   draggable
                   onDragStart={(e) => handleDragStart(e, row)}
+                  onClick={() => onOpenRow && onOpenRow(row)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="board-card-title">
                     {titleProp ? (row.values[titleProp.id] || 'Untitled') : 'Untitled'}

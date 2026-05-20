@@ -88,13 +88,70 @@ export const usePageStore = create((set, get) => ({
     return page;
   },
 
+  ensureRowPage: async (rowId, databaseBlockId, title = '', icon = '📄') => {
+    const { pages } = get();
+    let page = pages.find(p => p.id === rowId);
+    if (page) return page;
+
+    // Check Archived pages too
+    const archived = get().archivedPages.find(p => p.id === rowId);
+    if (archived) return archived;
+
+    // Create a new page with the specified rowId
+    const now = Date.now();
+    page = {
+      id: rowId,
+      parentId: databaseBlockId,
+      databaseBlockId,
+      title: title || 'Untitled Row',
+      icon: icon || '📄',
+      coverImage: null,
+      sortOrder: 'm',
+      isArchived: false,
+      isDatabaseRow: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Optimistic update
+    set(s => ({ pages: [...s.pages, page] }));
+
+    const key = useSecurityStore.getState().derivedKey;
+    const dbPage = { ...page };
+    if (key && dbPage.title) {
+      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
+      dbPage._isEncrypted = true;
+    }
+
+    await db.pages.add(dbPage);
+    return page;
+  },
+
   updatePage: async (id, updates) => {
     const now = Date.now();
+    // Find page to check if it's a database row
+    const targetPage = get().pages.find(p => p.id === id) || get().archivedPages.find(p => p.id === id);
+
     // Optimistic update
     set(s => ({
       pages: s.pages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
       archivedPages: s.archivedPages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
     }));
+
+    // If it's a database row page, sync the title update back to the database row's primary cell
+    if (targetPage && targetPage.isDatabaseRow && targetPage.databaseBlockId && updates.title !== undefined) {
+      try {
+        const { useDatabaseStore } = await import('./databaseStore');
+        const dbStore = useDatabaseStore.getState();
+        const dbData = dbStore.getDatabaseData(targetPage.databaseBlockId);
+        const titleProp = dbData?.schema?.[0];
+        if (titleProp) {
+          dbStore.updateCellImmediate(targetPage.databaseBlockId, id, titleProp.id, updates.title);
+        }
+      } catch (err) {
+        console.error('Failed to sync row title to database cell:', err);
+      }
+    }
 
     const key = useSecurityStore.getState().derivedKey;
     const dbUpdates = { ...updates, updatedAt: now };

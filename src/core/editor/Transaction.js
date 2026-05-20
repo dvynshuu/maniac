@@ -110,6 +110,34 @@ export class Transaction {
   }
 
   /**
+   * Queue creation of a column list with columns and child text blocks.
+   */
+  createColumns(parentId, afterBlockId, count = 2) {
+    const columnListId = createId();
+    
+    // Create column_list
+    this.createBlock('column_list', parentId, afterBlockId);
+    this.ops[this.ops.length - 1].payload.id = columnListId;
+
+    let lastColId = null;
+    for (let i = 0; i < count; i++) {
+      const colId = createId();
+      const textBlockId = createId();
+
+      // Create column container under column_list
+      this.createBlock('column', columnListId, lastColId);
+      this.ops[this.ops.length - 1].payload.id = colId;
+
+      // Create empty text block inside the column
+      this.createBlock('text', colId, null);
+      this.ops[this.ops.length - 1].payload.id = textBlockId;
+
+      lastColId = colId;
+    }
+    return this;
+  }
+
+  /**
    * Queue a type conversion.
    */
   convertType(blockId, newType) {
