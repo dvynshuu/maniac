@@ -98,6 +98,8 @@ export function useBlockEditor(block, options = {}) {
       codeBlock: false,
       horizontalRule: false,
       history: false, // Collaboration extension brings its own history or we rely on CommandBus for structural undo
+      link: false,
+      underline: false,
     }),
     Collaboration.configure({
       fragment: getBlockFragment(block.pageId, block.id),
@@ -237,7 +239,7 @@ export function useBlockEditor(block, options = {}) {
         engine.updateBlock(block.id, { content: html });
       }
     },
-  });
+  }, [block.id, block.type]);
 
   // Seed the Yjs fragment on first load if it's empty but we have block.content
   useEffect(() => {

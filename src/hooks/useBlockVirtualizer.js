@@ -78,61 +78,47 @@ export function useBlockVirtualizer(scrollElement, blockIds, pageId) {
 
   const enabled = blockIds.length >= MIN_BLOCKS_TO_VIRTUALIZE;
 
-  // ── Reset virtualizer state on page navigation ────────────────
-  // We only reset the virtualizer when the URL changes AND the new blocks have loaded.
-  // This prevents resetting during block insertion/deletion, which would wipe pins.
-  const isDifferentPage = lastResetPageIdRef.current !== pageId;
-  const prevIds = prevBlockIdsRef.current;
-  const idsChanged = !prevIds || prevIds.length !== blockIds.length || 
-    (blockIds.length > 0 && prevIds[0] !== blockIds[0]);
-
-  let shouldReset = false;
-
-  if (isDifferentPage) {
-    if (idsChanged) {
-      // The block IDs have changed, meaning the new page's blocks have arrived from the DB!
-      shouldReset = true;
-    }
-  }
-  
-  if (shouldReset && enabled) {
-    // Clear stale state from previous page
-    for (const timer of unmountTimersRef.current.values()) {
-      clearTimeout(timer);
-    }
-    unmountTimersRef.current.clear();
-    pinnedRef.current.clear();
-    elementMapRef.current.clear();
-
-    // Pre-populate renderSet with ALL block IDs (root + children) so every block
-    // renders immediately.
-    const allBlockIds = useBlockStore.getState().blockOrder;
-    const newRenderSet = new Set(allBlockIds);
-    renderSetRef.current = newRenderSet;
-
-    // Notify subscribers so useBlockVisible returns true for all new blocks
-    queueMicrotask(() => {
-      for (const cb of subscribersRef.current) {
-        cb();
-      }
-    });
-  }
-  
-  if (shouldReset) {
-    lastResetPageIdRef.current = pageId;
-  }
-
-  // Update prevIds for the NEXT render to detect changes correctly
-  useEffect(() => {
-    prevBlockIdsRef.current = blockIds;
-  }, [blockIds]);
-
   /** Notify all subscribers that visibility may have changed */
   const notify = useCallback(() => {
-    for (const cb of subscribersRef.current) {
+    console.log('[DEBUG] notify called. Subscribers count:', subscribersRef.current.size);
+    const subscribers = [...subscribersRef.current];
+    for (const cb of subscribers) {
       cb();
     }
   }, []);
+
+  // ── Reset virtualizer state on page navigation ────────────────
+  // We only reset the virtualizer when the URL changes AND the new blocks have loaded.
+  // This prevents resetting during block insertion/deletion, which would wipe pins.
+  useEffect(() => {
+    const isDifferentPage = lastResetPageIdRef.current !== pageId;
+    const prevIds = prevBlockIdsRef.current;
+    const idsChanged = !prevIds || prevIds.length !== blockIds.length || 
+      (blockIds.length > 0 && prevIds[0] !== blockIds[0]);
+
+    if (isDifferentPage && idsChanged) {
+      lastResetPageIdRef.current = pageId;
+
+      if (enabled) {
+        console.log('[DEBUG] Reset virtualizer triggered for page:', pageId);
+        // Clear stale state from previous page
+        for (const timer of unmountTimersRef.current.values()) {
+          clearTimeout(timer);
+        }
+        unmountTimersRef.current.clear();
+        pinnedRef.current.clear();
+        elementMapRef.current.clear();
+
+        // Pre-populate renderSet with ALL block IDs (root + children) so every block
+        // renders immediately.
+        const allBlockIds = useBlockStore.getState().blockOrder;
+        renderSetRef.current = new Set(allBlockIds);
+
+        notify();
+      }
+    }
+    prevBlockIdsRef.current = blockIds;
+  }, [pageId, blockIds, enabled, notify]);
 
   // ── Create / recreate observer ────────────────────────────────
   useEffect(() => {
@@ -264,7 +250,9 @@ export function useBlockVisible(blockId) {
   const type = useBlockStore(s => s.blockMap[blockId]?.type);
   const needsPinning = type === BLOCK_TYPES.EMBED || 
                        type === BLOCK_TYPES.DATABASE || 
-                       type === BLOCK_TYPES.TRACKER;
+                       type === BLOCK_TYPES.TRACKER ||
+                       type === BLOCK_TYPES.COLUMN_LIST ||
+                       type === BLOCK_TYPES.COLUMN;
 
   const subscribe = useCallback(
     (onStoreChange) => {

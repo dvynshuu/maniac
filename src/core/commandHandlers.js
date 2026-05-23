@@ -26,7 +26,7 @@ import { extractWords } from '../db/database';
 // ═══════════════════════════════════════════════════════════════
 
 registerHandler('block/create', async (payload) => {
-  const { pageId, type = 'text', afterBlockId = null, content = '', properties = {}, parentId } = payload;
+  const { id, pageId, type = 'text', afterBlockId = null, content = '', properties = {}, parentId } = payload;
   const store = useBlockStore.getState();
   const { blockMap, blockOrder } = store;
 
@@ -59,6 +59,7 @@ registerHandler('block/create', async (payload) => {
   const safeContent = content_sanitizer(content);
   const safeProperties = ensureDefaults(type, sanitizeObject(properties) || {});
   const block = createBlock(pageId, type, {
+    ...(id ? { id } : {}),
     content: safeContent,
     properties: safeProperties,
     sortOrder,

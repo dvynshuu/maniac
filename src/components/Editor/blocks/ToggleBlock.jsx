@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import BlockRenderer from '../BlockRenderer';
 import { useShallow } from 'zustand/react/shallow';
 import { useBlockStore } from '../../../stores/blockStore';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 export default function ToggleBlock({ block }) {
   const expanded = block.properties?.expanded ?? true;
@@ -64,9 +65,11 @@ export default function ToggleBlock({ block }) {
               Empty toggle. Click to add content...
             </div>
           ) : (
-            childBlockIds.map((id, index) => (
-              <BlockRenderer key={id} blockId={id} index={index} />
-            ))
+            <SortableContext items={childBlockIds.filter(Boolean)} strategy={verticalListSortingStrategy}>
+              {childBlockIds.filter(Boolean).map((id, index) => (
+                <BlockRenderer key={id} blockId={id} index={index} />
+              ))}
+            </SortableContext>
           )}
         </div>
       )}

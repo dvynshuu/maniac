@@ -232,7 +232,8 @@
 }
 
 .block-code-lang-select option {
-  background: #1e1e1e; /* Solid dark background for consistency */
+  background: #1e1e1e;
+  /* Solid dark background for consistency */
   color: #ffffff;
   padding: 8px;
 }
@@ -337,13 +338,13 @@
   font-size: 14px;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .block-embed-input:focus {
   border-color: var(--accent-primary);
   background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 0 3px var(--accent-primary-subtle), inset 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 0 0 3px var(--accent-primary-subtle), inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .block-embed-submit-btn {

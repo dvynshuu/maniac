@@ -146,46 +146,50 @@ async function flushQueue() {
 
         transactions.push(async () => {
           const opUpper = String(op).toUpperCase();
-
-          if (opUpper === 'DELETE') {
-            await db[table].delete(id);
-            if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete' });
-            }
-          } else if (opUpper === 'UPDATE' || opUpper === 'REORDER' || opUpper === 'CHANGE_TYPE') {
-            let dbPayload = payload;
-            if (table === 'blocks' || table === 'pages') {
-              const existing = await db[table].get(id);
-              if (existing) {
-                const merged = { ...existing, ...payload };
-                dbPayload = await encryptForDB(merged, isBlock);
-                await db[table].put(dbPayload);
+          try {
+            if (opUpper === 'DELETE') {
+              await db[table].delete(id);
+              if (meta?.source !== 'remote') {
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete' });
+              }
+            } else if (opUpper === 'UPDATE' || opUpper === 'REORDER' || opUpper === 'CHANGE_TYPE') {
+              let dbPayload = payload;
+              if (table === 'blocks' || table === 'pages') {
+                const existing = await db[table].get(id);
+                if (existing) {
+                  const merged = { ...existing, ...payload };
+                  dbPayload = await encryptForDB(merged, isBlock);
+                  await db[table].put(dbPayload);
+                } else {
+                  dbPayload = await encryptForDB(payload, isBlock);
+                  await db[table].update(id, dbPayload);
+                }
               } else {
-                dbPayload = await encryptForDB(payload, isBlock);
                 await db[table].update(id, dbPayload);
               }
-            } else {
-              await db[table].update(id, dbPayload);
+              if (meta?.source !== 'remote') {
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'update', payload }); 
+              }
+            } else if (opUpper === 'CREATE') {
+              const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
+              await db[table].put(dbPayload);
+              if (meta?.source !== 'remote') {
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload });
+              }
+            } else if (opUpper === 'CRDT_UPDATE') {
+              await db[table].put({
+                id: `${payload.pageId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                pageId: payload.pageId,
+                update: payload.update,
+                timestamp: Date.now()
+              });
+              if (meta?.source !== 'remote') {
+                broadcastOps.push({ entityType: 'CRDT', entityId: payload.pageId, op: 'CRDT_UPDATE', payload });
+              }
             }
-            if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'update', payload }); 
-            }
-          } else if (opUpper === 'CREATE') {
-            const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
-            await db[table].put(dbPayload);
-            if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload });
-            }
-          } else if (opUpper === 'CRDT_UPDATE') {
-            await db[table].put({
-              id: `${payload.pageId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              pageId: payload.pageId,
-              update: payload.update,
-              timestamp: Date.now()
-            });
-            if (meta?.source !== 'remote') {
-              broadcastOps.push({ entityType: 'CRDT', entityId: payload.pageId, op: 'CRDT_UPDATE', payload });
-            }
+          } catch (dbErr) {
+            console.error(`[PersistenceWorker] DB error on table "${table}" (op: "${opUpper}", id: "${id}"):`, dbErr, payload);
+            throw dbErr;
           }
         });
       }
@@ -211,7 +215,7 @@ async function flushQueue() {
     }
 
   } catch (error) {
-    console.error('[PersistenceWorker] Flush failed:', error);
+    console.error('[PersistenceWorker] Flush failed:', error?.name, error?.message, error?.stack, error);
     // Put items back into the queue
     for (const [table, map] of snapshot) {
       if (!pendingQueue.has(table)) pendingQueue.set(table, new Map());

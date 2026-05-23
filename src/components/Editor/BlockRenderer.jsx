@@ -285,7 +285,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
        block.type !== BLOCK_TYPES.COLUMN_LIST && 
        block.type !== BLOCK_TYPES.COLUMN && (
         <div className="block-children">
-          {childBlockIds.map((childId, i) => (
+          {childBlockIds.filter(Boolean).map((childId, i) => (
             <BlockRenderer key={childId} blockId={childId} index={i} />
           ))}
         </div>

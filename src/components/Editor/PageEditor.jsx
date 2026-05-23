@@ -64,14 +64,35 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     if (!active || !over || active.id === over.id) return;
 
     const store = useBlockStore.getState();
-    const { blockOrder } = store;
+    const { blockMap, blockOrder } = store;
 
-    const overIndex = blockOrder.indexOf(over.id);
-    const prevBlockId = overIndex > 0 ? blockOrder[overIndex - 1] : null;
-    
-    if (prevBlockId === active.id) return;
+    const activeBlock = blockMap[active.id];
+    const overBlock = blockMap[over.id];
+    if (!activeBlock || !overBlock) return;
 
-    engine.move(active.id, null, prevBlockId);
+    let targetParentId = null;
+    let targetAfterBlockId = null;
+
+    if (overBlock.type === 'column') {
+      // Dragging directly onto a column container (e.g. empty column or header)
+      targetParentId = overBlock.id;
+      // Put at the end of the column
+      const columnChildren = blockOrder.filter(id => blockMap[id]?.parentId === overBlock.id);
+      targetAfterBlockId = columnChildren.length > 0 ? columnChildren[columnChildren.length - 1] : null;
+    } else {
+      // Dragging onto a normal block
+      targetParentId = overBlock.parentId || null;
+      const siblings = blockOrder.filter(id => 
+        (blockMap[id]?.parentId || null) === targetParentId && id !== active.id
+      );
+      const overIndexInSiblings = siblings.indexOf(over.id);
+      targetAfterBlockId = overIndexInSiblings > 0 ? siblings[overIndexInSiblings - 1] : null;
+    }
+
+    // Normalizer/safety check to avoid cycles
+    if (targetParentId === active.id) return;
+
+    engine.move(active.id, targetParentId, targetAfterBlockId);
   }, [engine]);
 
   const debouncedUpdatePage = useRef(
@@ -289,8 +310,8 @@ function PageEditor({ pageId: pageIdProp } = {}) {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext items={rootBlockIds} strategy={verticalListSortingStrategy}>
-                  {rootBlockIds.map((id, index) => (
+                <SortableContext items={rootBlockIds.filter(Boolean)} strategy={verticalListSortingStrategy}>
+                  {rootBlockIds.filter(Boolean).map((id, index) => (
                     <BlockRenderer
                       key={id}
                       blockId={id}

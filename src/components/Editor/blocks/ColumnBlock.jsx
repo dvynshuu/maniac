@@ -1,4 +1,5 @@
 import React from 'react';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useChildBlockIds } from '../../../hooks/useChildBlockIds';
 import BlockRenderer from '../BlockRenderer';
 
@@ -12,9 +13,11 @@ export default function ColumnBlock({ block }) {
           Empty column. Drag blocks here.
         </div>
       ) : (
-        childBlockIds.map((childId, index) => (
-          <BlockRenderer key={childId} blockId={childId} index={index} />
-        ))
+        <SortableContext items={childBlockIds.filter(Boolean)} strategy={verticalListSortingStrategy}>
+          {childBlockIds.filter(Boolean).map((childId, index) => (
+            <BlockRenderer key={childId} blockId={childId} index={index} />
+          ))}
+        </SortableContext>
       )}
     </div>
   );
