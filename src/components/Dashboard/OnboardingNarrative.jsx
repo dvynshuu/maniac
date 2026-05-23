@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Database, Activity, X, Zap } from 'lucide-react';
+import ManiacLogo from '../Common/ManiacLogo';
 
 export function OnboardingNarrative({ onComplete }) {
   const [isVisible, setIsVisible] = useState(true);
@@ -16,9 +17,9 @@ export function OnboardingNarrative({ onComplete }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Zap size={20} color="var(--accent-primary)" />
+            <ManiacLogo size="sm" />
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
-              Mastering Maniac OS
+              Mastering MANIAC
             </h3>
           </div>
           <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>

@@ -251,7 +251,7 @@ export default function NotionImportModal() {
                 <CheckCircle2 size={48} />
               </div>
               <h3>Migration Complete!</h3>
-              <p>All your Notion data has been successfully imported into Maniac.</p>
+              <p>All your Notion data has been successfully imported into MANIAC.</p>
               {summary && (
                 <div className="notion-import-complete-stats">
                   <span>{summary.totalPages} pages</span>

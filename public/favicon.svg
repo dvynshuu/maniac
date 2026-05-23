@@ -1,10 +1,95 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#a78bfa"/>
-      <stop offset="100%" style="stop-color:#6366f1"/>
+    <linearGradient id="g1" x1="10" y1="110" x2="110" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A8A"/>
+      <stop offset="30%" stop-color="#2E5BFF"/>
+      <stop offset="65%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#A855F7"/>
     </linearGradient>
+    <linearGradient id="g2" x1="30" y1="100" x2="90" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="60" y1="100" x2="60" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="sc" x1="15" y1="90" x2="105" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="40%" stop-color="#EF4444"/>
+      <stop offset="70%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="sc2" x1="15" y1="90" x2="105" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="50%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#FDE68A"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b1"/>
+      <feGaussianBlur stdDeviation="6" result="b2"/>
+      <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
-  <rect width="100" height="100" rx="20" fill="url(#g)"/>
-  <text x="50" y="68" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="52" fill="white">M</text>
+
+  <!-- Left pillar -->
+  <polygon points="12,102 12,22 18,18 28,16 30,98" fill="url(#g1)"/>
+  <polygon points="18,18 28,16 30,98 24,100 18,24" fill="url(#g2)" opacity="0.4"/>
+
+  <!-- Left arm -->
+  <polygon points="28,16 36,10 60,54 50,62" fill="url(#g1)"/>
+  <polygon points="32,14 36,10 60,54 56,56" fill="url(#g2)" opacity="0.35"/>
+
+  <!-- Center V -->
+  <polygon points="50,62 60,54 70,58 60,68" fill="url(#g3)" opacity="0.9"/>
+  <polygon points="54,60 60,54 66,58 60,64" fill="url(#sc)" opacity="0.5"/>
+
+  <!-- Right arm -->
+  <polygon points="60,54 70,58 84,12 92,10" fill="url(#g1)"/>
+  <polygon points="64,56 70,58 84,12 88,11" fill="url(#g2)" opacity="0.35"/>
+
+  <!-- Right pillar -->
+  <polygon points="84,12 92,10 108,18 108,102 90,98" fill="url(#g1)"/>
+  <polygon points="96,16 108,18 108,102 102,100 102,22" fill="url(#g2)" opacity="0.3"/>
+
+  <!-- Base plinth -->
+  <rect x="10" y="98" width="100" height="8" rx="2" fill="url(#g1)" opacity="0.75"/>
+  <rect x="10" y="98" width="100" height="2.5" rx="1" fill="url(#g2)" opacity="0.3"/>
+
+  <!-- Faceting lines -->
+  <line x1="20" y1="30" x2="26" y2="90" stroke="#818CF8" stroke-width="0.5" opacity="0.2"/>
+  <line x1="100" y1="30" x2="96" y2="90" stroke="#818CF8" stroke-width="0.5" opacity="0.2"/>
+  <line x1="40" y1="24" x2="56" y2="56" stroke="#818CF8" stroke-width="0.5" opacity="0.15"/>
+  <line x1="80" y1="24" x2="66" y2="56" stroke="#818CF8" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Scar: outer glow -->
+  <line x1="16" y1="86" x2="104" y2="34" stroke="url(#sc)" stroke-width="6" stroke-linecap="round" opacity="0.3"/>
+  <!-- Scar: main body -->
+  <line x1="16" y1="86" x2="104" y2="34" stroke="url(#sc)" stroke-width="3" stroke-linecap="round" opacity="0.85" filter="url(#glow)"/>
+  <!-- Scar: white-hot core -->
+  <line x1="18" y1="85" x2="103" y2="35" stroke="url(#sc2)" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Cracks -->
+  <line x1="72" y1="48" x2="80" y2="38" stroke="#F97316" stroke-width="1" opacity="0.4" stroke-linecap="round"/>
+  <line x1="80" y1="38" x2="84" y2="34" stroke="#EF4444" stroke-width="0.7" opacity="0.3" stroke-linecap="round"/>
+  <line x1="52" y1="66" x2="44" y2="58" stroke="#F97316" stroke-width="0.8" opacity="0.35" stroke-linecap="round"/>
+  <line x1="36" y1="78" x2="30" y2="84" stroke="#A855F7" stroke-width="0.8" opacity="0.3" stroke-linecap="round"/>
+
+  <!-- Debris shards -->
+  <polygon points="86,30 94,24 90,36" fill="#F97316" opacity="0.65"/>
+  <polygon points="76,40 82,36 80,44 74,42" fill="#EF4444" opacity="0.5"/>
+  <polygon points="62,52 66,48 64,56" fill="#FB923C" opacity="0.45"/>
+  <polygon points="34,74 38,70 36,78" fill="#A855F7" opacity="0.4"/>
+  <polygon points="44,70 48,66 46,72" fill="#6366F1" opacity="0.35"/>
+
+  <!-- Spark particles -->
+  <circle cx="30" cy="80" r="1" fill="#FDE68A" opacity="0.6"/>
+  <circle cx="48" cy="68" r="0.8" fill="#FBBF24" opacity="0.5"/>
+  <circle cx="66" cy="56" r="1.2" fill="#FDE68A" opacity="0.55"/>
+  <circle cx="84" cy="44" r="0.7" fill="#FB923C" opacity="0.5"/>
+  <circle cx="96" cy="38" r="0.9" fill="#FDE68A" opacity="0.45"/>
+
+  <!-- Edge highlights -->
+  <polyline points="12,22 18,18 36,10 60,54" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" stroke-linejoin="round"/>
+  <polyline points="60,54 92,10 108,18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.8" stroke-linejoin="round"/>
 </svg>

@@ -13,6 +13,7 @@ import { terminateWorker } from './core/transformWorker';
 import { persistenceWorker } from './core/commandBus';
 import AppLayout from './components/Layout/AppLayout';
 import CommandPalette from './components/CommandPalette/CommandPalette';
+import ManiacLogo from './components/Common/ManiacLogo';
 import UnlockScreen from './components/Layout/UnlockScreen';
 import RestorePreviewModal from './components/Settings/RestorePreviewModal';
 import NotionImportModal from './components/Settings/NotionImportModal';
@@ -28,9 +29,9 @@ const Dashboard = lazy(() => import('./components/Dashboard/Dashboard'));
 function LoadingFallback() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-        <div className="loading-spinner" />
-        <span style={{ fontSize: '13px' }}>Loading...</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+        <ManiacLogo size="lg" animate />
+        <span style={{ fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Loading...</span>
       </div>
     </div>
   );

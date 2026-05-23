@@ -6,6 +6,7 @@ import { buildPageTree } from '../../utils/helpers';
 import { sanitize } from '../../utils/sanitizer';
 import { validateBackupData } from '../../utils/validator';
 import SidebarPageItem from './SidebarPageItem';
+import ManiacLogo from '../Common/ManiacLogo';
 import { PanelLeftClose, PanelLeft, Plus, Settings, Download, Upload, Clock, Star, Home, Search, Trash2, Archive, X } from 'lucide-react';
 import { db } from '../../db/database';
 
@@ -280,11 +281,9 @@ function Sidebar() {
       <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
         <div className="sidebar-header" style={{ padding: '24px 16px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '8px', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
-              M
-            </div>
+            <ManiacLogo size="md" />
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px' }}>The Monolith</div>
+              <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '-0.03em' }}>MANIAC</div>
               <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>LOCAL-FIRST SYNC ACTIVE</div>
             </div>
             <button className="sidebar-toggle" onClick={toggleSidebar}>

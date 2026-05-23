@@ -15,6 +15,7 @@ import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import GraphView from './GraphView';
+import { ManiacWordmark } from '../Common/ManiacLogo';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -46,7 +47,7 @@ function Dashboard() {
       {/* Dashboard Topbar */}
       <div className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
         <div className="dashboard-brand-container">
-          <div className="dashboard-brand-title">Maniac OS</div>
+          <ManiacWordmark size="md" />
           <div className="dashboard-tabs" role="tablist">
             {['Workspace', 'Intelligence', 'Calendar', 'Archives'].map(tab => (
               <button

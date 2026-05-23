@@ -4146,11 +4146,11 @@ button.db-type-item {
 }
 
 .unlock-icon-wrapper {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  background: rgba(46, 91, 255, 0.1);
-  color: var(--accent-primary);
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  background: rgba(46, 91, 255, 0.06);
+  border: 1px solid rgba(46, 91, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4388,4 +4388,132 @@ button {
 
 .block-wrapper {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   Maniac Logo — Premium Mark System
+   ============================================ */
+
+.maniac-logo {
+  flex-shrink: 0;
+  transition: filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maniac-logo:hover {
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4))
+          drop-shadow(0 0 16px rgba(139, 92, 246, 0.2))
+          drop-shadow(0 0 32px rgba(46, 91, 255, 0.15));
+  transform: scale(1.06) rotate(-0.5deg);
+}
+
+/* ---- Animated variant ---- */
+
+/* Scar breathing — outer glow pulses like a heartbeat */
+.maniac-logo--animated .maniac-scar-outer {
+  animation: scar-breathe 3s ease-in-out infinite;
+}
+
+/* Scar body — slightly offset timing for organic feel */
+.maniac-logo--animated .maniac-scar {
+  animation: scar-pulse 3s ease-in-out infinite;
+  animation-delay: -0.15s;
+}
+
+/* White-hot inner core — faster flicker like actual heat */
+.maniac-logo--animated .maniac-scar-core {
+  animation: scar-core-flicker 1.8s ease-in-out infinite;
+}
+
+/* Debris — each shard has unique float trajectory */
+.maniac-logo--animated .maniac-debris-1 {
+  animation: debris-float-1 5s ease-in-out infinite;
+  transform-origin: 90px 30px;
+}
+.maniac-logo--animated .maniac-debris-2 {
+  animation: debris-float-2 6s ease-in-out infinite;
+  animation-delay: -1s;
+  transform-origin: 78px 40px;
+}
+.maniac-logo--animated .maniac-debris-3 {
+  animation: debris-float-3 4.5s ease-in-out infinite;
+  animation-delay: -2.5s;
+  transform-origin: 64px 52px;
+}
+.maniac-logo--animated .maniac-debris-4 {
+  animation: debris-float-4 5.5s ease-in-out infinite;
+  animation-delay: -0.8s;
+  transform-origin: 36px 74px;
+}
+.maniac-logo--animated .maniac-debris-5 {
+  animation: debris-float-5 4s ease-in-out infinite;
+  animation-delay: -3s;
+  transform-origin: 46px 70px;
+}
+
+/* Spark particles — twinkle independently */
+.maniac-logo--animated .maniac-spark-1 { animation: spark-twinkle 2s ease-in-out infinite; }
+.maniac-logo--animated .maniac-spark-2 { animation: spark-twinkle 2.4s ease-in-out infinite; animation-delay: -0.5s; }
+.maniac-logo--animated .maniac-spark-3 { animation: spark-twinkle 1.8s ease-in-out infinite; animation-delay: -1.2s; }
+.maniac-logo--animated .maniac-spark-4 { animation: spark-twinkle 2.2s ease-in-out infinite; animation-delay: -0.3s; }
+.maniac-logo--animated .maniac-spark-5 { animation: spark-twinkle 2.6s ease-in-out infinite; animation-delay: -1.8s; }
+
+/* ---- Keyframes ---- */
+
+@keyframes scar-breathe {
+  0%, 100% { opacity: 0.25; stroke-width: 5; }
+  40% { opacity: 0.4; stroke-width: 7; }
+  60% { opacity: 0.35; stroke-width: 6; }
+}
+
+@keyframes scar-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@keyframes scar-core-flicker {
+  0%, 100% { opacity: 0.5; }
+  25% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  75% { opacity: 0.7; }
+}
+
+@keyframes debris-float-1 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.65; }
+  50% { transform: translate(3px, -4px) rotate(8deg); opacity: 0.85; }
+}
+
+@keyframes debris-float-2 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.5; }
+  50% { transform: translate(-2px, -3px) rotate(-6deg); opacity: 0.7; }
+}
+
+@keyframes debris-float-3 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.45; }
+  50% { transform: translate(2px, -2px) rotate(5deg); opacity: 0.65; }
+}
+
+@keyframes debris-float-4 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.4; }
+  50% { transform: translate(-3px, 2px) rotate(-4deg); opacity: 0.6; }
+}
+
+@keyframes debris-float-5 {
+  0%, 100% { transform: translate(0, 0); opacity: 0.35; }
+  50% { transform: translate(1px, -3px); opacity: 0.55; }
+}
+
+@keyframes spark-twinkle {
+  0%, 100% { opacity: 0.3; r: 0.5; }
+  50% { opacity: 0.9; r: 1.4; }
+}
+
+/* ---- Wordmark ---- */
+
+.maniac-wordmark {
+  user-select: none;
+}
+
+.maniac-wordmark-text {
+  font-family: var(--font-sans);
 }

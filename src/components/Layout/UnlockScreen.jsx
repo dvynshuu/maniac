@@ -3,6 +3,7 @@ import { useSecurityStore } from '../../stores/securityStore';
 import { SecurityService } from '../../utils/securityService';
 import { db } from '../../db/database';
 import { Lock, Unlock, ShieldAlert, Loader } from 'lucide-react';
+import ManiacLogo from '../Common/ManiacLogo';
 
 export default function UnlockScreen() {
   const [password, setPassword] = useState('');
@@ -106,7 +107,7 @@ export default function UnlockScreen() {
     <div className="unlock-screen">
       <div className="unlock-card">
         <div className="unlock-icon-wrapper">
-          {isSettingUp ? <ShieldAlert size={48} /> : <Lock size={48} />}
+          <ManiacLogo size="xl" animate />
         </div>
         
         <h1>{isSettingUp ? 'Initialize Monolith' : 'System Locked'}</h1>
@@ -155,7 +156,7 @@ export default function UnlockScreen() {
         </form>
         
         <div className="unlock-footer">
-          <p>Maniac OS v1.0 • AES-256-GCM Hardware Encrypted</p>
+          <p><span style={{ fontWeight: 800, letterSpacing: '-0.03em' }}>MANIAC</span> v1.0 • AES-256-GCM Encrypted</p>
         </div>
       </div>
     </div>
