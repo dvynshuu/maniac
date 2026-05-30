@@ -281,10 +281,13 @@ function Sidebar() {
       <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
         <div className="sidebar-header" style={{ padding: '24px 16px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-            <ManiacLogo size="md" />
+            <ManiacLogo size="md" animate={true} />
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '-0.03em' }}>MANIAC</div>
-              <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>LOCAL-FIRST SYNC ACTIVE</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>
+                <span className="sync-beacon-dot" />
+                <span>LOCAL-FIRST SYNC ACTIVE</span>
+              </div>
             </div>
             <button className="sidebar-toggle" onClick={toggleSidebar}>
               <PanelLeftClose size={16} />

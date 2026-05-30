@@ -15,7 +15,7 @@ import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import GraphView from './GraphView';
-import { ManiacWordmark } from '../Common/ManiacLogo';
+import ManiacLogo, { ManiacWordmark } from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
 
 function Dashboard() {
@@ -232,6 +232,73 @@ function IntelligenceTab({ navigate }) {
 }
 
 // ==========================================
+// Hero Greeting Component
+// ==========================================
+function HeroGreeting({ pages }) {
+  const [greeting, setGreeting] = useState('');
+  const [tagline, setTagline] = useState('');
+
+  useEffect(() => {
+    const hrs = new Date().getHours();
+    let text = 'Good evening, Commander';
+    if (hrs < 12) text = 'Good morning, Commander';
+    else if (hrs < 18) text = 'Good afternoon, Commander';
+    setGreeting(text);
+
+    const taglines = [
+      'Your thoughts. Encrypted. Alive.',
+      'A second brain, forged in obsidian.',
+      'Decisions driven by local-first intelligence.',
+      'Fractured monolith. Unified intelligence.'
+    ];
+    let currentIndex = 0;
+    setTagline(taglines[0]);
+
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % taglines.length;
+      setTagline(taglines[currentIndex]);
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const totalNodes = pages.length;
+  const activeWeekNodes = pages.filter(p => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return new Date(p.updatedAt).getTime() > oneWeekAgo;
+  }).length;
+
+  return (
+    <div className="dashboard-hero-section">
+      <div className="dashboard-hero-logo">
+        <ManiacLogo size="xl" animate={true} />
+      </div>
+      <div className="dashboard-hero-content">
+        <h1 className="dashboard-hero-title">{greeting}</h1>
+        <p className="dashboard-hero-tagline">{tagline}</p>
+
+        <div className="dashboard-status-strip">
+          <div className="status-item">
+            <span className="status-dot pulsing" />
+            <span className="status-label">Decision Engine Active</span>
+          </div>
+          <div className="status-divider" />
+          <div className="status-item">
+            <span className="status-value">{totalNodes}</span>
+            <span className="status-label">Nodes</span>
+          </div>
+          <div className="status-divider" />
+          <div className="status-item">
+            <span className="status-value">+{activeWeekNodes}</span>
+            <span className="status-label">Velocity (7d)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // WorkspaceTab
 // ==========================================
 function WorkspaceTab({ pages, navigate }) {
@@ -279,19 +346,21 @@ function WorkspaceTab({ pages, navigate }) {
   }, [key, pages.length]); // Re-run when new pages are created
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '64px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '24px' }}>
+      {/* Hero Greeting Panel */}
+      <HeroGreeting pages={pages} />
+
       {/* Smart Resurfacing */}
       {lastVisitedPage && (
         <div
-          className="interactive-card"
+          className="continue-card"
           onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
-          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '16px 24px', marginBottom: '24px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <RotateCcw size={18} color="var(--accent-primary)" />
+            <RotateCcw size={18} color="var(--accent-ember)" />
             <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Continue where you left off</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -311,12 +380,12 @@ function WorkspaceTab({ pages, navigate }) {
 
       {/* Split-Pane Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', flex: 1 }}>
-        
+
         {/* LEFT PANE: Pinned & Recent */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Pinned Pages */}
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '24px' }}>
+
+          {/* Pinned Nodes */}
+          <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Pin size={18} color="var(--text-primary)" />
@@ -389,14 +458,14 @@ function WorkspaceTab({ pages, navigate }) {
 
         {/* RIGHT PANE: Intelligence & Graph */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+
           {/* Decision Engine Mini */}
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '20px' }}>
+          <div className="glass-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Zap size={16} color="var(--accent-primary)" />
+              <Zap size={16} color="var(--accent-ember)" />
               <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Suggested Actions</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {nextActions.slice(0, 4).map(action => (
                 <div
@@ -420,7 +489,7 @@ function WorkspaceTab({ pages, navigate }) {
           </div>
 
           {/* Graph View Card */}
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', padding: '20px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: '300px' }}>
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '300px', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Activity size={16} color="var(--text-tertiary)" />
               <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Network</h3>
@@ -430,38 +499,6 @@ function WorkspaceTab({ pages, navigate }) {
             </div>
           </div>
 
-        </div>
-      </div>
-
-      {/* SYSTEM STATUS BAR */}
-      <div style={{ 
-        position: 'fixed', 
-        bottom: 0, 
-        left: sidebarOpen ? 'var(--sidebar-width)' : '0px', 
-        right: 0, 
-        height: '40px', 
-        background: 'var(--bg-primary)', 
-        borderTop: '1px solid var(--border-subtle)', 
-        display: 'flex', 
-        alignItems: 'center', 
-        padding: '0 24px', 
-        gap: '32px', 
-        zIndex: 40,
-        transition: 'left var(--transition-slow)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }}></div>
-          Decision Engine Active
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-          <HardDrive size={12} />
-          <span>Nodes: <strong style={{ color: 'var(--text-primary)' }}>{pages.length}</strong></span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-          <Zap size={12} color="var(--accent-primary)" />
-          <span>Velocity: <strong style={{ color: 'var(--text-primary)' }}>{knowledgeVelocity?.velocity || 0}%</strong></span>
         </div>
       </div>
 
