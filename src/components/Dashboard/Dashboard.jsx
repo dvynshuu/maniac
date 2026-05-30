@@ -16,6 +16,7 @@ import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import GraphView from './GraphView';
 import { ManiacWordmark } from '../Common/ManiacLogo';
+import EmojiIcon from '../Common/EmojiIcon';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -163,7 +164,10 @@ function IntelligenceTab({ navigate }) {
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>STALE PAGES</div>
                 {forgetting.stalePages.slice(0, 3).map(page => (
                   <div key={page.id} className="intelligence-item" onClick={() => navigate(`/page/${page.id}`)}>
-                    <span style={{ fontSize: '13px' }}>{page.icon || '📄'} {page.title}</span>
+                    <span style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <EmojiIcon emoji={page.icon || '📄'} size="14px" />
+                      <span>{page.title}</span>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -291,7 +295,10 @@ function WorkspaceTab({ pages, navigate }) {
             <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Continue where you left off</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{lastVisitedPage.icon || '📄'} {lastVisitedPage.title || 'Untitled'}</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <EmojiIcon emoji={lastVisitedPage.icon || '📄'} size="16px" />
+              <span>{lastVisitedPage.title || 'Untitled'}</span>
+            </span>
             <ChevronRight size={16} color="var(--text-tertiary)" />
           </div>
         </div>
@@ -332,7 +339,7 @@ function WorkspaceTab({ pages, navigate }) {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '16px' }}>{page.icon || '📄'}</div>
+                    <div style={{ fontSize: '16px', display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="18px" /></div>
                     <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {page.title || 'Untitled'}
                     </div>
@@ -365,7 +372,7 @@ function WorkspaceTab({ pages, navigate }) {
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '16px', opacity: 0.8 }}>{page.icon || '📄'}</div>
+                    <div style={{ fontSize: '16px', opacity: 0.8, display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="16px" /></div>
                     <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{new Date(page.updatedAt).toLocaleDateString()}</div>
@@ -549,7 +556,10 @@ function CalendarTab({ pages, navigate }) {
                     className="calendar-event-btn"
                     title={a.title || 'Untitled'}
                   >
-                    {a.icon || '📄'} {a.title || 'Untitled'}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <EmojiIcon emoji={a.icon || '📄'} size="12px" />
+                      <span>{a.title || 'Untitled'}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -604,7 +614,7 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
             background: 'var(--bg-secondary)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ fontSize: '20px', opacity: 0.5 }}>{page.icon || '📄'}</div>
+              <div style={{ fontSize: '20px', opacity: 0.5, display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="20px" /></div>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Archived on {new Date(page.updatedAt).toLocaleDateString()}</div>

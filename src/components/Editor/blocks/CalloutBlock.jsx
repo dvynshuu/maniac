@@ -1,5 +1,6 @@
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
+import EmojiIcon from '../../Common/EmojiIcon';
 
 export default function CalloutBlock({ block }) {
   const emoji = block.properties?.emoji || '💡';
@@ -15,7 +16,7 @@ export default function CalloutBlock({ block }) {
 
   return (
     <div className="block-callout" data-color={color}>
-      <span className="block-callout-emoji">{emoji}</span>
+      <span className="block-callout-emoji"><EmojiIcon emoji={emoji} size="20px" /></span>
       <EditorContent editor={editor} className="block-callout-content" />
     </div>
   );

@@ -3,6 +3,7 @@ import { usePageStore } from '../../stores/pageStore';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Link2 } from 'lucide-react';
 import { useMentionReferences } from '../../core/queryEngine';
+import EmojiIcon from '../Common/EmojiIcon';
 
 export default function BacklinksPanel({ pageId }) {
   const [expanded, setExpanded] = useState(true);
@@ -42,7 +43,7 @@ export default function BacklinksPanel({ pageId }) {
                 onClick={() => navigate(`/page/${sourcePageId}`)}
               >
                 <div className="backlink-entry-title">
-                  <span>{page.icon || '📝'}</span>
+                  <span><EmojiIcon emoji={page.icon || '📝'} size="14px" /></span>
                   <span>{page.title || 'Untitled'}</span>
                 </div>
                 {entries[0]?.snippet && (

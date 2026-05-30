@@ -59,6 +59,7 @@ const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInt
           />
         </td>
       ))}
+      <td className="db-td-add-placeholder" style={{ width: '32px', minWidth: '32px' }} />
       <td className="db-td-placeholder" />
     </tr>
   );
@@ -237,7 +238,7 @@ export default function DatabaseBlock({ block }) {
   }, [resizingCol, block.id, updateProperty, tempWidths]);
 
   const tableWidth = useMemo(() => {
-    return schema.reduce((sum, p) => sum + (tempWidths[p.id] || p.width || 200), 0) + 48;
+    return schema.reduce((sum, p) => sum + (tempWidths[p.id] || p.width || 200), 0) + 48 + 32;
   }, [schema, tempWidths]);
 
   // ─── Render Active View ──────────────────────────────────────
@@ -268,7 +269,7 @@ export default function DatabaseBlock({ block }) {
                       onResizeStart={handleResizeStart}
                     />
                   ))}
-                  <th className="db-th-add">
+                  <th className="db-th-add" style={{ width: '32px', minWidth: '32px', padding: 0 }}>
                     <button className="db-add-col-btn" onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       setAddPropPos({ top: rect.bottom + 8, left: rect.left - 220 });
@@ -276,6 +277,7 @@ export default function DatabaseBlock({ block }) {
                       <Plus size={16} />
                     </button>
                   </th>
+                  <th className="db-th-placeholder" />
                 </tr>
               </thead>
               <tbody>
@@ -295,7 +297,7 @@ export default function DatabaseBlock({ block }) {
                   />
                 ))}
                 <tr className="db-tr">
-                  <td colSpan={schema.length + 2} className="db-td-new">
+                  <td colSpan={schema.length + 3} className="db-td-new">
                     <button 
                       className="db-add-row-btn"
                       onClick={handleAddRow}

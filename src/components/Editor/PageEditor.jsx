@@ -11,6 +11,7 @@ import BlockRenderer from './BlockRenderer';
 import SelectionToolbar from './SelectionToolbar';
 import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
+import EmojiIcon from '../Common/EmojiIcon';
 import { debounce } from '../../utils/helpers';
 import { ImageIcon, X, Cloud } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
@@ -273,7 +274,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
             className="page-icon-btn"
             onClick={() => setShowIconPicker(!showIconPicker)}
           >
-            {page.icon || '📝'}
+            <EmojiIcon emoji={page.icon || '📝'} size="36px" />
           </button>
           
           {showIconPicker && (

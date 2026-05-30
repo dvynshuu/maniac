@@ -16,6 +16,16 @@ const encryptCellForDB = async (cellObj) => {
   return dbCell;
 };
 
+const DEFAULT_SCHEMA = [
+  {
+    id: 'title',
+    name: 'Name',
+    type: 'text',
+    width: 200,
+    config: {}
+  }
+];
+
 export const useDatabaseStore = create((set, get) => ({
   // Local cache of database state for instant UI updates
   // Structure: { [blockId]: { schema, rows, initialized: true } }
@@ -24,6 +34,19 @@ export const useDatabaseStore = create((set, get) => ({
   // Initializes local state from block properties
   initializeDatabase: async (blockId, schema, legacyRows) => {
     if (get().databases[blockId]?.initialized || get().databases[blockId]?.loading) return;
+
+    let activeSchema = schema;
+    if (!activeSchema || activeSchema.length === 0) {
+      activeSchema = DEFAULT_SCHEMA;
+      // Sync default schema to block properties immediately
+      const block = useBlockStore.getState().getBlock(blockId);
+      if (block) {
+        dispatch({
+          type: 'block/update',
+          payload: { blockId, updates: { properties: { ...block.properties, schema: activeSchema } } }
+        });
+      }
+    }
 
     // Mark as loading to prevent concurrent calls
     set(state => ({
@@ -37,59 +60,59 @@ export const useDatabaseStore = create((set, get) => ({
       if (legacyRows && legacyRows.length > 0) {
         const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
         await db.database_rows.bulkPut(rowsToInsert);
-        
-      const block = useBlockStore.getState().getBlock(blockId);
-      if (block) {
-        const newProps = { ...block.properties };
-        delete newProps.rows;
-        await dispatch({
-          type: 'block/update',
-          payload: { blockId, updates: { properties: newProps } }
-        });
-      }
+
+        const block = useBlockStore.getState().getBlock(blockId);
+        if (block) {
+          const newProps = { ...block.properties };
+          delete newProps.rows;
+          await dispatch({
+            type: 'block/update',
+            payload: { blockId, updates: { properties: newProps } }
+          });
+        }
       }
 
       const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
       const cellsRaw = await db.database_cells.where('blockId').equals(blockId).toArray();
-      
+
       const key = useSecurityStore.getState().derivedKey;
-      
+
       const cellsByRow = {};
       for (const cell of cellsRaw) {
-          if (!cellsByRow[cell.rowId]) cellsByRow[cell.rowId] = {};
-          let val = cell.value;
-          if (key && cell._isEncrypted && typeof val === 'string') {
-              try { val = JSON.parse(await SecurityService.decrypt(val, key)); } catch { val = ''; }
-          }
-          cellsByRow[cell.rowId][cell.propertyId] = val;
+        if (!cellsByRow[cell.rowId]) cellsByRow[cell.rowId] = {};
+        let val = cell.value;
+        if (key && cell._isEncrypted && typeof val === 'string') {
+          try { val = JSON.parse(await SecurityService.decrypt(val, key)); } catch { val = ''; }
+        }
+        cellsByRow[cell.rowId][cell.propertyId] = val;
       }
 
       const rows = await Promise.all(rowsRaw.map(async r => {
-         let values = cellsByRow[r.id] || {};
-         
-         if (r.values !== undefined) {
-             let oldVals = r.values;
-             if (key && r._isEncrypted && typeof oldVals === 'string') {
-                 try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, key)); } catch { oldVals = {}; }
-             }
-             if (typeof oldVals === 'object' && oldVals !== null) {
-                 values = { ...values, ...oldVals };
-                 const cellsToInsert = Object.entries(oldVals).map(([propId, val]) => ({
-                     id: `${r.id}_${propId}`, rowId: r.id, blockId, propertyId: propId, value: val, createdAt: Date.now(), updatedAt: Date.now()
-                 }));
-                 if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
-             }
-             delete r.values;
-             delete r._isEncrypted;
-             await db.database_rows.put(r);
-         }
-         return { ...r, values };
+        let values = cellsByRow[r.id] || {};
+
+        if (r.values !== undefined) {
+          let oldVals = r.values;
+          if (key && r._isEncrypted && typeof oldVals === 'string') {
+            try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, key)); } catch { oldVals = {}; }
+          }
+          if (typeof oldVals === 'object' && oldVals !== null) {
+            values = { ...values, ...oldVals };
+            const cellsToInsert = Object.entries(oldVals).map(([propId, val]) => ({
+              id: `${r.id}_${propId}`, rowId: r.id, blockId, propertyId: propId, value: val, createdAt: Date.now(), updatedAt: Date.now()
+            }));
+            if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
+          }
+          delete r.values;
+          delete r._isEncrypted;
+          await db.database_rows.put(r);
+        }
+        return { ...r, values };
       }));
 
       set(state => ({
         databases: {
           ...state.databases,
-          [blockId]: { schema, rows, initialized: true, lastUpdate: Date.now() }
+          [blockId]: { schema: activeSchema, rows, initialized: true, lastUpdate: Date.now() }
         }
       }));
     } catch (error) {
@@ -111,16 +134,21 @@ export const useDatabaseStore = create((set, get) => ({
 
     const block = useBlockStore.getState().getBlock(blockId);
     if (!block || !block.properties) return { schema: [], rows: [] };
-    
+
+    let schema = block.properties.schema || [];
+    if (schema.length === 0) {
+      schema = DEFAULT_SCHEMA;
+    }
+
     return {
-      schema: block.properties.schema || [],
+      schema,
       rows: block.properties.rows || [],
     };
   },
 
   // Internal save function that debounces writes to blockStore
   debouncedSaves: {},
-  
+
   _saveToBlockStore: (blockId, updates) => {
     // This now only handles schema updates
     const state = get();
@@ -155,11 +183,11 @@ export const useDatabaseStore = create((set, get) => ({
     set(state => ({
       databases: {
         ...state.databases,
-        [blockId]: { 
-          ...current, 
-          ...updates, 
+        [blockId]: {
+          ...current,
+          ...updates,
           initialized: state.databases[blockId]?.initialized || !!updates.rows || !!updates.schema,
-          lastUpdate: Date.now() 
+          lastUpdate: Date.now()
         }
       }
     }));
@@ -170,17 +198,17 @@ export const useDatabaseStore = create((set, get) => ({
   addProperty: async (blockId, overrides = {}) => {
     const { schema, rows } = get().getDatabaseData(blockId);
     const newProp = createProperty(overrides);
-    
+
     const updatedRows = rows.map(row => ({
       ...row,
       values: { ...row.values, [newProp.id]: newProp.type === 'checkbox' ? false : '' }
     }));
 
     const newSchema = [...schema, newProp];
-    
+
     get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
     await get()._immediateSave(blockId, { schema: newSchema });
-    
+
     // Update all rows in Dexie concurrently
     const cellsToInsert = updatedRows.map(r => ({
       id: `${r.id}_${newProp.id}`, rowId: r.id, blockId, propertyId: newProp.id, value: newProp.type === 'checkbox' ? false : '', createdAt: Date.now(), updatedAt: Date.now()
@@ -195,7 +223,7 @@ export const useDatabaseStore = create((set, get) => ({
   updateProperty: async (blockId, propertyId, updates) => {
     const { schema } = get().getDatabaseData(blockId);
     const newSchema = schema.map(p => p.id === propertyId ? { ...p, ...updates } : p);
-    
+
     get()._updateLocal(blockId, { schema: newSchema });
     await get()._immediateSave(blockId, { schema: newSchema });
   },
@@ -203,7 +231,7 @@ export const useDatabaseStore = create((set, get) => ({
   deleteProperty: async (blockId, propertyId) => {
     const { schema, rows } = get().getDatabaseData(blockId);
     const newSchema = schema.filter(p => p.id !== propertyId);
-    
+
     const updatedRows = rows.map(row => {
       const newValues = { ...row.values };
       delete newValues[propertyId];
@@ -212,18 +240,18 @@ export const useDatabaseStore = create((set, get) => ({
 
     get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
     await get()._immediateSave(blockId, { schema: newSchema });
-    
+
     await db.database_cells.where('propertyId').equals(propertyId).delete();
   },
 
   reorderProperties: async (blockId, sourceIndex, destinationIndex) => {
-     const { schema } = get().getDatabaseData(blockId);
-     const newSchema = [...schema];
-     const [removed] = newSchema.splice(sourceIndex, 1);
-     newSchema.splice(destinationIndex, 0, removed);
-     
-     get()._updateLocal(blockId, { schema: newSchema });
-     await get()._immediateSave(blockId, { schema: newSchema });
+    const { schema } = get().getDatabaseData(blockId);
+    const newSchema = [...schema];
+    const [removed] = newSchema.splice(sourceIndex, 1);
+    newSchema.splice(destinationIndex, 0, removed);
+
+    get()._updateLocal(blockId, { schema: newSchema });
+    await get()._immediateSave(blockId, { schema: newSchema });
   },
 
 
@@ -234,24 +262,24 @@ export const useDatabaseStore = create((set, get) => ({
       const { schema, rows } = get().getDatabaseData(blockId);
       const newRow = createDatabaseRow(schema, { ...overrides, blockId });
       const newRows = [...rows, newRow];
-      
+
       // Update local state immediately for snappy UI
       get()._updateLocal(blockId, { rows: newRows });
-      
+
       // Background persistence
       const cellsToInsert = Object.entries(newRow.values).map(([propId, value]) => ({
-         id: `${newRow.id}_${propId}`, 
-         rowId: newRow.id, 
-         blockId, 
-         propertyId: propId, 
-         value, 
-         createdAt: Date.now(), 
-         updatedAt: Date.now()
+        id: `${newRow.id}_${propId}`,
+        rowId: newRow.id,
+        blockId,
+        propertyId: propId,
+        value,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
       }));
-      
+
       const rowToInsert = { ...newRow };
       delete rowToInsert.values;
-      
+
       // We use a transaction to ensure atomic insert in Dexie
       if (cellsToInsert.length > 0) {
         const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
@@ -262,11 +290,11 @@ export const useDatabaseStore = create((set, get) => ({
       } else {
         await db.database_rows.add(rowToInsert);
       }
-      
+
       return newRow;
     } catch (error) {
       console.error('[databaseStore] Failed to add row:', error);
-      throw error; 
+      throw error;
     }
   },
 
@@ -286,7 +314,7 @@ export const useDatabaseStore = create((set, get) => ({
     });
 
     get()._updateLocal(blockId, { rows: newRows });
-    
+
     // Sync title cell changes to corresponding page in pageStore
     const { schema } = get().getDatabaseData(blockId);
     if (schema.length > 0 && schema[0].id === propertyId) {
@@ -307,50 +335,50 @@ export const useDatabaseStore = create((set, get) => ({
       });
     }
   },
-  
+
   updateCellImmediate: async (blockId, rowId, propertyId, value) => {
-      const { rows } = get().getDatabaseData(blockId);
-      let updatedRow = null;
-      const newRows = rows.map(row => {
-        if (row.id === rowId) {
-          updatedRow = {
-            ...row,
-            updatedAt: Date.now(),
-            values: { ...row.values, [propertyId]: value }
-          };
-          return updatedRow;
-        }
-        return row;
-      });
-      
-      get()._updateLocal(blockId, { rows: newRows });
-
-      // Sync title cell changes to corresponding page in pageStore
-      const { schema } = get().getDatabaseData(blockId);
-      if (schema.length > 0 && schema[0].id === propertyId) {
-        try {
-          const { usePageStore } = await import('./pageStore');
-          const store = usePageStore.getState();
-          const page = await store.ensureRowPage(rowId, blockId, value);
-          if (page.title !== value) {
-            await store.updatePage(rowId, { title: value });
-          }
-        } catch (err) {
-          console.error('Failed to sync database cell to page:', err);
-        }
+    const { rows } = get().getDatabaseData(blockId);
+    let updatedRow = null;
+    const newRows = rows.map(row => {
+      if (row.id === rowId) {
+        updatedRow = {
+          ...row,
+          updatedAt: Date.now(),
+          values: { ...row.values, [propertyId]: value }
+        };
+        return updatedRow;
       }
+      return row;
+    });
 
-      if (updatedRow) {
-        const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
-        const encryptedCell = await encryptCellForDB(cell);
-        await db.database_cells.put(encryptedCell);
+    get()._updateLocal(blockId, { rows: newRows });
+
+    // Sync title cell changes to corresponding page in pageStore
+    const { schema } = get().getDatabaseData(blockId);
+    if (schema.length > 0 && schema[0].id === propertyId) {
+      try {
+        const { usePageStore } = await import('./pageStore');
+        const store = usePageStore.getState();
+        const page = await store.ensureRowPage(rowId, blockId, value);
+        if (page.title !== value) {
+          await store.updatePage(rowId, { title: value });
+        }
+      } catch (err) {
+        console.error('Failed to sync database cell to page:', err);
       }
+    }
+
+    if (updatedRow) {
+      const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
+      const encryptedCell = await encryptCellForDB(cell);
+      await db.database_cells.put(encryptedCell);
+    }
   },
 
   deleteRow: async (blockId, rowId) => {
     const { rows } = get().getDatabaseData(blockId);
     const newRows = rows.filter(r => r.id !== rowId);
-    
+
     get()._updateLocal(blockId, { rows: newRows });
     await db.database_rows.delete(rowId);
     await db.database_cells.where('rowId').equals(rowId).delete();
@@ -376,19 +404,19 @@ export const useDatabaseStore = create((set, get) => ({
       updatedAt: Date.now(),
       blockId // Ensure blockId is set correctly
     };
-    
+
     const index = rows.findIndex(r => r.id === rowId);
     const newRows = [...rows];
     newRows.splice(index + 1, 0, newRow);
-    
+
     get()._updateLocal(blockId, { rows: newRows });
-    
+
     const cellsToInsert = Object.entries(newRow.values).map(([propId, value]) => ({
-       id: `${newRow.id}_${propId}`, rowId: newRow.id, blockId, propertyId: propId, value, createdAt: Date.now(), updatedAt: Date.now()
+      id: `${newRow.id}_${propId}`, rowId: newRow.id, blockId, propertyId: propId, value, createdAt: Date.now(), updatedAt: Date.now()
     }));
     const rowToInsert = { ...newRow };
     delete rowToInsert.values;
-    
+
     await db.database_rows.add(rowToInsert);
     if (cellsToInsert.length > 0) {
       const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));

@@ -37,16 +37,16 @@ export const NOTION_BACKGROUND_COLORS = {
 // ─── Callout Color Presets (dark-mode tuned) ─────────────────────
 
 export const CALLOUT_COLORS = {
-  default:          { bg: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.08)' },
-  gray_background:  { bg: 'rgba(155,154,151,0.1)',   border: 'rgba(155,154,151,0.2)' },
-  brown_background: { bg: 'rgba(186,133,111,0.1)',   border: 'rgba(186,133,111,0.2)' },
-  orange_background:{ bg: 'rgba(199,125,72,0.1)',    border: 'rgba(199,125,72,0.2)' },
-  yellow_background:{ bg: 'rgba(202,152,73,0.1)',    border: 'rgba(202,152,73,0.2)' },
-  green_background: { bg: 'rgba(82,158,114,0.1)',    border: 'rgba(82,158,114,0.2)' },
-  blue_background:  { bg: 'rgba(94,135,201,0.1)',    border: 'rgba(94,135,201,0.2)' },
-  purple_background:{ bg: 'rgba(144,101,176,0.1)',   border: 'rgba(144,101,176,0.2)' },
-  pink_background:  { bg: 'rgba(193,76,138,0.1)',    border: 'rgba(193,76,138,0.2)' },
-  red_background:   { bg: 'rgba(212,76,71,0.1)',     border: 'rgba(212,76,71,0.2)' },
+  default: { bg: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.08)' },
+  gray_background: { bg: 'rgba(155,154,151,0.1)', border: 'rgba(155,154,151,0.2)' },
+  brown_background: { bg: 'rgba(186,133,111,0.1)', border: 'rgba(186,133,111,0.2)' },
+  orange_background: { bg: 'rgba(199,125,72,0.1)', border: 'rgba(199,125,72,0.2)' },
+  yellow_background: { bg: 'rgba(202,152,73,0.1)', border: 'rgba(202,152,73,0.2)' },
+  green_background: { bg: 'rgba(82,158,114,0.1)', border: 'rgba(82,158,114,0.2)' },
+  blue_background: { bg: 'rgba(94,135,201,0.1)', border: 'rgba(94,135,201,0.2)' },
+  purple_background: { bg: 'rgba(144,101,176,0.1)', border: 'rgba(144,101,176,0.2)' },
+  pink_background: { bg: 'rgba(193,76,138,0.1)', border: 'rgba(193,76,138,0.2)' },
+  red_background: { bg: 'rgba(212,76,71,0.1)', border: 'rgba(212,76,71,0.2)' },
 };
 
 // ─── Emoji → Callout Color Inference ─────────────────────────────
@@ -123,25 +123,35 @@ export function createRichTextSpan(text, annotations = {}, href = null) {
 // Default properties per block type.
 
 export const BLOCK_PROPERTY_DEFAULTS = {
-  text:     {},
+  text: {},
   heading1: {},
   heading2: {},
   heading3: {},
-  bullet:   { depth: 0 },
+  bullet: { depth: 0 },
   numbered: { depth: 0 },
-  todo:     { checked: false },
-  toggle:   { expanded: true },
-  callout:  { emoji: '💡', color: 'default' },
-  quote:    {},
-  divider:  {},
-  code:     { language: 'plain text', caption: '', wrap: false },
-  image:    { hash: '', caption: '', width: null, alignment: 'center' },
-  embed:    { url: '', caption: '' },
-  database: { schema: [] },
-  table:    { headers: [], rows: [] },
-  tracker:  {},
+  todo: { checked: false },
+  toggle: { expanded: true },
+  callout: { emoji: '💡', color: 'default' },
+  quote: {},
+  divider: {},
+  code: { language: 'plain text', caption: '', wrap: false },
+  image: { hash: '', caption: '', width: null, alignment: 'center' },
+  embed: { url: '', caption: '' },
+  database: {
+    schema: [
+      {
+        id: 'title',
+        name: 'Name',
+        type: 'text',
+        width: 200,
+        config: {}
+      }
+    ]
+  },
+  table: { headers: [], rows: [] },
+  tracker: {},
   column_list: {},
-  column:   { width: null },
+  column: { width: null },
 };
 
 /**

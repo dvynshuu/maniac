@@ -2085,6 +2085,12 @@ textarea.input {
    Icon Picker
    ============================================ */
 
+.elite-emoji-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .icon-picker {
   position: absolute;
   z-index: 200;
@@ -2093,7 +2099,7 @@ textarea.input {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: var(--space-3);
-  width: 280px;
+  width: 308px;
   animation: scaleIn 0.15s ease;
 }
 
@@ -3000,7 +3006,7 @@ textarea.input {
   background: transparent;
   border-bottom: 1px solid rgb(47, 47, 47);
   padding: 0 !important;
-  border-right: none !important;
+  border-right: 1px solid rgb(47, 47, 47) !important;
 }
 
 .db-add-col-btn {
@@ -3284,8 +3290,16 @@ textarea.input {
 }
 
 /* ---- Placeholder column ---- */
+.db-th-placeholder {
+  border-bottom: 1px solid rgb(47, 47, 47);
+  border-right: none !important;
+}
+
+.db-td-add-placeholder {
+  border-right: 1px solid rgb(47, 47, 47);
+}
+
 .db-td-placeholder {
-  width: 32px;
   border-right: none !important;
 }
 
@@ -4127,12 +4141,65 @@ button.db-type-item {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: var(--bg-primary);
+  background: radial-gradient(circle at 50% 50%, #0c0c0e 0%, #050507 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
 }
+
+/* Cinematic overhead spotlight and grounded base glow */
+.unlock-bg-spotlight {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 65% 55% at 50% -10%, rgba(46, 91, 255, 0.08) 0%, rgba(139, 92, 246, 0.02) 60%, transparent 100%),
+    radial-gradient(circle at 50% 110%, rgba(249, 115, 22, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Floating light dust particles (cinematic vault feel) */
+.unlock-bg-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.unlock-particle {
+  position: absolute;
+  bottom: -20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.unlock-particle.p1 { left: 12%; width: 2px; height: 2px; animation: float-particle-sway-1 26s linear infinite; animation-delay: 0s; }
+.unlock-particle.p2 { left: 28%; width: 3px; height: 3px; animation: float-particle-sway-2 32s linear infinite; animation-delay: -6s; background: rgba(99, 102, 241, 0.18); }
+.unlock-particle.p3 { left: 45%; width: 1.5px; height: 1.5px; animation: float-particle-sway-1 22s linear infinite; animation-delay: -3s; }
+.unlock-particle.p4 { left: 62%; width: 2.5px; height: 2.5px; animation: float-particle-sway-2 36s linear infinite; animation-delay: -14s; background: rgba(249, 115, 22, 0.1); }
+.unlock-particle.p5 { left: 78%; width: 2px; height: 2px; animation: float-particle-sway-1 28s linear infinite; animation-delay: -8s; }
+.unlock-particle.p6 { left: 88%; width: 3.5px; height: 3.5px; animation: float-particle-sway-2 40s linear infinite; animation-delay: -20s; background: rgba(139, 92, 246, 0.15); }
+.unlock-particle.p7 { left: 38%; width: 2px; height: 2px; animation: float-particle-sway-1 25s linear infinite; animation-delay: -11s; }
+.unlock-particle.p8 { left: 93%; width: 1.5px; height: 1.5px; animation: float-particle-sway-2 20s linear infinite; animation-delay: -5s; }
+
+@keyframes float-particle-sway-1 {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  12% { opacity: 0.35; }
+  50% { transform: translateY(-50vh) translateX(30px) scale(1.1); }
+  88% { opacity: 0.35; }
+  100% { transform: translateY(-115vh) translateX(-10px) scale(0.9); opacity: 0; }
+}
+
+@keyframes float-particle-sway-2 {
+  0% { transform: translateY(0) translateX(0) scale(0.9); opacity: 0; }
+  12% { opacity: 0.25; }
+  50% { transform: translateY(-60vh) translateX(-40px) scale(1); }
+  88% { opacity: 0.25; }
+  100% { transform: translateY(-115vh) translateX(20px) scale(0.8); opacity: 0; }
+}
+
 
 .unlock-card {
   max-width: 400px;
@@ -4397,13 +4464,11 @@ button {
 .maniac-logo {
   flex-shrink: 0;
   transition: filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .maniac-logo:hover {
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4))
-          drop-shadow(0 0 16px rgba(139, 92, 246, 0.2))
-          drop-shadow(0 0 32px rgba(46, 91, 255, 0.15));
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4)) drop-shadow(0 0 16px rgba(139, 92, 246, 0.2)) drop-shadow(0 0 32px rgba(46, 91, 255, 0.15));
   transform: scale(1.06) rotate(-0.5deg);
 }
 
@@ -4430,21 +4495,25 @@ button {
   animation: debris-float-1 5s ease-in-out infinite;
   transform-origin: 90px 30px;
 }
+
 .maniac-logo--animated .maniac-debris-2 {
   animation: debris-float-2 6s ease-in-out infinite;
   animation-delay: -1s;
   transform-origin: 78px 40px;
 }
+
 .maniac-logo--animated .maniac-debris-3 {
   animation: debris-float-3 4.5s ease-in-out infinite;
   animation-delay: -2.5s;
   transform-origin: 64px 52px;
 }
+
 .maniac-logo--animated .maniac-debris-4 {
   animation: debris-float-4 5.5s ease-in-out infinite;
   animation-delay: -0.8s;
   transform-origin: 36px 74px;
 }
+
 .maniac-logo--animated .maniac-debris-5 {
   animation: debris-float-5 4s ease-in-out infinite;
   animation-delay: -3s;
@@ -4452,60 +4521,165 @@ button {
 }
 
 /* Spark particles — twinkle independently */
-.maniac-logo--animated .maniac-spark-1 { animation: spark-twinkle 2s ease-in-out infinite; }
-.maniac-logo--animated .maniac-spark-2 { animation: spark-twinkle 2.4s ease-in-out infinite; animation-delay: -0.5s; }
-.maniac-logo--animated .maniac-spark-3 { animation: spark-twinkle 1.8s ease-in-out infinite; animation-delay: -1.2s; }
-.maniac-logo--animated .maniac-spark-4 { animation: spark-twinkle 2.2s ease-in-out infinite; animation-delay: -0.3s; }
-.maniac-logo--animated .maniac-spark-5 { animation: spark-twinkle 2.6s ease-in-out infinite; animation-delay: -1.8s; }
+.maniac-logo--animated .maniac-spark-1 {
+  animation: spark-twinkle 2s ease-in-out infinite;
+}
+
+.maniac-logo--animated .maniac-spark-2 {
+  animation: spark-twinkle 2.4s ease-in-out infinite;
+  animation-delay: -0.5s;
+}
+
+.maniac-logo--animated .maniac-spark-3 {
+  animation: spark-twinkle 1.8s ease-in-out infinite;
+  animation-delay: -1.2s;
+}
+
+.maniac-logo--animated .maniac-spark-4 {
+  animation: spark-twinkle 2.2s ease-in-out infinite;
+  animation-delay: -0.3s;
+}
+
+.maniac-logo--animated .maniac-spark-5 {
+  animation: spark-twinkle 2.6s ease-in-out infinite;
+  animation-delay: -1.8s;
+}
 
 /* ---- Keyframes ---- */
 
 @keyframes scar-breathe {
-  0%, 100% { opacity: 0.25; stroke-width: 5; }
-  40% { opacity: 0.4; stroke-width: 7; }
-  60% { opacity: 0.35; stroke-width: 6; }
+
+  0%,
+  100% {
+    opacity: 0.25;
+    stroke-width: 5;
+  }
+
+  40% {
+    opacity: 0.4;
+    stroke-width: 7;
+  }
+
+  60% {
+    opacity: 0.35;
+    stroke-width: 6;
+  }
 }
 
 @keyframes scar-pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes scar-core-flicker {
-  0%, 100% { opacity: 0.5; }
-  25% { opacity: 0.8; }
-  50% { opacity: 0.4; }
-  75% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  25% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  75% {
+    opacity: 0.7;
+  }
 }
 
 @keyframes debris-float-1 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.65; }
-  50% { transform: translate(3px, -4px) rotate(8deg); opacity: 0.85; }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: translate(3px, -4px) rotate(8deg);
+    opacity: 0.85;
+  }
 }
 
 @keyframes debris-float-2 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.5; }
-  50% { transform: translate(-2px, -3px) rotate(-6deg); opacity: 0.7; }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-2px, -3px) rotate(-6deg);
+    opacity: 0.7;
+  }
 }
 
 @keyframes debris-float-3 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.45; }
-  50% { transform: translate(2px, -2px) rotate(5deg); opacity: 0.65; }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translate(2px, -2px) rotate(5deg);
+    opacity: 0.65;
+  }
 }
 
 @keyframes debris-float-4 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.4; }
-  50% { transform: translate(-3px, 2px) rotate(-4deg); opacity: 0.6; }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: translate(-3px, 2px) rotate(-4deg);
+    opacity: 0.6;
+  }
 }
 
 @keyframes debris-float-5 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.35; }
-  50% { transform: translate(1px, -3px); opacity: 0.55; }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: translate(1px, -3px);
+    opacity: 0.55;
+  }
 }
 
 @keyframes spark-twinkle {
-  0%, 100% { opacity: 0.3; r: 0.5; }
-  50% { opacity: 0.9; r: 1.4; }
+
+  0%,
+  100% {
+    opacity: 0.3;
+    r: 0.5;
+  }
+
+  50% {
+    opacity: 0.9;
+    r: 1.4;
+  }
 }
 
 /* ---- Wordmark ---- */

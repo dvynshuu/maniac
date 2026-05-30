@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
 import { ChevronRight, Plus, MoreHorizontal, Trash2, Copy, Archive, Star } from 'lucide-react';
+import EmojiIcon from '../Common/EmojiIcon';
 
 function SidebarPageItem({ page, depth }) {
   const currentPageId = usePageStore((s) => s.currentPageId);
@@ -126,7 +127,7 @@ function SidebarPageItem({ page, depth }) {
           <ChevronRight size={14} />
         </div>
 
-        <span className="page-item-icon">{page.icon || '📝'}</span>
+        <span className="page-item-icon"><EmojiIcon emoji={page.icon || '📝'} size="16px" /></span>
 
         <span className="page-item-title">
           {page.title || 'Untitled'}

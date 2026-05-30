@@ -14,7 +14,7 @@
  *  - useSyncExternalStore pattern for per-block reactivity without context thrash
  */
 
-import { createContext, useContext, useCallback, useEffect, useRef, useSyncExternalStore, createElement } from 'react';
+import { createContext, useContext, useCallback, useEffect, useRef, useMemo, useSyncExternalStore, createElement } from 'react';
 import { useBlockStore } from '../stores/blockStore';
 import { BLOCK_TYPES } from '../utils/constants';
 
@@ -264,9 +264,10 @@ export function useBlockVisible(blockId) {
 
   const getSnapshot = useCallback(() => {
     if (!virtualizer) return true;
-    if (needsPinning) return true;
     return virtualizer.getBlockVisible(blockId);
-  }, [virtualizer, blockId, needsPinning]);
+  }, [virtualizer, blockId]);
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isVisible = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  return needsPinning || isVisible;
 }

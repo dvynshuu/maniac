@@ -11,7 +11,7 @@ export default function UnlockScreen() {
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  
+
   const isInitialized = useSecurityStore(s => s.isInitialized);
   const unlock = useSecurityStore(s => s.unlock);
   const setInitialized = useSecurityStore(s => s.setInitialized);
@@ -33,12 +33,12 @@ export default function UnlockScreen() {
         key = keys;
         const testPage = await db.pages.toCollection().filter(p => p._isEncrypted).first();
         if (testPage && testPage.title) {
-           const decryptedContent = await SecurityService.decrypt(testPage.title, keys.aesKey);
-           if (!decryptedContent) {
-               setError('Incorrect password. Please try again.');
-               setIsVerifying(false);
-               return;
-           }
+          const decryptedContent = await SecurityService.decrypt(testPage.title, keys.aesKey);
+          if (!decryptedContent) {
+            setError('Incorrect password. Please try again.');
+            setIsVerifying(false);
+            return;
+          }
         }
         // If decryption succeeded or DB is empty, generate and store a new verifier
         const newVerifier = await SecurityService.createVerifier(pwToUse);
@@ -94,7 +94,7 @@ export default function UnlockScreen() {
 
       // Derive the long-lived CryptoKey and unlock
       const keys = await SecurityService.deriveKeysFromPassword(password);
-      
+
       setInitialized(true);
       unlock(keys);
     } catch (err) {
@@ -105,15 +105,28 @@ export default function UnlockScreen() {
 
   return (
     <div className="unlock-screen">
+      {/* Cinematic ambient background */}
+      <div className="unlock-bg-spotlight" />
+      <div className="unlock-bg-particles">
+        <div className="unlock-particle p1" />
+        <div className="unlock-particle p2" />
+        <div className="unlock-particle p3" />
+        <div className="unlock-particle p4" />
+        <div className="unlock-particle p5" />
+        <div className="unlock-particle p6" />
+        <div className="unlock-particle p7" />
+        <div className="unlock-particle p8" />
+      </div>
+
       <div className="unlock-card">
         <div className="unlock-icon-wrapper">
           <ManiacLogo size="xl" animate />
         </div>
-        
+
         <h1>{isSettingUp ? 'Initialize Monolith' : 'System Locked'}</h1>
         <p>
-          {isSettingUp 
-            ? 'Set a master password to encrypt your local database. This cannot be recovered if lost.' 
+          {isSettingUp
+            ? 'Set a master password to encrypt your local database. This cannot be recovered if lost.'
             : 'Enter your master password to decrypt and access your data.'}
         </p>
 
@@ -128,7 +141,7 @@ export default function UnlockScreen() {
               disabled={isVerifying}
             />
           </div>
-          
+
           {isSettingUp && (
             <div className="input-group">
               <input
@@ -154,7 +167,7 @@ export default function UnlockScreen() {
             )}
           </button>
         </form>
-        
+
         <div className="unlock-footer">
           <p><span style={{ fontWeight: 800, letterSpacing: '-0.03em' }}>MANIAC</span> v1.0 • AES-256-GCM Encrypted</p>
         </div>

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
+import EmojiIcon from '../Common/EmojiIcon';
 
 export default function Breadcrumb() {
   const pages = usePageStore(s => s.pages);
@@ -33,7 +34,7 @@ export default function Breadcrumb() {
             className={`breadcrumb-item ${idx === trail.length - 1 ? 'current' : ''}`}
             onClick={() => navigate(`/page/${page.id}`)}
           >
-            <span className="breadcrumb-icon">{page.icon || '📝'}</span>
+            <span className="breadcrumb-icon"><EmojiIcon emoji={page.icon || '📝'} size="14px" /></span>
             <span className="breadcrumb-label">{page.title || 'Untitled'}</span>
           </button>
         </span>

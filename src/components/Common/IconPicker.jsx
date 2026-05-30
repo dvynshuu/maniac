@@ -1,5 +1,6 @@
 import { EMOJIS } from '../../utils/constants';
 import { useEffect, useRef } from 'react';
+import EmojiIcon from './EmojiIcon';
 
 export default function IconPicker({ onSelect, onClose }) {
     const pickerRef = useRef(null);
@@ -34,7 +35,7 @@ export default function IconPicker({ onSelect, onClose }) {
                             onSelect(emoji);
                         }}
                     >
-                        {emoji}
+                        <EmojiIcon emoji={emoji} size="24px" />
                     </button>
                 ))}
             </div>
