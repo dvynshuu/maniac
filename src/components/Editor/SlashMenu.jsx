@@ -1,12 +1,46 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getCommandsByCategory } from '../../core/slashCommandRegistry';
 import * as Icons from 'lucide-react';
 
-export default function SlashMenu({ query, onSelect, onClose, onLinkPage }) {
+export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage }) {
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [categories, setCategories] = useState(new Map());
   const [loading, setLoading] = useState(false);
   const menuRef = useRef(null);
+
+  // Calculate coordinates on mount relative to the cursor
+  useEffect(() => {
+    if (!editor) return;
+    try {
+      const { selection } = editor.state;
+      const r = editor.view.coordsAtPos(selection.from);
+      if (r) {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+        let top = r.bottom + scrollTop;
+        let left = r.left + scrollLeft;
+
+        const menuHeight = 340;
+        const menuWidth = 280;
+
+        if (r.bottom + menuHeight > window.innerHeight) {
+          top = r.top + scrollTop - menuHeight - 8;
+        }
+
+        if (r.left + menuWidth > window.innerWidth) {
+          left = window.innerWidth + scrollLeft - menuWidth - 16;
+        }
+
+        left = Math.max(16, left);
+        setCoords({ top, left });
+      }
+    } catch (e) {
+      console.warn('[SlashMenu] Positioning failed:', e);
+    }
+  }, [editor]);
 
   // Flatten categories to a single list for keyboard navigation
   const flatItems = useMemo(() => {
@@ -96,8 +130,17 @@ export default function SlashMenu({ query, onSelect, onClose, onLinkPage }) {
   let globalIndex = 0;
   let lastCategory = null;
 
-  return (
-    <div className="slash-menu" ref={menuRef} contentEditable={false}>
+  return createPortal(
+    <div 
+      className="slash-menu" 
+      ref={menuRef} 
+      contentEditable={false}
+      style={{
+        position: 'absolute',
+        top: coords.top,
+        left: coords.left,
+      }}
+    >
       {loading && flatItems.length === 0 && (
         <div className="slash-menu-loading">
           <span style={{ color: 'var(--text-tertiary)', fontSize: '12px', padding: '8px 12px' }}>Loading...</span>
@@ -144,6 +187,7 @@ export default function SlashMenu({ query, onSelect, onClose, onLinkPage }) {
           </div>
         );
       })}
-    </div>
+    </div>,
+    document.body
   );
 }

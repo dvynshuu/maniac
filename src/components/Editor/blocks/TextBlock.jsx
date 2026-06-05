@@ -103,6 +103,7 @@ export default function TextBlock({ block, index }) {
       <EditorContent editor={editor} className="block-text" />
       {showSlashMenu && (
         <SlashMenu
+          editor={editor}
           query={slashQuery}
           onSelect={handleSelectSlashItem}
           onClose={() => setShowSlashMenu(false)}
@@ -110,6 +111,7 @@ export default function TextBlock({ block, index }) {
       )}
       {showMentionMenu && (
         <MentionMenu
+          editor={editor}
           query={mentionQuery}
           onSelect={handleSelectMention}
           onClose={() => setShowMentionMenu(false)}
