@@ -242,3 +242,12 @@ export function mergeHTML(html1, html2) {
 
   return body1.innerHTML;
 }
+
+export function isEmptyContent(html) {
+  if (!html) return true;
+  // Remove all HTML tags and trim
+  const clean = html.replace(/<[^>]*>/g, '').trim();
+  // Decode common HTML entities like &nbsp; or replace with space
+  const decoded = clean.replace(/&nbsp;/g, ' ').trim();
+  return decoded === '';
+}

@@ -2,10 +2,12 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
+import { useBlockStore } from '../../../stores/blockStore';
+import { isEmptyContent } from '../../../utils/helpers';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
 
-export default function TextBlock({ block, index }) {
+function ActiveTextBlock({ block }) {
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -118,5 +120,42 @@ export default function TextBlock({ block, index }) {
         />
       )}
     </div>
+  );
+}
+
+function StaticTextBlock({ block, onClick }) {
+  if (isEmptyContent(block.content)) {
+    return (
+      <div 
+        className="tiptap-editor block-text is-editor-empty" 
+        onClick={onClick}
+        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
+      >
+        Type '/' for commands or '@' to mention
+      </div>
+    );
+  }
+  return (
+    <div 
+      className="tiptap-editor block-text" 
+      onClick={onClick}
+      style={{ cursor: 'text' }}
+      dangerouslySetInnerHTML={{ __html: block.content }}
+    />
+  );
+}
+
+export default function TextBlock({ block, index }) {
+  const focusBlockId = useBlockStore(s => s.focusBlockId);
+  const isFocused = focusBlockId === block.id;
+
+  const handleFocus = () => {
+    useBlockStore.getState().setFocusBlock(block.id);
+  };
+
+  return isFocused ? (
+    <ActiveTextBlock block={block} />
+  ) : (
+    <StaticTextBlock block={block} onClick={handleFocus} />
   );
 }

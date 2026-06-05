@@ -1,21 +1,14 @@
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
+import { useBlockStore } from '../../../stores/blockStore';
+import { isEmptyContent } from '../../../utils/helpers';
 import { ChevronRight } from 'lucide-react';
 import BlockRenderer from '../BlockRenderer';
 import { useShallow } from 'zustand/react/shallow';
-import { useBlockStore } from '../../../stores/blockStore';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-export default function ToggleBlock({ block }) {
-  const expanded = block.properties?.expanded ?? true;
-  
-  const engine = useEditorEngine();
-
-  const childBlockIds = useBlockStore(useShallow(s => 
-    s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
-  ));
-
+function ActiveToggleTitle({ block, expanded, engine }) {
   const editor = useBlockEditor(block, {
     placeholder: 'Toggle heading',
     backspaceAction: 'convert',
@@ -34,13 +27,54 @@ export default function ToggleBlock({ block }) {
     },
   });
 
+  if (!editor) return null;
+
+  return <EditorContent editor={editor} className="block-text block-toggle-title" />;
+}
+
+function StaticToggleTitle({ block, onClick }) {
+  if (isEmptyContent(block.content)) {
+    return (
+      <div 
+        className="tiptap-editor block-text block-toggle-title is-editor-empty" 
+        onClick={onClick}
+        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
+      >
+        Toggle heading
+      </div>
+    );
+  }
+  return (
+    <div 
+      className="tiptap-editor block-text block-toggle-title" 
+      onClick={onClick}
+      style={{ cursor: 'text' }}
+      dangerouslySetInnerHTML={{ __html: block.content }}
+    />
+  );
+}
+
+export default function ToggleBlock({ block }) {
+  const expanded = block.properties?.expanded ?? true;
+  
+  const engine = useEditorEngine();
+
+  const childBlockIds = useBlockStore(useShallow(s => 
+    s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
+  ));
+
+  const focusBlockId = useBlockStore(s => s.focusBlockId);
+  const isFocused = focusBlockId === block.id;
+
   const toggleExpanded = () => {
     engine.updateBlock(block.id, {
       properties: { ...block.properties, expanded: !expanded }
     });
   };
 
-  if (!editor) return null;
+  const handleFocus = () => {
+    useBlockStore.getState().setFocusBlock(block.id);
+  };
 
   return (
     <div className="block-toggle">
@@ -52,7 +86,11 @@ export default function ToggleBlock({ block }) {
         >
           <ChevronRight size={16} />
         </button>
-        <EditorContent editor={editor} className="block-text block-toggle-title" />
+        {isFocused ? (
+          <ActiveToggleTitle block={block} expanded={expanded} engine={engine} />
+        ) : (
+          <StaticToggleTitle block={block} onClick={handleFocus} />
+        )}
       </div>
       {expanded && (
         <div className="block-children toggle-children-blocks">
