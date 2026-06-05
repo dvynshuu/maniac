@@ -16,16 +16,15 @@ export default function AppearanceTab() {
 
   return (
     <div className="settings-tab-content">
-      <SettingRow label="Theme Mode" description="Switch between dark and light themes (currently locked to Dark).">
+      <SettingRow label="Theme Mode" description="Switch between dark, light, and system themes.">
         <Select
           value={s.theme}
           onChange={v => s.setSetting('theme', v)}
           options={[
             { value: 'dark', label: 'Dark Mode' },
-            { value: 'light', label: 'Light (Coming Soon)' },
-            { value: 'system', label: 'System (Coming Soon)' },
+            { value: 'light', label: 'Light Mode' },
+            { value: 'system', label: 'System Default' },
           ]}
-          disabled
         />
       </SettingRow>
 

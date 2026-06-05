@@ -14,6 +14,18 @@
   --bg-active: rgba(255, 255, 255, 0.08);
   --bg-selected: rgba(46, 91, 255, 0.15);
 
+  /* ---- Variable-based components ---- */
+  --bg-sidebar: rgba(17, 17, 22, 0.75);
+  --border-sidebar: rgba(255, 255, 255, 0.05);
+
+  --bg-popover: rgba(17, 17, 22, 0.70);
+  --border-popover: rgba(255, 255, 255, 0.08);
+
+  --bg-glass: rgba(17, 17, 22, 0.65);
+  --border-glass: rgba(255, 255, 255, 0.05);
+  --bg-glass-subtle: rgba(255, 255, 255, 0.03);
+  --border-glass-subtle: rgba(255, 255, 255, 0.1);
+
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-default: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.15);
@@ -98,6 +110,46 @@
   --sidebar-width: 280px;
   --topbar-height: 0px;
   --editor-max-width: 960px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #fbfbfa;
+  --bg-tertiary: #f1f1f0;
+  --bg-elevated: #ffffff;
+  --bg-hover: rgba(55, 53, 47, 0.04);
+  --bg-active: rgba(55, 53, 47, 0.08);
+  --bg-selected: rgba(46, 91, 255, 0.12);
+
+  --border-subtle: rgba(55, 53, 47, 0.06);
+  --border-default: rgba(55, 53, 47, 0.12);
+  --border-strong: rgba(55, 53, 47, 0.20);
+
+  --text-primary: #37352f;
+  --text-secondary: rgba(55, 53, 47, 0.65);
+  --text-tertiary: rgba(55, 53, 47, 0.45);
+  --text-placeholder: rgba(55, 53, 47, 0.25);
+
+  --bg-sidebar: rgba(247, 247, 245, 0.85);
+  --border-sidebar: rgba(55, 53, 47, 0.09);
+
+  --bg-popover: rgba(255, 255, 255, 0.85);
+  --border-popover: rgba(55, 53, 47, 0.12);
+
+  --bg-glass: rgba(255, 255, 255, 0.7);
+  --border-glass: rgba(55, 53, 47, 0.08);
+  --bg-glass-subtle: rgba(55, 53, 47, 0.03);
+  --border-glass-subtle: rgba(55, 53, 47, 0.08);
+
+  --glow-primary: 0 0 80px rgba(99, 102, 241, 0.03);
+  --glow-ember: 0 0 40px rgba(249, 115, 22, 0.03);
+
+  --success-subtle: rgba(74, 222, 128, 0.2);
+  --warning-subtle: rgba(250, 204, 21, 0.2);
+  --error-subtle: rgba(248, 113, 113, 0.2);
+  --info-subtle: rgba(96, 165, 250, 0.2);
 }
 
 /* ============================================
@@ -288,9 +340,9 @@ a:hover {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   height: 100vh;
-  background: rgba(17, 17, 22, 0.75);
+  background: var(--bg-sidebar);
   backdrop-filter: blur(24px) saturate(1.4);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--border-sidebar);
   display: flex;
   flex-direction: column;
   transition: transform var(--transition-slow), width var(--transition-slow), min-width var(--transition-slow);
@@ -1840,10 +1892,10 @@ a:hover {
 .command-palette {
   width: 560px;
   max-height: 420px;
-  background: rgba(17, 17, 22, 0.70);
+  background: var(--bg-popover);
   backdrop-filter: blur(32px) saturate(1.4);
   -webkit-backdrop-filter: blur(32px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-popover);
   border-radius: var(--radius-xl);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), var(--glow-primary);
   overflow: hidden;

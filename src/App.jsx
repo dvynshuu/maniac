@@ -17,6 +17,7 @@ import ManiacLogo from './components/Common/ManiacLogo';
 import UnlockScreen from './components/Layout/UnlockScreen';
 import RestorePreviewModal from './components/Settings/RestorePreviewModal';
 import NotionImportModal from './components/Settings/NotionImportModal';
+import { useSettingsStore } from './stores/settingsStore';
 import ToastContainer from './components/Common/ToastContainer';
 
 // Register all command handlers on module load
@@ -45,6 +46,53 @@ function App() {
 
   const isLocked = useSecurityStore(s => s.isLocked);
   const derivedKey = useSecurityStore(s => s.derivedKey);
+
+  // Settings
+  const theme = useSettingsStore(s => s.theme);
+  const fontFamily = useSettingsStore(s => s.fontFamily);
+  const fontSize = useSettingsStore(s => s.fontSize);
+  const accentColor = useSettingsStore(s => s.accentColor);
+
+  useEffect(() => {
+    const applyTheme = (t) => {
+      let activeTheme = t;
+      if (t === 'system') {
+        activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', activeTheme);
+      document.documentElement.style.colorScheme = activeTheme;
+    };
+
+    applyTheme(theme);
+
+    if (theme === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = (e) => {
+        const active = e.matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', active);
+        document.documentElement.style.colorScheme = active;
+      };
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-sans',
+      fontFamily === 'JetBrains Mono' ? "var(--font-mono)" :
+      fontFamily === 'System' ? "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" :
+      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    );
+  }, [fontFamily]);
+
+  useEffect(() => {
+    const sizes = { compact: '14px', default: '16px', comfortable: '18px' };
+    document.documentElement.style.fontSize = sizes[fontSize] || '16px';
+  }, [fontSize]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent-primary', accentColor);
+  }, [accentColor]);
 
   // Cross-tab sync
   useCrossTabSync();
