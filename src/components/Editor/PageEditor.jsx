@@ -20,6 +20,7 @@ import { useRootBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useSelectionStore } from '../../core/editor/selectionStore';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
+import { DragDropContext } from './DragDropContext';
 
 function PageEditor({ pageId: pageIdProp } = {}) {
   const { pageId: paramPageId } = useParams();
@@ -60,8 +61,70 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  const dragPositionRef = useRef(null);
+  const [dragState, setDragState] = useState({
+    activeId: null,
+    overId: null,
+    dropPosition: null,
+  });
+
+  const handleDragStart = useCallback((event) => {
+    setDragState({
+      activeId: event.active.id,
+      overId: null,
+      dropPosition: null,
+    });
+    dragPositionRef.current = null;
+  }, []);
+
+  const handleDragMove = useCallback((event) => {
+    const { active, over } = event;
+    if (!active || !over) {
+      setDragState((prev) => ({
+        ...prev,
+        overId: null,
+        dropPosition: null,
+      }));
+      dragPositionRef.current = null;
+      return;
+    }
+
+    let pos = 'bottom';
+    if (active.rect.current.translated && over.rect) {
+      const activeCenterY = active.rect.current.translated.top + active.rect.current.translated.height / 2;
+      const overCenterY = over.rect.top + over.rect.height / 2;
+      pos = activeCenterY < overCenterY ? 'top' : 'bottom';
+    }
+
+    dragPositionRef.current = pos;
+    setDragState({
+      activeId: active.id,
+      overId: over.id,
+      dropPosition: pos,
+    });
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setDragState({
+      activeId: null,
+      overId: null,
+      dropPosition: null,
+    });
+    dragPositionRef.current = null;
+  }, []);
+
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
+
+    // Clear states immediately
+    setDragState({
+      activeId: null,
+      overId: null,
+      dropPosition: null,
+    });
+    const dropPosition = dragPositionRef.current || 'bottom';
+    dragPositionRef.current = null;
+
     if (!active || !over || active.id === over.id) return;
 
     const store = useBlockStore.getState();
@@ -87,7 +150,14 @@ function PageEditor({ pageId: pageIdProp } = {}) {
         (blockMap[id]?.parentId || null) === targetParentId && id !== active.id
       );
       const overIndexInSiblings = siblings.indexOf(over.id);
-      targetAfterBlockId = overIndexInSiblings > 0 ? siblings[overIndexInSiblings - 1] : null;
+      
+      if (dropPosition === 'top') {
+        // Place it before the overBlock
+        targetAfterBlockId = overIndexInSiblings > 0 ? siblings[overIndexInSiblings - 1] : null;
+      } else {
+        // Place it after the overBlock
+        targetAfterBlockId = over.id;
+      }
     }
 
     // Normalizer/safety check to avoid cycles
@@ -305,23 +375,28 @@ function PageEditor({ pageId: pageIdProp } = {}) {
               Click here or press Enter to add a block...
             </div>
           ) : (
-            <VirtualizerProvider value={virtualizer}>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={rootBlockIds.filter(Boolean)} strategy={verticalListSortingStrategy}>
-                  {rootBlockIds.filter(Boolean).map((id, index) => (
-                    <BlockRenderer
-                      key={id}
-                      blockId={id}
-                      index={index}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </VirtualizerProvider>
+            <DragDropContext.Provider value={dragState}>
+              <VirtualizerProvider value={virtualizer}>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={handleDragCancel}
+                >
+                  <SortableContext items={rootBlockIds.filter(Boolean)} strategy={verticalListSortingStrategy}>
+                    {rootBlockIds.filter(Boolean).map((id, index) => (
+                      <BlockRenderer
+                        key={id}
+                        blockId={id}
+                        index={index}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </VirtualizerProvider>
+            </DragDropContext.Provider>
           )}
         </div>
         

@@ -1,5 +1,6 @@
-import React, { useState, memo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, memo, useRef, useEffect, useCallback, useContext } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
+import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
@@ -34,6 +35,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
   const childBlockIds = useChildBlockIds(blockId);
   const engine = useEditorEngine();
   const virtualizer = useVirtualizerContext();
+  const { activeId, overId, dropPosition } = useContext(DragDropContext);
 
   // ── ALL hooks must be called unconditionally (Rules of Hooks) ──
   const wrapperRef = useRef(null);
@@ -250,6 +252,8 @@ const BlockRenderer = memo(({ blockId, index }) => {
     { label: 'Delete', icon: Trash2, action: handleDelete, danger: true },
   ];
 
+  const isOver = overId === blockId && activeId !== blockId;
+
   return (
     <div
       ref={combinedRef}
@@ -258,6 +262,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
       data-block-id={block.id}
       {...attributes}
     >
+      {isOver && dropPosition === 'top' && (
+        <div className="block-drop-indicator top" />
+      )}
       <div
         className="block-handle"
         contentEditable={false}
@@ -289,6 +296,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
             <BlockRenderer key={childId} blockId={childId} index={i} />
           ))}
         </div>
+      )}
+      {isOver && dropPosition === 'bottom' && (
+        <div className="block-drop-indicator bottom" />
       )}
     </div>
   );

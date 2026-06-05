@@ -1028,10 +1028,35 @@ a:hover {
 }
 
 .block-drop-indicator {
+  position: absolute;
+  left: 34px; /* Align with text content (handle 24px + gap 10px) */
+  right: 0;
   height: 2px;
   background: var(--accent-primary);
+  z-index: 50;
+  pointer-events: none;
   border-radius: 1px;
   transition: opacity 150ms ease;
+}
+
+.block-drop-indicator.top {
+  top: -1px;
+}
+
+.block-drop-indicator.bottom {
+  bottom: -1px;
+}
+
+.block-drop-indicator::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-primary);
 }
 
 /* Heading Blocks — Notion-accurate spacing with Maniac styling */
