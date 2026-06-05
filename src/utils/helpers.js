@@ -207,3 +207,38 @@ export function generateLexicalOrder(prev = null, next = null) {
     }
   }
 }
+
+/**
+ * Merges two HTML strings by joining the inner contents of their root elements.
+ * Preserves structural formatting tags (bold, italic, links).
+ */
+export function mergeHTML(html1, html2) {
+  if (!html1) return html2 || '<p></p>';
+  if (!html2) return html1 || '<p></p>';
+
+  const parser = new DOMParser();
+  const doc1 = parser.parseFromString(html1, 'text/html');
+  const doc2 = parser.parseFromString(html2, 'text/html');
+
+  const body1 = doc1.body;
+  const body2 = doc2.body;
+
+  const destContainer = body1.lastElementChild || body1;
+  const sourceContainer = body2.firstElementChild || body2;
+
+  if (sourceContainer && destContainer) {
+    // Move all child nodes of sourceContainer to destContainer
+    while (sourceContainer.firstChild) {
+      destContainer.appendChild(sourceContainer.firstChild);
+    }
+    // Remove the empty sourceContainer
+    sourceContainer.remove();
+  }
+
+  // Append any remaining sibling elements from doc2 to doc1 body
+  while (body2.firstChild) {
+    body1.appendChild(body2.firstChild);
+  }
+
+  return body1.innerHTML;
+}

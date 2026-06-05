@@ -9,8 +9,9 @@ import { Mark, mergeAttributes } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBlockStore } from '../stores/blockStore';
 import { useUIStore } from '../stores/uiStore';
-import { debounce } from '../utils/helpers';
+import { debounce, getPlainText, mergeHTML } from '../utils/helpers';
 import { sanitize } from '../utils/sanitizer';
+import { DOMSerializer } from '@tiptap/pm/model';
 import { TiptapMention } from '../extensions/tiptapMention';
 import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
@@ -51,6 +52,30 @@ const CustomHighlight = Mark.create({
   },
 });
 
+
+const EDITABLE_TYPES = [
+  'text', 'heading1', 'heading2', 'heading3', 'todo', 
+  'quote', 'callout', 'bullet', 'numbered', 'toggle', 'code'
+];
+
+function getNextEditableBlockId(currentId, direction) {
+  const store = useBlockStore.getState();
+  const { blockOrder, blockMap } = store;
+  const index = blockOrder.indexOf(currentId);
+  if (index === -1) return null;
+
+  const step = direction === 'up' ? -1 : 1;
+  let i = index + step;
+  while (i >= 0 && i < blockOrder.length) {
+    const nextId = blockOrder[i];
+    const block = blockMap[nextId];
+    if (block && EDITABLE_TYPES.includes(block.type)) {
+      return nextId;
+    }
+    i += step;
+  }
+  return null;
+}
 
 /**
  * useBlockEditor — the shared TipTap integration for all editable block types.
@@ -163,31 +188,106 @@ export function useBlockEditor(block, options = {}) {
           }
         }
 
+        // ArrowUp — focus previous block
+        if (event.key === 'ArrowUp') {
+          if (view.endOfTextblock('up')) {
+            const prevId = getNextEditableBlockId(block.id, 'up');
+            if (prevId) {
+              event.preventDefault();
+              useBlockStore.getState().setFocusBlock(prevId, 'end');
+              return true;
+            }
+          }
+        }
+
+        // ArrowDown — focus next block
+        if (event.key === 'ArrowDown') {
+          if (view.endOfTextblock('down')) {
+            const nextId = getNextEditableBlockId(block.id, 'down');
+            if (nextId) {
+              event.preventDefault();
+              useBlockStore.getState().setFocusBlock(nextId, 'start');
+              return true;
+            }
+          }
+        }
+
         // Enter — split block
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();
           
-          const { from } = editor.state.selection;
-          const text = editor.getText();
-          const pos = from - 1; // Adjust for TipTap indexing
-          
-          if (editor.isEmpty || pos >= text.length) {
-            engine.insertAfter(block.id, newBlockType);
-          } else {
-            engine.insertAfter(block.id, newBlockType);
-          }
+          const { selection, doc } = editor.state;
+          const pos = selection.anchor;
+
+          // Serialize htmlBefore and htmlAfter
+          const serializer = DOMSerializer.fromSchema(editor.schema);
+          const fragBefore = doc.cut(0, pos).content;
+          const divBefore = document.createElement('div');
+          divBefore.appendChild(serializer.serializeFragment(fragBefore));
+          const htmlBefore = divBefore.innerHTML;
+
+          const fragAfter = doc.cut(pos).content;
+          const divAfter = document.createElement('div');
+          divAfter.appendChild(serializer.serializeFragment(fragAfter));
+          const htmlAfter = divAfter.innerHTML;
+
+          // Perform split
+          engine.split(block.id, htmlBefore, htmlAfter).then((results) => {
+            if (results && results[1]) {
+              const newBlock = results[1];
+              // Set focus position to start of the new block
+              useBlockStore.getState().setFocusBlock(newBlock.id, 'start');
+            }
+          });
           return true;
         }
 
-        // Backspace on empty block — convert or delete
-        if (event.key === 'Backspace' && editor.isEmpty) {
-          event.preventDefault();
-          if (backspaceAction === 'convert' && block.type !== 'text') {
-            engine.convertType(block.id, 'text');
-          } else {
-            engine.startTransaction().deleteBlock(block.id).commit();
+        // Backspace — convert, delete, or merge
+        if (event.key === 'Backspace') {
+          const { selection } = editor.state;
+          
+          if (editor.isEmpty) {
+            event.preventDefault();
+            if (backspaceAction === 'convert' && block.type !== 'text') {
+              engine.convertType(block.id, 'text');
+            } else {
+              engine.startTransaction().deleteBlock(block.id).commit();
+            }
+            return true;
           }
-          return true;
+
+          if (selection.empty && selection.anchor === 1) {
+            event.preventDefault();
+            
+            const prevId = getNextEditableBlockId(block.id, 'up');
+            if (prevId) {
+              const prevBlock = useBlockStore.getState().blockMap[prevId];
+              if (prevBlock) {
+                const prevText = getPlainText(prevBlock.content);
+                const oldTextLength = prevText.length;
+                
+                // Merge contents based on type
+                let mergedHtml;
+                if (prevBlock.type === 'code') {
+                  mergedHtml = prevBlock.content + '\n' + getPlainText(block.content);
+                } else if (block.type === 'code') {
+                  mergedHtml = mergeHTML(prevBlock.content, `<p>${block.content}</p>`);
+                } else {
+                  mergedHtml = mergeHTML(prevBlock.content, block.content);
+                }
+
+                // Batch the update and deletion
+                engine.startTransaction()
+                  .updateBlock(prevId, { content: mergedHtml })
+                  .deleteBlock(block.id)
+                  .commit();
+                
+                // Focus previous block at the junction
+                useBlockStore.getState().setFocusBlock(prevId, oldTextLength + 1);
+                return true;
+              }
+            }
+          }
         }
 
         // Tab — Nest
@@ -254,8 +354,9 @@ export function useBlockEditor(block, options = {}) {
   // Focus management
   useEffect(() => {
     if (editor && focusBlockId === block.id && !editor.isFocused) {
+      const position = useBlockStore.getState().focusPosition || 'end';
       requestAnimationFrame(() => {
-        editor.commands.focus('end');
+        editor.commands.focus(position);
       });
     }
   }, [focusBlockId, block.id, editor]);

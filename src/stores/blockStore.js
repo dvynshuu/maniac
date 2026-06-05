@@ -27,6 +27,7 @@ export const useBlockStore = create((set, get) => ({
   blockMap: {},
   blockOrder: [],
   focusBlockId: null,
+  focusPosition: 'end',
   lastLoadId: 0,
 
   getBlocks: () => {
@@ -150,8 +151,8 @@ export const useBlockStore = create((set, get) => ({
     }
   },
 
-  setFocusBlock: (blockId) => {
-    set({ focusBlockId: blockId });
+  setFocusBlock: (blockId, position = 'end') => {
+    set({ focusBlockId: blockId, focusPosition: position });
   },
 
   /**
