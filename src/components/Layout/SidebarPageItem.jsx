@@ -4,6 +4,7 @@ import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
 import { ChevronRight, Plus, MoreHorizontal, Trash2, Copy, Archive, Star } from 'lucide-react';
 import EmojiIcon from '../Common/EmojiIcon';
+import ContextMenu from '../Common/ContextMenu';
 
 function SidebarPageItem({ page, depth }) {
   const currentPageId = usePageStore((s) => s.currentPageId);
@@ -17,7 +18,7 @@ function SidebarPageItem({ page, depth }) {
   const togglePageExpanded = useUIStore((s) => s.togglePageExpanded);
   const setPageExpanded = useUIStore((s) => s.setPageExpanded);
   const navigate = useNavigate();
-  const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
 
   const isActive = currentPageId === page.id;
   const isExpanded = expandedPages[page.id] || false;
@@ -55,8 +56,8 @@ function SidebarPageItem({ page, depth }) {
   };
 
   const handleDelete = async (e) => {
-    e.stopPropagation();
-    setShowMenu(false);
+    if (e) e.stopPropagation();
+    setMenuPos(null);
     
     if (isActive) {
       navigate('/');
@@ -84,8 +85,8 @@ function SidebarPageItem({ page, depth }) {
   };
 
   const handleArchive = async (e) => {
-    e.stopPropagation();
-    setShowMenu(false);
+    if (e) e.stopPropagation();
+    setMenuPos(null);
     if (isActive) {
       navigate('/');
     }
@@ -93,8 +94,8 @@ function SidebarPageItem({ page, depth }) {
   };
 
   const handleDuplicate = async (e) => {
-    e.stopPropagation();
-    setShowMenu(false);
+    if (e) e.stopPropagation();
+    setMenuPos(null);
     const newPage = await duplicatePage(page.id);
     if (newPage) {
       setCurrentPage(newPage.id);
@@ -103,16 +104,47 @@ function SidebarPageItem({ page, depth }) {
   };
 
   const handleToggleFavorite = (e) => {
-    e.stopPropagation();
-    setShowMenu(false);
+    if (e) e.stopPropagation();
+    setMenuPos(null);
     toggleFavorite(page.id);
   };
+
+  const menuItems = [
+    {
+      label: isFav ? 'Remove from Favorites' : 'Add to Favorites',
+      icon: Star,
+      iconStyle: isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {},
+      action: handleToggleFavorite
+    },
+    {
+      label: 'Duplicate',
+      icon: Copy,
+      action: handleDuplicate
+    },
+    {
+      label: 'Archive',
+      icon: Archive,
+      action: handleArchive
+    },
+    'divider',
+    {
+      label: 'Delete',
+      icon: Trash2,
+      action: handleDelete,
+      danger: true
+    }
+  ];
 
   return (
     <div>
       <div
         className={`page-item page-item-wrapper ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
         onClick={handleClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setMenuPos({ x: e.clientX, y: e.clientY });
+        }}
         data-page-id={page.id}
         style={{ 
           paddingLeft: `${depth * 16 + 8}px`,
@@ -139,37 +171,26 @@ function SidebarPageItem({ page, depth }) {
           </button>
           <button
             className="page-item-action"
-            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPos({
+                x: rect.right - 200,
+                y: rect.bottom + 4
+              });
+            }}
             title="More options"
           >
             <MoreHorizontal size={14} />
           </button>
         </div>
 
-        {showMenu && (
-          <div
-            className="context-menu"
-            style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button className="context-menu-item" onClick={handleToggleFavorite}>
-              <Star size={14} style={isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {}} />
-              {isFav ? 'Remove from Favorites' : 'Add to Favorites'}
-            </button>
-            <button className="context-menu-item" onClick={handleDuplicate}>
-              <Copy size={14} />
-              Duplicate
-            </button>
-            <button className="context-menu-item" onClick={handleArchive}>
-              <Archive size={14} />
-              Archive
-            </button>
-            <div className="context-menu-divider" />
-            <button className="context-menu-item danger" onClick={handleDelete}>
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
+        {menuPos && (
+          <ContextMenu
+            items={menuItems}
+            position={menuPos}
+            onClose={() => setMenuPos(null)}
+          />
         )}
       </div>
 
@@ -185,3 +206,4 @@ function SidebarPageItem({ page, depth }) {
 }
 
 export default SidebarPageItem;
+
