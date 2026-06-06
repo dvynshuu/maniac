@@ -12,10 +12,11 @@ import { ProfilePopover } from './ProfilePopover';
 import { NotificationsPopover } from './NotificationsPopover';
 import { SettingsModal } from '../Settings/SettingsModal';
 import { useIntelligenceStore } from '../../stores/intelligenceStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import GraphView from './GraphView';
-import ManiacLogo, { ManiacWordmark } from '../Common/ManiacLogo';
+import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
 
 function Dashboard() {
@@ -23,6 +24,7 @@ function Dashboard() {
   const archivedPages = usePageStore((s) => s.archivedPages);
   const restorePage = usePageStore((s) => s.restorePage);
   const deletePage = usePageStore((s) => s.deletePage);
+  const userProfileImage = useSettingsStore((s) => s.userProfileImage);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Workspace');
   const [activePopover, setActivePopover] = useState(null);
@@ -48,7 +50,6 @@ function Dashboard() {
       {/* Dashboard Topbar */}
       <div className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
         <div className="dashboard-brand-container">
-          <ManiacWordmark size="md" />
           <div className="dashboard-tabs" role="tablist">
             {['Workspace', 'Intelligence', 'Calendar', 'Archives'].map(tab => (
               <button
@@ -77,8 +78,12 @@ function Dashboard() {
 
           <div style={{ position: 'relative' }}>
             <button aria-label="Profile" className="dashboard-profile-btn" onClick={() => togglePopover('profile')}>
-              <div className="dashboard-profile-avatar">
-                <User size={16} />
+              <div className="dashboard-profile-avatar" style={{ padding: 0, overflow: 'hidden' }}>
+                {userProfileImage ? (
+                  <img src={userProfileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={16} />
+                )}
               </div>
             </button>
             {activePopover === 'profile' && <ProfilePopover onClose={() => setActivePopover(null)} onOpenSettings={openSettings} />}

@@ -8,6 +8,10 @@ import { persist } from 'zustand/middleware';
 export const useSettingsStore = create(
   persist(
     (set, get) => ({
+      // ─── Profile ────────────────────────────────────
+      userName: 'Maniac User',
+      userProfileImage: null,      // base64 encoded string
+
       // ─── Appearance ─────────────────────────────────
       theme: 'dark',               // 'dark' | 'light' | 'system'
       animationsEnabled: true,
@@ -39,6 +43,8 @@ export const useSettingsStore = create(
       toggleSetting: (key) => set(s => ({ [key]: !s[key] })),
 
       resetToDefaults: () => set({
+        userName: 'Maniac User',
+        userProfileImage: null,
         theme: 'dark',
         animationsEnabled: true,
         fontFamily: 'Inter',
