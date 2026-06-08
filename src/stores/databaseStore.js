@@ -15,12 +15,20 @@ const encryptCellForDB = async (cellObj) => {
   }
   return dbCell;
 };
+const EMPTY_ARRAY = [];
 
 const DEFAULT_SCHEMA = [
   {
     id: 'title',
-    name: 'Name',
+    name: '',
     type: 'text',
+    width: 200,
+    config: {}
+  },
+  {
+    id: 'tags',
+    name: '',
+    type: 'multi_select',
     width: 200,
     config: {}
   }
@@ -72,7 +80,40 @@ export const useDatabaseStore = create((set, get) => ({
         }
       }
 
-      const rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+      let rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+
+      if (rowsRaw.length === 0 && (!legacyRows || legacyRows.length === 0)) {
+        const row1 = createDatabaseRow(activeSchema, { blockId });
+        const row2 = createDatabaseRow(activeSchema, { blockId });
+
+        await db.database_rows.bulkAdd([
+          { id: row1.id, blockId, createdAt: row1.createdAt, updatedAt: row1.updatedAt },
+          { id: row2.id, blockId, createdAt: row2.createdAt, updatedAt: row2.updatedAt }
+        ]);
+
+        const cellsToInsert = [];
+        [row1, row2].forEach(row => {
+          Object.entries(row.values).forEach(([propId, val]) => {
+            cellsToInsert.push({
+              id: `${row.id}_${propId}`,
+              rowId: row.id,
+              blockId,
+              propertyId: propId,
+              value: val,
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            });
+          });
+        });
+
+        if (cellsToInsert.length > 0) {
+          const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+          await db.database_cells.bulkPut(encryptedCells);
+        }
+
+        rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+      }
+
       const cellsRaw = await db.database_cells.where('blockId').equals(blockId).toArray();
 
       const key = useSecurityStore.getState().derivedKey;
@@ -126,23 +167,22 @@ export const useDatabaseStore = create((set, get) => ({
     }
   },
 
-  // Helper to get current database state (local first, then blockStore fallback)
   getDatabaseData: (blockId) => {
     const local = get().databases[blockId];
     // If we have local data (even if just from an addRow call), prefer it
     if (local && (local.initialized || local.rows)) return { schema: local.schema, rows: local.rows };
 
     const block = useBlockStore.getState().getBlock(blockId);
-    if (!block || !block.properties) return { schema: [], rows: [] };
+    if (!block || !block.properties) return { schema: EMPTY_ARRAY, rows: EMPTY_ARRAY };
 
-    let schema = block.properties.schema || [];
+    let schema = block.properties.schema || EMPTY_ARRAY;
     if (schema.length === 0) {
       schema = DEFAULT_SCHEMA;
     }
 
     return {
       schema,
-      rows: block.properties.rows || [],
+      rows: block.properties.rows || EMPTY_ARRAY,
     };
   },
 

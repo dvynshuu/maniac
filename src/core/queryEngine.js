@@ -11,6 +11,8 @@ import { useBlockStore } from '../stores/blockStore';
 import { useDatabaseStore } from '../stores/databaseStore';
 import { useBacklinkStore } from '../stores/backlinkStore';
 
+const EMPTY_ARRAY = [];
+
 /**
  * Resolves a property value, including dynamic aggregation for Rollups.
  */
@@ -290,7 +292,7 @@ export function useFilteredDatabaseRows(blockId, filters = [], sorts = []) {
         state => state.getDatabaseData(blockId).schema
       ],
       (rows, schema) => {
-        if (!rows || !schema) return [];
+        if (!rows || !schema) return EMPTY_ARRAY;
         let result = applyFilters(rows, filters, schema);
         result = applySorts(result, sorts, schema);
         return result;

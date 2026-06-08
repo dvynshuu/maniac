@@ -160,6 +160,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
         return <TrackerBlock block={block} index={index} />;
         
       case BLOCK_TYPES.TABLE:
+        return <TableBlock block={block} index={index} />;
       case BLOCK_TYPES.DATABASE:
         return <DatabaseBlock block={block} index={index} />;
 

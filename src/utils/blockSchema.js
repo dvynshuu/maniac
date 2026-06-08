@@ -141,14 +141,27 @@ export const BLOCK_PROPERTY_DEFAULTS = {
     schema: [
       {
         id: 'title',
-        name: 'Name',
+        name: '',
         type: 'text',
+        width: 200,
+        config: {}
+      },
+      {
+        id: 'tags',
+        name: '',
+        type: 'multi_select',
         width: 200,
         config: {}
       }
     ]
   },
-  table: { headers: [], rows: [] },
+  table: {
+    cells: [['', ''], ['', '']],
+    hasHeader: false,
+    hasHeaderCol: false,
+    columnWidths: [200, 200],
+    rowHeights: [40, 40]
+  },
   tracker: {},
   column_list: {},
   column: { width: null },

@@ -2,28 +2,16 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from '
 import { createPortal } from 'react-dom';
 import { useDatabaseStore } from '../../stores/databaseStore';
 import { usePageStore } from '../../stores/pageStore';
-import { Plus, MoreHorizontal, Table as TableIcon, Columns3, Calendar, Clock, LayoutGrid, X } from 'lucide-react';
+import { Plus, MoreHorizontal, X } from 'lucide-react';
 import ColumnHeader from './ColumnHeader';
 import CellRenderer from './CellRenderer';
 import AddPropertyPopover from './AddPropertyPopover';
 import DatabaseToolbar from './DatabaseToolbar';
-import BoardView from './views/BoardView';
-import CalendarView from './views/CalendarView';
-import TimelineView from './views/TimelineView';
-import GalleryView from './views/GalleryView';
 import { useFilteredDatabaseRows } from '../../core/queryEngine';
 import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
 import PageEditor from '../Editor/PageEditor';
-
-const VIEW_TYPES = {
-  table: { label: 'Table', icon: TableIcon },
-  board: { label: 'Board', icon: Columns3 },
-  calendar: { label: 'Calendar', icon: Calendar },
-  timeline: { label: 'Timeline', icon: Clock },
-  gallery: { label: 'Gallery', icon: LayoutGrid },
-};
 
 // Memoized Row for performance
 const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInteraction, onUpdateCell, onUpdateCellImmediate, isNew, onOpenRow }) => {
@@ -74,7 +62,6 @@ export default function DatabaseBlock({ block }) {
   const updateProperty = useDatabaseStore(s => s.updateProperty);
   const engine = useEditorEngine();
 
-  const [activeView, setActiveView] = useState(block.properties?.activeView || 'table');
   const [activeCell, setActiveCell] = useState(null);
   const [editingCell, setEditingCell] = useState(null);
   const [resizingCol, setResizingCol] = useState(null);
@@ -87,15 +74,12 @@ export default function DatabaseBlock({ block }) {
   const [justAddedRowId, setJustAddedRowId] = useState(null);
   const [isAddingRow, setIsAddingRow] = useState(false);
 
-  // View-specific state
-  const [groupByPropertyId, setGroupByPropertyId] = useState(null);
-  const [datePropertyId, setDatePropertyId] = useState(null);
+  const hasSchema = !!block.properties?.schema;
+  const hasRows = !!block.properties?.rows;
 
   useEffect(() => {
-    if (block.properties.schema) {
-      initializeDatabase(block.id, block.properties.schema, block.properties.rows || []);
-    }
-  }, [block.id, block.properties.schema, block.properties.rows, initializeDatabase]);
+    initializeDatabase(block.id, block.properties?.schema || [], block.properties?.rows || []);
+  }, [block.id, hasSchema, hasRows, initializeDatabase]);
 
   const { schema, rawRows } = useMemo(() => {
     if (dbData) return { schema: dbData.schema || [], rawRows: dbData.rows || [] };
@@ -124,11 +108,7 @@ export default function DatabaseBlock({ block }) {
     setOpenRowId(row.id);
   }, [block.id, schema]);
 
-  // Persist active view
-  const switchView = useCallback((view) => {
-    setActiveView(view);
-    engine.updateBlock(block.id, { properties: { ...block.properties, activeView: view } });
-  }, [block.id, block.properties, engine]);
+
 
   const handleAddRow = async () => {
     if (isAddingRow) return;
@@ -150,8 +130,9 @@ export default function DatabaseBlock({ block }) {
   };
 
   // --- Auto-Migration ---
+  const hasCells = !!block.properties?.cells;
   useEffect(() => {
-    if (!block.properties.schema && block.properties.cells) {
+    if (!block.properties?.schema && block.properties?.cells) {
       const oldCells = block.properties.cells;
       const hasHeader = block.properties.hasHeader;
       const widths = block.properties.columnWidths || [];
@@ -190,7 +171,7 @@ export default function DatabaseBlock({ block }) {
         properties: { schema: newSchema, rows: newRows }
       });
     }
-  }, [block, engine]);
+  }, [block.id, hasSchema, hasCells, engine]);
 
   const handleCellInteraction = useCallback((type, rowId, colId) => {
     if (type === 'edit') setEditingCell({ rowId, colId });
@@ -241,107 +222,77 @@ export default function DatabaseBlock({ block }) {
     return schema.reduce((sum, p) => sum + (tempWidths[p.id] || p.width || 200), 0) + 48 + 32;
   }, [schema, tempWidths]);
 
-  // ─── Render Active View ──────────────────────────────────────
+  // ─── Render Table View ──────────────────────────────────────
   const renderView = () => {
-    switch (activeView) {
-      case 'board':
-        return <BoardView schema={schema} rows={rows} blockId={block.id} groupByPropertyId={groupByPropertyId} onOpenRow={handleOpenRow} />;
-      case 'calendar':
-        return <CalendarView schema={schema} rows={rows} blockId={block.id} datePropertyId={datePropertyId} onOpenRow={handleOpenRow} />;
-      case 'timeline':
-        return <TimelineView schema={schema} rows={rows} blockId={block.id} onOpenRow={handleOpenRow} />;
-      case 'gallery':
-        return <GalleryView schema={schema} rows={rows} blockId={block.id} onOpenRow={handleOpenRow} />;
-      default: // table
-        return (
-          <div className="db-scroll-wrapper">
-            <table className="db-table" style={{ minWidth: tableWidth, width: '100%' }}>
-              <thead>
-                <tr>
-                  <th className="db-th-actions" style={{ width: '48px', minWidth: '48px', padding: 0 }} />
-                  {schema.map((prop, idx) => (
-                    <ColumnHeader 
-                      key={prop.id}
-                      property={{ ...prop, width: tempWidths[prop.id] || prop.width }}
-                      className={resizingCol === prop.id ? 'is-resizing' : ''}
-                      blockId={block.id}
-                      isLast={idx === schema.length - 1}
-                      onResizeStart={handleResizeStart}
-                    />
-                  ))}
-                  <th className="db-th-add" style={{ width: '32px', minWidth: '32px', padding: 0 }}>
-                    <button className="db-add-col-btn" onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setAddPropPos({ top: rect.bottom + 8, left: rect.left - 220 });
-                    }}>
-                      <Plus size={16} />
-                    </button>
-                  </th>
-                  <th className="db-th-placeholder" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <DataRow 
-                    key={row.id}
-                    row={row}
-                    schema={schema}
-                    blockId={block.id}
-                    activeCell={activeCell}
-                    editingCell={editingCell}
-                    onCellInteraction={handleCellInteraction}
-                    onUpdateCell={updateCell}
-                    onUpdateCellImmediate={updateCellImmediate}
-                    isNew={row.id === justAddedRowId}
-                    onOpenRow={handleOpenRow}
-                  />
-                ))}
-                <tr className="db-tr">
-                  <td colSpan={schema.length + 3} className="db-td-new">
-                    <button 
-                      className="db-add-row-btn"
-                      onClick={handleAddRow}
-                      disabled={isAddingRow}
-                    >
-                      <Plus size={14} />
-                      <span>{isAddingRow ? 'Adding...' : 'New Row'}</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        );
-    }
+    return (
+      <div className="db-scroll-wrapper">
+        <table className="db-table" style={{ minWidth: tableWidth, width: '100%' }}>
+          <thead>
+            <tr>
+              <th className="db-th db-th-actions" style={{ width: '48px', minWidth: '48px', padding: 0 }} />
+              {schema.map((prop, idx) => (
+                <ColumnHeader 
+                  key={prop.id}
+                  property={{ ...prop, width: tempWidths[prop.id] || prop.width }}
+                  className={resizingCol === prop.id ? 'is-resizing' : ''}
+                  blockId={block.id}
+                  isLast={idx === schema.length - 1}
+                  onResizeStart={handleResizeStart}
+                />
+              ))}
+              <th className="db-th db-th-add" style={{ width: '32px', minWidth: '32px', padding: 0 }}>
+                <button className="db-add-col-btn" onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setAddPropPos({ top: rect.bottom + 8, left: rect.left - 220 });
+                }}>
+                  <Plus size={16} />
+                </button>
+              </th>
+              <th className="db-th db-th-placeholder" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <DataRow 
+                key={row.id}
+                row={row}
+                schema={schema}
+                blockId={block.id}
+                activeCell={activeCell}
+                editingCell={editingCell}
+                onCellInteraction={handleCellInteraction}
+                onUpdateCell={updateCell}
+                onUpdateCellImmediate={updateCellImmediate}
+                isNew={row.id === justAddedRowId}
+                onOpenRow={handleOpenRow}
+              />
+            ))}
+            <tr className="db-tr">
+              <td colSpan={schema.length + 3} className="db-td-new">
+                <button 
+                  className="db-add-row-btn"
+                  onClick={handleAddRow}
+                  disabled={isAddingRow}
+                >
+                  <Plus size={14} />
+                  <span>{isAddingRow ? 'Adding...' : 'New Row'}</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   return (
     <div className="db-container">
-      {/* View Switcher Tabs */}
-      <div className="db-view-tabs">
-        {Object.entries(VIEW_TYPES).map(([key, { label, icon: Icon }]) => (
-          <button
-            key={key}
-            className={`db-view-tab ${activeView === key ? 'active' : ''}`}
-            onClick={() => switchView(key)}
-          >
-            <Icon size={14} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-
       <DatabaseToolbar
         schema={schema}
         filters={filters}
         sorts={sorts}
         onFiltersChange={setFilters}
         onSortsChange={setSorts}
-        activeView={activeView}
-        groupByPropertyId={groupByPropertyId}
-        onGroupByChange={setGroupByPropertyId}
-        datePropertyId={datePropertyId}
-        onDatePropertyChange={setDatePropertyId}
       />
 
       {renderView()}
