@@ -793,6 +793,20 @@ a:hover {
   transform: scale(1.05);
 }
 
+.page-icon-btn.has-cover {
+  margin-top: -68px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 10;
+}
+
+.page-icon-btn.has-cover:hover {
+  background: var(--bg-hover);
+  transform: scale(1.05);
+}
+
 /* ============================================
    Blocks
    ============================================ */

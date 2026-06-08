@@ -16,42 +16,9 @@ function ActiveHeadingBlock({ block, level, className }) {
   return <EditorContent editor={editor} className={className} />;
 }
 
-function StaticHeadingBlock({ block, level, className, onClick }) {
-  if (isEmptyContent(block.content)) {
-    return (
-      <div 
-        className={`${className} is-editor-empty`} 
-        onClick={onClick}
-        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
-      >
-        Heading {level}
-      </div>
-    );
-  }
-  return (
-    <div 
-      className={className} 
-      onClick={onClick}
-      style={{ cursor: 'text' }}
-      dangerouslySetInnerHTML={{ __html: block.content }}
-    />
-  );
-}
-
 export default function HeadingBlock({ block }) {
   const level = block.type === BLOCK_TYPES.HEADING1 ? 1 : block.type === BLOCK_TYPES.HEADING2 ? 2 : 3;
   const className = `block-text block-heading${level}`;
 
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const isFocused = focusBlockId === block.id;
-
-  const handleFocus = () => {
-    useBlockStore.getState().setFocusBlock(block.id);
-  };
-
-  return isFocused ? (
-    <ActiveHeadingBlock block={block} level={level} className={className} />
-  ) : (
-    <StaticHeadingBlock block={block} level={level} className={className} onClick={handleFocus} />
-  );
+  return <ActiveHeadingBlock block={block} level={level} className={className} />;
 }

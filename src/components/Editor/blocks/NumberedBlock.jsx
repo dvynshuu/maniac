@@ -16,28 +16,6 @@ function ActiveNumberedBlock({ block }) {
   return <EditorContent editor={editor} className="block-text" />;
 }
 
-function StaticNumberedBlock({ block, onClick }) {
-  if (isEmptyContent(block.content)) {
-    return (
-      <div 
-        className="tiptap-editor block-text is-editor-empty" 
-        onClick={onClick}
-        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
-      >
-        List item
-      </div>
-    );
-  }
-  return (
-    <div 
-      className="tiptap-editor block-text" 
-      onClick={onClick}
-      style={{ cursor: 'text' }}
-      dangerouslySetInnerHTML={{ __html: block.content }}
-    />
-  );
-}
-
 export default function NumberedBlock({ block, index }) {
   const depth = block.properties?.depth || 0;
 
@@ -59,13 +37,6 @@ export default function NumberedBlock({ block, index }) {
     return count;
   }));
 
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const isFocused = focusBlockId === block.id;
-
-  const handleFocus = () => {
-    useBlockStore.getState().setFocusBlock(block.id);
-  };
-
   // Notion cycles: 1/2/3 → a/b/c → i/ii/iii
   const formatNumber = (num, d) => {
     const style = d % 3;
@@ -78,11 +49,7 @@ export default function NumberedBlock({ block, index }) {
   return (
     <div className="block-numbered">
       <div className="block-numbered-marker">{formatNumber(listIndex, depth)}</div>
-      {isFocused ? (
-        <ActiveNumberedBlock block={block} />
-      ) : (
-        <StaticNumberedBlock block={block} onClick={handleFocus} />
-      )}
+      <ActiveNumberedBlock block={block} />
     </div>
   );
 }

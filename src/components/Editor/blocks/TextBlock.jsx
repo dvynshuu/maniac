@@ -123,39 +123,6 @@ function ActiveTextBlock({ block }) {
   );
 }
 
-function StaticTextBlock({ block, onClick }) {
-  if (isEmptyContent(block.content)) {
-    return (
-      <div 
-        className="tiptap-editor block-text is-editor-empty" 
-        onClick={onClick}
-        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
-      >
-        Type '/' for commands or '@' to mention
-      </div>
-    );
-  }
-  return (
-    <div 
-      className="tiptap-editor block-text" 
-      onClick={onClick}
-      style={{ cursor: 'text' }}
-      dangerouslySetInnerHTML={{ __html: block.content }}
-    />
-  );
-}
-
 export default function TextBlock({ block, index }) {
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const isFocused = focusBlockId === block.id;
-
-  const handleFocus = () => {
-    useBlockStore.getState().setFocusBlock(block.id);
-  };
-
-  return isFocused ? (
-    <ActiveTextBlock block={block} />
-  ) : (
-    <StaticTextBlock block={block} onClick={handleFocus} />
-  );
+  return <ActiveTextBlock block={block} />;
 }

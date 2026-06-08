@@ -22,36 +22,9 @@ function ActiveTodoBlock({ block, checked }) {
   );
 }
 
-function StaticTodoBlock({ block, checked, onClick }) {
-  const className = `tiptap-editor block-text block-todo-content ${checked ? 'checked' : ''}`;
-
-  if (isEmptyContent(block.content)) {
-    return (
-      <div 
-        className={`${className} is-editor-empty`} 
-        onClick={onClick}
-        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
-      >
-        To-do
-      </div>
-    );
-  }
-  return (
-    <div 
-      className={className} 
-      onClick={onClick}
-      style={{ cursor: 'text' }}
-      dangerouslySetInnerHTML={{ __html: block.content }}
-    />
-  );
-}
-
 export default function TodoBlock({ block }) {
   const checked = block.properties?.checked || false;
   const engine = useEditorEngine();
-
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const isFocused = focusBlockId === block.id;
 
   const toggleChecked = () => {
     engine.startTransaction()
@@ -59,10 +32,6 @@ export default function TodoBlock({ block }) {
         properties: { ...block.properties, checked: !checked },
       })
       .commit();
-  };
-
-  const handleFocus = () => {
-    useBlockStore.getState().setFocusBlock(block.id);
   };
 
   return (
@@ -74,11 +43,7 @@ export default function TodoBlock({ block }) {
       >
         {checked && <Check size={12} strokeWidth={3} />}
       </button>
-      {isFocused ? (
-        <ActiveTodoBlock block={block} checked={checked} />
-      ) : (
-        <StaticTodoBlock block={block} checked={checked} onClick={handleFocus} />
-      )}
+      <ActiveTodoBlock block={block} checked={checked} />
     </div>
   );
 }

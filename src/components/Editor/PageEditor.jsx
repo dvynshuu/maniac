@@ -341,7 +341,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
       <div className="editor-container">
         <div style={{ position: 'relative' }}>
           <button 
-            className="page-icon-btn"
+            className={`page-icon-btn ${page.coverImage ? 'has-cover' : ''}`}
             onClick={() => setShowIconPicker(!showIconPicker)}
           >
             <EmojiIcon emoji={page.icon || '📝'} size="36px" />

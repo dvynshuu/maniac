@@ -32,28 +32,6 @@ function ActiveToggleTitle({ block, expanded, engine }) {
   return <EditorContent editor={editor} className="block-text block-toggle-title" />;
 }
 
-function StaticToggleTitle({ block, onClick }) {
-  if (isEmptyContent(block.content)) {
-    return (
-      <div 
-        className="tiptap-editor block-text block-toggle-title is-editor-empty" 
-        onClick={onClick}
-        style={{ color: 'var(--text-placeholder)', cursor: 'text' }}
-      >
-        Toggle heading
-      </div>
-    );
-  }
-  return (
-    <div 
-      className="tiptap-editor block-text block-toggle-title" 
-      onClick={onClick}
-      style={{ cursor: 'text' }}
-      dangerouslySetInnerHTML={{ __html: block.content }}
-    />
-  );
-}
-
 export default function ToggleBlock({ block }) {
   const expanded = block.properties?.expanded ?? true;
   
@@ -63,17 +41,10 @@ export default function ToggleBlock({ block }) {
     s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
   ));
 
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
-  const isFocused = focusBlockId === block.id;
-
   const toggleExpanded = () => {
     engine.updateBlock(block.id, {
       properties: { ...block.properties, expanded: !expanded }
     });
-  };
-
-  const handleFocus = () => {
-    useBlockStore.getState().setFocusBlock(block.id);
   };
 
   return (
@@ -86,11 +57,7 @@ export default function ToggleBlock({ block }) {
         >
           <ChevronRight size={16} />
         </button>
-        {isFocused ? (
-          <ActiveToggleTitle block={block} expanded={expanded} engine={engine} />
-        ) : (
-          <StaticToggleTitle block={block} onClick={handleFocus} />
-        )}
+        <ActiveToggleTitle block={block} expanded={expanded} engine={engine} />
       </div>
       {expanded && (
         <div className="block-children toggle-children-blocks">
