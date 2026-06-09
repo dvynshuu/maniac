@@ -115,7 +115,9 @@ export class SecurityService {
    * @param {string} val 
    */
   static isEncrypted(val) {
-    if (typeof val !== 'string' || val.length < 24) return false;
+    if (typeof val !== 'string') return false;
+    if (val.startsWith('menc:')) return true;
+    if (val.length < 40) return false;
     try {
       // Basic Base64 check
       if (!/^[A-Za-z0-9+/=]+$/.test(val)) return false;
@@ -187,7 +189,7 @@ export class SecurityService {
     for (let i = 0; i < combined.length; i += CHUNK_SIZE) {
       binary += String.fromCharCode.apply(null, combined.subarray(i, i + CHUNK_SIZE));
     }
-    return btoa(binary);
+    return 'menc:' + btoa(binary);
   }
 
   /**
@@ -198,12 +200,19 @@ export class SecurityService {
   static async decryptWithKey(encryptedBase64, key) {
     if (!encryptedBase64 || typeof encryptedBase64 !== 'string') return encryptedBase64;
 
+    const hasPrefix = encryptedBase64.startsWith('menc:');
+    const cleanBase64 = hasPrefix ? encryptedBase64.substring(5) : encryptedBase64;
+
     try {
       const combined = new Uint8Array(
-        atob(encryptedBase64)
+        atob(cleanBase64)
           .split('')
           .map((c) => c.charCodeAt(0))
       );
+
+      if (combined.length < IV_SIZE) {
+        throw new Error('Data too small for IV');
+      }
 
       const iv = combined.slice(0, IV_SIZE);
       const data = combined.slice(IV_SIZE);
@@ -216,8 +225,11 @@ export class SecurityService {
 
       return new TextDecoder().decode(decrypted);
     } catch (e) {
-      console.error('Decryption failed', e);
-      return null;
+      if (hasPrefix) {
+        console.error('Decryption failed for prefixed data', e);
+        return null;
+      }
+      return encryptedBase64;
     }
   }
 

@@ -34,7 +34,7 @@ export default function UnlockScreen() {
         const testPage = await db.pages.toCollection().filter(p => p._isEncrypted).first();
         if (testPage && testPage.title) {
           const decryptedContent = await SecurityService.decrypt(testPage.title, keys.aesKey);
-          if (!decryptedContent) {
+          if (!decryptedContent || decryptedContent === testPage.title) {
             setError('Incorrect password. Please try again.');
             setIsVerifying(false);
             return;
