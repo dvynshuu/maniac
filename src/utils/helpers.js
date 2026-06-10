@@ -51,13 +51,13 @@ export function createTracker(overrides = {}) {
   };
 }
 
-export function createTrackerEntry(trackerId, data = {}) {
+export function createTrackerEntry(trackerId, data = {}, overrides = {}) {
   const now = Date.now();
   return {
     id: createId(),
     trackerId,
     data,
-    createdAt: now,
+    createdAt: overrides.createdAt || now,
     updatedAt: now,
   };
 }

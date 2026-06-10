@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTrackerStore } from '../../stores/trackerStore';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
-import { Database, LayoutGrid, List, Plus, Settings } from 'lucide-react';
+import { Database, LayoutGrid, List, Plus, Settings, Calendar } from 'lucide-react';
 import TrackerTable from './TrackerTable';
 import TrackerCards from './TrackerCards';
+import TrackerHeatmap from './TrackerHeatmap';
 import TrackerEntryModal from './TrackerEntryModal';
 import TrackerFieldEditor from './TrackerFieldEditor';
 
@@ -21,6 +22,7 @@ export default function TrackerBlock({ block }) {
     const [isEditingFields, setIsEditingFields] = useState(false);
     const [entryModalOpen, setEntryModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
+    const [entryModalDate, setEntryModalDate] = useState(null);
 
     const [localEntries, setLocalEntries] = useState([]);
     
@@ -71,18 +73,25 @@ export default function TrackerBlock({ block }) {
                         <button 
                             className={`tracker-view-btn ${viewType === 'table' ? 'active' : ''}`}
                             onClick={() => setViewType('table')}
+                            title="Table View"
                         ><List size={14}/></button>
                         <button 
                             className={`tracker-view-btn ${viewType === 'card' ? 'active' : ''}`}
                             onClick={() => setViewType('card')}
+                            title="Card View"
                         ><LayoutGrid size={14}/></button>
+                        <button 
+                            className={`tracker-view-btn ${viewType === 'heatmap' ? 'active' : ''}`}
+                            onClick={() => setViewType('heatmap')}
+                            title="Heatmap View"
+                        ><Calendar size={14}/></button>
                     </div>
                     <button className="btn btn-icon" onClick={() => setIsEditingFields(true)}>
                         <Settings size={14} />
                     </button>
                     <button 
                         className="btn btn-primary btn-sm" 
-                        onClick={() => { setEditingEntry(null); setEntryModalOpen(true); }}
+                        onClick={() => { setEditingEntry(null); setEntryModalDate(null); setEntryModalOpen(true); }}
                     >
                         <Plus size={12} /> New
                     </button>
@@ -93,13 +102,20 @@ export default function TrackerBlock({ block }) {
                 <TrackerTable 
                     tracker={tracker} 
                     entries={localEntries}
-                    onRowClick={(entry) => { setEditingEntry(entry); setEntryModalOpen(true); }}
+                    onRowClick={(entry) => { setEditingEntry(entry); setEntryModalDate(null); setEntryModalOpen(true); }}
                 />
-            ) : (
+            ) : viewType === 'card' ? (
                 <TrackerCards 
                     tracker={tracker} 
                     entries={localEntries}
-                    onCardClick={(entry) => { setEditingEntry(entry); setEntryModalOpen(true); }} 
+                    onCardClick={(entry) => { setEditingEntry(entry); setEntryModalDate(null); setEntryModalOpen(true); }} 
+                />
+            ) : (
+                <TrackerHeatmap
+                    tracker={tracker}
+                    entries={localEntries}
+                    onRowClick={(entry) => { setEditingEntry(entry); setEntryModalDate(null); setEntryModalOpen(true); }}
+                    onAddEntryForDate={(date) => { setEditingEntry(null); setEntryModalDate(date); setEntryModalOpen(true); }}
                 />
             )}
 
@@ -114,6 +130,7 @@ export default function TrackerBlock({ block }) {
                 <TrackerEntryModal 
                     tracker={tracker} 
                     entry={editingEntry}
+                    initialDate={entryModalDate}
                     onClose={() => setEntryModalOpen(false)}
                 />
             )}

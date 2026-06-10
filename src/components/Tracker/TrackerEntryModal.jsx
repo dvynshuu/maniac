@@ -3,7 +3,7 @@ import { useTrackerStore } from '../../stores/trackerStore';
 import Modal from '../Common/Modal';
 import FieldRenderer from './FieldRenderer';
 
-export default function TrackerEntryModal({ tracker, entry, onClose }) {
+export default function TrackerEntryModal({ tracker, entry, initialDate, onClose }) {
   const addEntry = useTrackerStore(s => s.addEntry);
   const updateEntry = useTrackerStore(s => s.updateEntry);
   const deleteEntry = useTrackerStore(s => s.deleteEntry);
@@ -20,16 +20,29 @@ export default function TrackerEntryModal({ tracker, entry, onClose }) {
          if (f.defaultValue !== undefined && f.defaultValue !== null) {
             defaults[f.id] = f.defaultValue;
          }
+         if (f.type === 'date' && initialDate) {
+            defaults[f.id] = initialDate;
+         }
       });
       setData(defaults);
     }
-  }, [entry, tracker]);
+  }, [entry, tracker, initialDate]);
 
   const handleSave = async () => {
     if (entry) {
       await updateEntry(entry.id, data);
     } else {
-      await addEntry(tracker.id, data);
+      const overrides = {};
+      if (initialDate) {
+        const [year, month, day] = initialDate.split('-').map(Number);
+        const d = new Date();
+        d.setFullYear(year);
+        d.setMonth(month - 1);
+        d.setDate(day);
+        d.setHours(12, 0, 0, 0); // Noon local time to avoid timezone edge cases
+        overrides.createdAt = d.getTime();
+      }
+      await addEntry(tracker.id, data, overrides);
     }
     onClose();
   };

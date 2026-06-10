@@ -73,8 +73,8 @@ export const useTrackerStore = create((set, get) => ({
     await get().loadTrackers();
   },
 
-  addEntry: async (trackerId, data = {}) => {
-    const entry = createTrackerEntry(trackerId, data);
+  addEntry: async (trackerId, data = {}, overrides = {}) => {
+    const entry = createTrackerEntry(trackerId, data, overrides);
     
     // Optimistic update
     set(s => ({
