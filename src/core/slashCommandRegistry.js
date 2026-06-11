@@ -138,6 +138,7 @@ registerProvider({
         else if (['image', 'embed', 'code', 'math'].includes(type)) category = 'Media & Code';
         else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
         else if (['toggle', 'callout', 'quote', 'divider'].includes(type)) category = 'Advanced';
+        else if (['countdown', 'pomodoro', 'progress_bar', 'widget'].includes(type)) category = 'Widgets';
 
         return {
           id: `block:${type}`,

@@ -136,7 +136,66 @@ export const BLOCK_PROPERTY_DEFAULTS = {
   divider: {},
   code: { language: 'plain text', caption: '', wrap: false },
   image: { hash: '', caption: '', width: null, alignment: 'center' },
-  embed: { url: '', caption: '' },
+  embed: {
+    url: '',
+    caption: '',
+    embedType: 'generic',
+    width: '100%',
+    height: 'auto',
+  },
+  countdown: {
+    width: '100%',
+    height: '140px',
+    caption: '',
+    widgetSettings: {
+      theme: 'neobrutalist',
+      bgColor: '#e0f2fe',
+      textColor: '#0f172a',
+      title: 'Left in This Month',
+      targetDate: '',
+      workTime: 25,
+      breakTime: 5,
+      current: 0,
+      target: 10,
+    }
+  },
+  pomodoro: {
+    width: '100%',
+    height: '140px',
+    caption: '',
+    widgetSettings: {
+      theme: 'neobrutalist',
+      bgColor: '#fee2e2', // soft red
+      textColor: '#0f172a',
+      title: 'Focus Timer',
+      targetDate: '',
+      workTime: 25,
+      breakTime: 5,
+      current: 0,
+      target: 10,
+    }
+  },
+  progress_bar: {
+    width: '100%',
+    height: '140px',
+    caption: '',
+    widgetSettings: {
+      theme: 'neobrutalist',
+      bgColor: '#fef08a', // soft yellow
+      textColor: '#0f172a',
+      title: 'Goal Tracker',
+      targetDate: '',
+      workTime: 25,
+      breakTime: 5,
+      current: 0,
+      target: 10,
+    }
+  },
+  widget: {
+    width: '100%',
+    height: 'auto',
+    caption: '',
+  },
   database: {
     schema: [
       {

@@ -169,6 +169,10 @@ const BlockRenderer = memo(({ blockId, index }) => {
         return <ToggleBlock block={block} index={index} />;
 
       case BLOCK_TYPES.EMBED:
+      case BLOCK_TYPES.COUNTDOWN:
+      case BLOCK_TYPES.POMODORO:
+      case BLOCK_TYPES.PROGRESS_BAR:
+      case BLOCK_TYPES.WIDGET:
         return <EmbedBlock block={block} index={index} />;
 
       case BLOCK_TYPES.SYNCED_REFERENCE:
