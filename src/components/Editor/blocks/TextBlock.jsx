@@ -4,6 +4,9 @@ import { useBlockEditor } from '../../../hooks/useBlockEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { useBlockStore } from '../../../stores/blockStore';
 import { isEmptyContent } from '../../../utils/helpers';
+import { useNavigate } from 'react-router-dom';
+import { usePageStore } from '../../../stores/pageStore';
+import { useUIStore } from '../../../stores/uiStore';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
 
@@ -13,6 +16,7 @@ function ActiveTextBlock({ block }) {
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const engine = useEditorEngine();
+  const navigate = useNavigate();
 
   const editor = useBlockEditor(block, {
     placeholder: "Type '/' for commands or '@' to mention",
@@ -77,10 +81,17 @@ function ActiveTextBlock({ block }) {
         engine.deleteBlock(block.id);
       }
     } else {
-      engine.convertType(block.id, type);
+      engine.convertType(block.id, type).then((results) => {
+        if (type === 'page' && results && results[0]?.returnValue) {
+          const newPage = results[0].returnValue;
+          useUIStore.getState().setPageExpanded(block.pageId, true);
+          usePageStore.getState().setCurrentPage(newPage.id);
+          navigate(`/page/${newPage.id}`);
+        }
+      });
     }
     setShowSlashMenu(false);
-  }, [editor, block.id, engine]);
+  }, [editor, block.id, block.pageId, engine, navigate]);
 
   const handleSelectMention = useCallback((page) => {
     if (!editor) return;

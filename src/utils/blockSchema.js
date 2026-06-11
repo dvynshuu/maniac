@@ -165,6 +165,7 @@ export const BLOCK_PROPERTY_DEFAULTS = {
   tracker: {},
   column_list: {},
   column: { width: null },
+  page: { pageId: null },
 };
 
 /**

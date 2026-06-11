@@ -41,8 +41,17 @@ export class Transaction {
    * Queue a delete operation.
    */
   deleteBlock(blockId) {
-    // Also delete all descendants (Cascade delete)
     const store = useBlockStore.getState();
+    const block = store.blockMap[blockId];
+    if (block && block.type === 'page' && block.properties?.pageId) {
+      // Cascade delete the sub-page
+      this.ops.push({
+        type: 'page/delete',
+        payload: { pageId: block.properties.pageId }
+      });
+    }
+
+    // Also delete all descendants (Cascade delete)
     const descendants = store.getDescendants(blockId);
     
     // Delete descendants first (bottom-up)
@@ -140,10 +149,10 @@ export class Transaction {
   /**
    * Queue a type conversion.
    */
-  convertType(blockId, newType) {
+  convertType(blockId, newType, properties = {}) {
     this.ops.push({
       type: 'block/changeType',
-      payload: { blockId, newType }
+      payload: { blockId, newType, properties }
     });
     return this;
   }

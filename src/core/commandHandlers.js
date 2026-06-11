@@ -214,7 +214,7 @@ registerHandler('block/reorder', async (payload) => {
 });
 
 registerHandler('block/changeType', async (payload) => {
-  const { blockId, newType } = payload;
+  const { blockId, newType, properties: extraProperties = {} } = payload;
   const store = useBlockStore.getState();
   const block = store.blockMap[blockId];
   if (!block) return null;
@@ -222,7 +222,7 @@ registerHandler('block/changeType', async (payload) => {
   const prevType = block.type;
   const prevProperties = { ...block.properties };
 
-  const properties = ensureDefaults(newType, { ...block.properties });
+  const properties = ensureDefaults(newType, { ...block.properties, ...extraProperties });
   const now = Date.now();
 
   useBlockStore.setState(s => ({
@@ -300,14 +300,14 @@ registerHandler('block/move', async (payload) => {
 // ═══════════════════════════════════════════════════════════════
 
 registerHandler('page/create', async (payload) => {
-  const { parentId = null } = payload;
+  const { id, parentId = null } = payload;
   const store = usePageStore.getState();
   const siblings = store.pages.filter(p => p.parentId === parentId)
     .sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
   const lastSibling = siblings[siblings.length - 1];
   const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
 
-  const page = createPage({ parentId, sortOrder });
+  const page = createPage({ id, parentId, sortOrder });
 
   usePageStore.setState(s => ({ pages: [...s.pages, page] }));
 

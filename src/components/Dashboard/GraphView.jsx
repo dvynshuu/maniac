@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useBacklinkStore } from '../../stores/backlinkStore';
 import { useNavigate } from 'react-router-dom';
-import { Maximize2, Minimize2, Network } from 'lucide-react';
+import { Maximize2, Minimize2, Network, Search, X, SlidersHorizontal, Layers } from 'lucide-react';
+import { detectCommunities } from '../../utils/louvain';
 
 // ─── Color palette ───────────────────────────────────────────────
 const PALETTE = {
@@ -28,6 +30,11 @@ export default function GraphView({ pages }) {
   const fullscreenGraphRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hoveredNode, setHoveredNode] = useState(null);
+  
+  // Interactive UI States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [linkFilter, setLinkFilter] = useState({ structural: true, semantic: true });
+  const [colorMode, setColorMode] = useState('standard'); // 'standard' | 'community'
 
   // ─── Resize Observer ─────────────────────────────────────────
   useEffect(() => {
@@ -79,9 +86,53 @@ export default function GraphView({ pages }) {
       }
     });
 
+    // Filter links based on current filters
+    const filteredLinks = links.filter(l => {
+      if (l.isStructural) return linkFilter.structural;
+      return linkFilter.semantic;
+    });
+
+    // Run Louvain Community Detection if community coloring is selected
+    const communities = colorMode === 'community' 
+      ? detectCommunities(activePages, filteredLinks)
+      : {};
+
+    const communityColors = {};
+    if (colorMode === 'community') {
+      const sizes = {};
+      Object.values(communities).forEach(cId => {
+        sizes[cId] = (sizes[cId] || 0) + 1;
+      });
+
+      const sortedComms = Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a]);
+      const COMMUNITY_PALETTE = [
+        '#6366F1', // Indigo
+        '#10B981', // Emerald
+        '#F59E0B', // Amber
+        '#EC4899', // Pink
+        '#06B6D4', // Cyan
+        '#8B5CF6', // Violet
+        '#F97316', // Orange
+        '#3B82F6', // Blue
+        '#14B8A6', // Teal
+        '#84CC16', // Lime
+      ];
+
+      sortedComms.forEach((commId, idx) => {
+        if (sizes[commId] === 1) {
+          communityColors[commId] = PALETTE.nodeOrphan;
+        } else if (idx < COMMUNITY_PALETTE.length) {
+          communityColors[commId] = COMMUNITY_PALETTE[idx];
+        } else {
+          const hue = (idx * 137.5) % 360;
+          communityColors[commId] = `hsl(${hue}, 75%, 60%)`;
+        }
+      });
+    }
+
     // Count connections per node for dynamic sizing
     const connectionCount = {};
-    links.forEach(l => {
+    filteredLinks.forEach(l => {
       connectionCount[l.source] = (connectionCount[l.source] || 0) + 1;
       connectionCount[l.target] = (connectionCount[l.target] || 0) + 1;
     });
@@ -94,9 +145,13 @@ export default function GraphView({ pages }) {
       const favBoost = p.isFavorite ? 4 : 0;
 
       let color = PALETTE.nodePrimary;
-      if (p.isFavorite) color = PALETTE.nodeFavorite;
-      else if (conns === 0) color = PALETTE.nodeOrphan;
-      else if (conns >= 3) color = PALETTE.nodeSecondary;
+      if (colorMode === 'community') {
+        color = communityColors[communities[p.id]] || PALETTE.nodePrimary;
+      } else {
+        if (p.isFavorite) color = PALETTE.nodeFavorite;
+        else if (conns === 0) color = PALETTE.nodeOrphan;
+        else if (conns >= 3) color = PALETTE.nodeSecondary;
+      }
 
       return {
         id: p.id,
@@ -109,8 +164,8 @@ export default function GraphView({ pages }) {
       };
     });
 
-    return { nodes, links };
-  }, [pages, forwardLinks]);
+    return { nodes, links: filteredLinks };
+  }, [pages, forwardLinks, linkFilter, colorMode]);
 
   // ─── Connected node set for hover highlighting ───────────────
   const highlightSet = useMemo(() => {
@@ -124,6 +179,31 @@ export default function GraphView({ pages }) {
     });
     return set;
   }, [hoveredNode, graphData.links]);
+
+  // ─── Search Highlight Node Sets ────────────────────────────────
+  const searchHighlightSets = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const query = searchQuery.toLowerCase().trim();
+    
+    // Find matching nodes
+    const matched = new Set();
+    graphData.nodes.forEach(n => {
+      if (n.name.toLowerCase().includes(query)) {
+        matched.add(n.id);
+      }
+    });
+
+    // Find direct neighbors of matching nodes
+    const neighbors = new Set();
+    graphData.links.forEach(l => {
+      const sId = typeof l.source === 'object' ? l.source.id : l.source;
+      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+      if (matched.has(sId)) neighbors.add(tId);
+      if (matched.has(tId)) neighbors.add(sId);
+    });
+
+    return { matched, neighbors, all: new Set([...matched, ...neighbors]) };
+  }, [searchQuery, graphData]);
 
   // ─── Custom Canvas: Background Grid ─────────────────────────
   const drawBackground = useCallback((ctx, globalScale) => {
@@ -154,21 +234,45 @@ export default function GraphView({ pages }) {
   const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
     if (!Number.isFinite(node.x) || !Number.isFinite(node.y) || !Number.isFinite(node.val) || node.val <= 0) return;
 
+    // Search highlights
+    const isSearchActive = searchHighlightSets !== null;
+    const isSearchMatch = isSearchActive && searchHighlightSets.matched.has(node.id);
+    const isSearchNeighbor = isSearchActive && searchHighlightSets.neighbors.has(node.id);
+    const isSearchDimmed = isSearchActive && !searchHighlightSets.all.has(node.id);
+
     const isHighlighted = highlightSet.has(node.id);
     const isHovered = hoveredNode === node.id;
-    const isDimmed = hoveredNode && !isHighlighted;
+    const isHoverDimmed = hoveredNode && !isHighlighted;
+
+    // Dim if dimmed due to search, or dimmed due to hover when search is not overriding it
+    const isDimmed = isSearchDimmed || (hoveredNode && !isSearchActive && isHoverDimmed);
+
     const radius = node.val / 2;
     const label = node.name;
 
-    // ── Outer glow ring (always visible, subtle) ──
+    // ── Outer glow ring (always visible, subtle, or brighter if match) ──
     if (!isDimmed) {
       const glowGrad = ctx.createRadialGradient(node.x, node.y, radius * 0.5, node.x, node.y, radius * 3);
-      glowGrad.addColorStop(0, node.color + '30');
-      glowGrad.addColorStop(1, node.color + '00');
+      if (isSearchMatch) {
+        glowGrad.addColorStop(0, node.color + 'AA');
+        glowGrad.addColorStop(1, node.color + '00');
+      } else {
+        glowGrad.addColorStop(0, node.color + '30');
+        glowGrad.addColorStop(1, node.color + '00');
+      }
       ctx.beginPath();
       ctx.arc(node.x, node.y, radius * 3, 0, Math.PI * 2);
       ctx.fillStyle = glowGrad;
       ctx.fill();
+    }
+
+    // ── Search Match outer highlight ring ──
+    if (isSearchMatch) {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, radius + 5 / globalScale, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 / globalScale;
+      ctx.stroke();
     }
 
     // ── Hover ring animation ──
@@ -193,7 +297,7 @@ export default function GraphView({ pages }) {
     ctx.beginPath();
     ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = nodeGrad;
-    ctx.globalAlpha = isDimmed ? 0.15 : 1;
+    ctx.globalAlpha = isDimmed ? 0.08 : (isSearchNeighbor ? 0.6 : 1);
     ctx.fill();
     ctx.globalAlpha = 1;
 
@@ -229,10 +333,10 @@ export default function GraphView({ pages }) {
     }
 
     // ── Label ──
-    const showLabel = isHovered || isHighlighted || globalScale > 1.8;
-    if (showLabel && !isDimmed) {
+    const showLabel = isSearchMatch || isHovered || isHighlighted || (globalScale > 1.8 && !isDimmed);
+    if (showLabel) {
       const fontSize = Math.min(12 / globalScale, 5);
-      ctx.font = `500 ${fontSize}px Inter, -apple-system, sans-serif`;
+      ctx.font = isSearchMatch ? `600 ${fontSize}px Inter, -apple-system, sans-serif` : `500 ${fontSize}px Inter, -apple-system, sans-serif`;
       const textWidth = ctx.measureText(label).width;
       const padX = fontSize * 0.5;
       const padY = fontSize * 0.35;
@@ -240,26 +344,33 @@ export default function GraphView({ pages }) {
       const bgH = fontSize + padY * 2;
       const labelY = node.y + radius + 6 / globalScale;
 
+      ctx.globalAlpha = isDimmed ? 0.08 : (isSearchNeighbor ? 0.6 : 1);
+
       // Label pill background
       ctx.beginPath();
       ctx.roundRect(node.x - bgW / 2, labelY, bgW, bgH, 3 / globalScale);
-      ctx.fillStyle = PALETTE.labelBg;
+      ctx.fillStyle = isSearchMatch ? 'rgba(20, 20, 25, 0.95)' : PALETTE.labelBg;
       ctx.fill();
+      if (isSearchMatch) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1 / globalScale;
+        ctx.stroke();
+      }
 
       // Accent left border on label
       ctx.beginPath();
       ctx.roundRect(node.x - bgW / 2, labelY, 2 / globalScale, bgH, [3 / globalScale, 0, 0, 3 / globalScale]);
-      ctx.fillStyle = node.color;
+      ctx.fillStyle = isSearchMatch ? '#ffffff' : node.color;
       ctx.fill();
 
       // Label text
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = PALETTE.labelText;
+      ctx.fillStyle = isSearchMatch ? '#ffffff' : PALETTE.labelText;
       ctx.fillText(label, node.x, labelY + bgH / 2);
 
       // Connection count badge
-      if (node.connections > 0) {
+      if (node.connections > 0 && !isSearchDimmed) {
         const countStr = String(node.connections);
         const countFontSize = fontSize * 0.75;
         ctx.font = `600 ${countFontSize}px Inter, sans-serif`;
@@ -278,8 +389,10 @@ export default function GraphView({ pages }) {
         ctx.fillStyle = node.color;
         ctx.fillText(countStr, countX + countW / 2, countY + countH / 2);
       }
+      
+      ctx.globalAlpha = 1;
     }
-  }, [hoveredNode, highlightSet]);
+  }, [hoveredNode, highlightSet, searchHighlightSets]);
 
   // ─── Custom Link Renderer ──────────────────────────────────
   const linkCanvasObject = useCallback((link, ctx, globalScale) => {
@@ -291,14 +404,28 @@ export default function GraphView({ pages }) {
 
     const sId = typeof link.source === 'object' ? link.source.id : link.source;
     const tId = typeof link.target === 'object' ? link.target.id : link.target;
-    const isHighlighted = hoveredNode && highlightSet.has(sId) && highlightSet.has(tId);
-    const isDimmed = hoveredNode && !isHighlighted;
+    
+    // Search highlight check
+    const isSearchActive = searchHighlightSets !== null;
+    const isLinkSearchHighlighted = isSearchActive && 
+      (searchHighlightSets.matched.has(sId) || searchHighlightSets.matched.has(tId)) &&
+      (searchHighlightSets.all.has(sId) && searchHighlightSets.all.has(tId));
+    
+    const isSearchDimmed = isSearchActive && !isLinkSearchHighlighted;
+
+    const isHoverHighlighted = hoveredNode && highlightSet.has(sId) && highlightSet.has(tId);
+    const isHoverDimmed = hoveredNode && !isHoverHighlighted;
+
+    // Combined dimmed state
+    const isDimmed = isSearchDimmed || (hoveredNode && !isSearchActive && isHoverDimmed);
 
     const sx = link.source.x, sy = link.source.y;
     const tx = link.target.x, ty = link.target.y;
 
     if (isDimmed) {
-      ctx.globalAlpha = 0.04;
+      ctx.globalAlpha = 0.01;
+    } else if (isSearchActive && isLinkSearchHighlighted) {
+      ctx.globalAlpha = 0.8;
     }
 
     // Draw link as a gradient line
@@ -308,10 +435,12 @@ export default function GraphView({ pages }) {
     const sColor = sourceNode?.color || PALETTE.nodePrimary;
     const tColor = targetNode?.color || PALETTE.nodePrimary;
 
+    const isHighlighted = isLinkSearchHighlighted || isHoverHighlighted;
+
     if (isHighlighted) {
       grad.addColorStop(0, sColor + 'BB');
       grad.addColorStop(1, tColor + 'BB');
-      ctx.lineWidth = 2 / globalScale;
+      ctx.lineWidth = 2.5 / globalScale;
     } else {
       grad.addColorStop(0, sColor + '25');
       grad.addColorStop(1, tColor + '25');
@@ -326,7 +455,7 @@ export default function GraphView({ pages }) {
 
     // Draw directional arrow
     if (!isDimmed) {
-      const arrowLen = 6 / globalScale;
+      const arrowLen = (isHighlighted ? 8 : 6) / globalScale;
       const dx = tx - sx;
       const dy = ty - sy;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -348,13 +477,13 @@ export default function GraphView({ pages }) {
           ay - arrowLen * Math.sin(angle + Math.PI / 7)
         );
         ctx.closePath();
-        ctx.fillStyle = isHighlighted ? (sColor + 'CC') : (sColor + '40');
+        ctx.fillStyle = isHighlighted ? (sColor + 'EE') : (sColor + '40');
         ctx.fill();
       }
     }
 
     ctx.globalAlpha = 1;
-  }, [hoveredNode, highlightSet, graphData.nodes]);
+  }, [hoveredNode, highlightSet, graphData.nodes, searchHighlightSets]);
 
   // ─── Event handlers ─────────────────────────────────────────
   const handleNodeClick = useCallback((node) => {
@@ -389,6 +518,185 @@ export default function GraphView({ pages }) {
     cooldownTicks: 150,
     enablePointerInteraction: true,
     onRenderFramePre: drawBackground,
+  };
+
+  // ─── Floating Controls Overlay ─────────────────────────────────
+  const renderControls = () => {
+    const matchCount = searchHighlightSets ? searchHighlightSets.matched.size : 0;
+    
+    return (
+      <div 
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          right: '12px',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          {/* Search Bar - Glassmorphism */}
+          <div 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(15, 15, 20, 0.82)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '24px',
+              padding: '6px 14px',
+              width: isFullscreen ? '280px' : '180px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+              pointerEvents: 'auto',
+            }}
+          >
+            <Search size={12} style={{ color: 'var(--text-tertiary)', marginRight: '6px', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Search nodes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--text-primary)',
+                fontSize: '11px',
+                width: '100%',
+                fontWeight: 500,
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0,
+                  marginLeft: '4px',
+                }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Filters & Color Mode - Glassmorphic pills */}
+          <div 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(15, 15, 20, 0.82)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '24px',
+              padding: '4px 6px',
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+              pointerEvents: 'auto',
+            }}
+          >
+            {/* Structural Filter */}
+            <button
+              onClick={() => setLinkFilter(prev => ({ ...prev, structural: !prev.structural }))}
+              style={{
+                background: linkFilter.structural ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                border: '1px solid ' + (linkFilter.structural ? 'rgba(99, 102, 241, 0.4)' : 'transparent'),
+                color: linkFilter.structural ? '#A5B4FC' : 'var(--text-tertiary)',
+                borderRadius: '16px',
+                padding: '3px 8px',
+                fontSize: '9px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+              }}
+            >
+              <SlidersHorizontal size={8} />
+              Structural
+            </button>
+
+            {/* Semantic Filter */}
+            <button
+              onClick={() => setLinkFilter(prev => ({ ...prev, semantic: !prev.semantic }))}
+              style={{
+                background: linkFilter.semantic ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                border: '1px solid ' + (linkFilter.semantic ? 'rgba(139, 92, 246, 0.4)' : 'transparent'),
+                color: linkFilter.semantic ? '#C084FC' : 'var(--text-tertiary)',
+                borderRadius: '16px',
+                padding: '3px 8px',
+                fontSize: '9px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+              }}
+            >
+              <Network size={8} />
+              Semantic
+            </button>
+
+            <div style={{ width: '1px', height: '10px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 2px' }} />
+
+            {/* Color Mode Selector */}
+            <button
+              onClick={() => setColorMode(prev => prev === 'standard' ? 'community' : 'standard')}
+              style={{
+                background: colorMode === 'community' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                border: '1px solid ' + (colorMode === 'community' ? 'rgba(16, 185, 129, 0.4)' : 'transparent'),
+                color: colorMode === 'community' ? '#34D399' : 'var(--text-tertiary)',
+                borderRadius: '16px',
+                padding: '3px 8px',
+                fontSize: '9px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+              }}
+            >
+              <Layers size={8} />
+              {colorMode === 'community' ? 'Community' : 'Standard'}
+            </button>
+          </div>
+        </div>
+
+        {/* Search Results count */}
+        {searchQuery && (
+          <div 
+            style={{
+              alignSelf: 'flex-start',
+              fontSize: '9px',
+              fontWeight: 600,
+              background: 'rgba(15, 15, 20, 0.82)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: 'var(--text-secondary)',
+              padding: '3px 8px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+              pointerEvents: 'auto',
+            }}
+          >
+            {matchCount} {matchCount === 1 ? 'node match' : 'nodes match'}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -447,6 +755,7 @@ export default function GraphView({ pages }) {
           minHeight: '220px',
         }}
       >
+        {renderControls()}
         {width > 0 && height > 0 ? (
           <ForceGraph2D
             ref={graphRef}
@@ -466,7 +775,7 @@ export default function GraphView({ pages }) {
       </div>
 
       {/* ─── Fullscreen Overlay ──────────────────────────────── */}
-      {isFullscreen && (
+      {isFullscreen && createPortal(
         <div
           style={{
             position: 'fixed',
@@ -532,6 +841,7 @@ export default function GraphView({ pages }) {
 
           {/* ── Fullscreen Canvas ── */}
           <div style={{ flex: 1, position: 'relative' }}>
+            {renderControls()}
             <ForceGraph2D
               ref={fullscreenGraphRef}
               {...sharedGraphProps}
@@ -542,7 +852,8 @@ export default function GraphView({ pages }) {
               }}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

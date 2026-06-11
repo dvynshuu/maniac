@@ -23,6 +23,7 @@ import TrackerBlock from '../Tracker/TrackerBlock';
 import MathBlock from './blocks/MathBlock';
 import ColumnListBlock from './blocks/ColumnListBlock';
 import ColumnBlock from './blocks/ColumnBlock';
+import PageBlock from './blocks/PageBlock';
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
@@ -178,6 +179,9 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
       case BLOCK_TYPES.COLUMN:
         return <ColumnBlock block={block} index={index} />;
+
+      case BLOCK_TYPES.PAGE:
+        return <PageBlock block={block} index={index} />;
         
       default:
         return <TextBlock block={block} index={index} />;
@@ -227,6 +231,14 @@ const BlockRenderer = memo(({ blockId, index }) => {
 
   const handleDuplicate = async () => {
     const { dispatch } = await import('../../core/commandBus');
+    const { usePageStore } = await import('../../stores/pageStore');
+    let properties = { ...block.properties };
+    if (block.type === 'page' && block.properties?.pageId) {
+      const newPage = await usePageStore.getState().duplicatePage(block.properties.pageId);
+      if (newPage) {
+        properties.pageId = newPage.id;
+      }
+    }
     await dispatch({
       type: 'block/create',
       payload: {
@@ -235,7 +247,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
         parentId: block.parentId,
         afterBlockId: block.id,
         content: block.content,
-        properties: { ...block.properties }
+        properties
       }
     });
   };

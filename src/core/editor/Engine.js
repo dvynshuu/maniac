@@ -48,7 +48,17 @@ export class EditorEngine {
     const block = blockId ? useBlockStore.getState().blockMap[blockId] : null;
     const parentId = overrideParentId !== undefined ? overrideParentId : (block ? block.parentId : null);
     
-    tx.createBlock(type, parentId, blockId, restProperties);
+    if (type === 'page') {
+      const { createId } = await import('../ids/identity');
+      const subpageId = createId();
+      tx.ops.push({
+        type: 'page/create',
+        payload: { id: subpageId, parentId: this.pageId }
+      });
+      tx.createBlock('page', parentId, blockId, { pageId: subpageId, ...restProperties });
+    } else {
+      tx.createBlock(type, parentId, blockId, restProperties);
+    }
     return tx.commit();
   }
 
@@ -144,7 +154,17 @@ export class EditorEngine {
    */
   async convertType(blockId, newType) {
     const tx = this.startTransaction();
-    tx.convertType(blockId, newType);
+    if (newType === 'page') {
+      const { createId } = await import('../ids/identity');
+      const subpageId = createId();
+      tx.ops.push({
+        type: 'page/create',
+        payload: { id: subpageId, parentId: this.pageId }
+      });
+      tx.convertType(blockId, 'page', { pageId: subpageId });
+    } else {
+      tx.convertType(blockId, newType);
+    }
     return tx.commit();
   }
 

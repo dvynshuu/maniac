@@ -20,6 +20,7 @@ export const BLOCK_TYPES = {
   COLUMN_LIST: 'column_list',
   COLUMN: 'column',
   MATH: 'math',
+  PAGE: 'page',
 };
 
 export const BLOCK_TYPE_META = {
@@ -44,6 +45,7 @@ export const BLOCK_TYPE_META = {
   [BLOCK_TYPES.SYNCED_REFERENCE]: { label: 'Synced Block', icon: 'RefreshCw', description: 'Reference to another block' },
   [BLOCK_TYPES.COLUMN_LIST]: { label: 'Columns', icon: 'Columns', description: 'Side-by-side columns' },
   [BLOCK_TYPES.COLUMN]: { label: 'Column', icon: 'Columns', description: 'Vertical column container' },
+  [BLOCK_TYPES.PAGE]: { label: 'Page', icon: 'FileText', description: 'Embed a sub-page in this page' },
 };
 
 export const TRACKER_FIELD_TYPES = {

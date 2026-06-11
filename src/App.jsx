@@ -6,6 +6,7 @@ import { useTrackerStore } from './stores/trackerStore';
 import { useUIStore } from './stores/uiStore';
 import { useSecurityStore } from './stores/securityStore';
 import { useIntelligenceStore } from './stores/intelligenceStore';
+import { useBacklinkStore } from './stores/backlinkStore';
 import { useCrossTabSync } from './hooks/useCrossTabSync';
 import { undo, redo } from './core/commandBus';
 import { startCompaction, stopCompaction } from './core/sortKeyCompaction';
@@ -103,6 +104,7 @@ function App() {
       if (!isLocked) {
         await loadPages();
         await loadTrackers();
+        await useBacklinkStore.getState().rebuildIndex();
         await useIntelligenceStore.getState().analyze();
         // Start background performance services
         startCompaction();

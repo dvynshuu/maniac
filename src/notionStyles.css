@@ -433,3 +433,63 @@
   padding-left: 4px;
   border-left: 1px solid var(--border-subtle);
 }
+
+/* ─── Page Block ─────────────────────────────────────────────── */
+
+.block-page-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast, 0.15s) ease;
+  user-select: none;
+  width: 100%;
+  margin: 2px 0;
+}
+
+.block-page-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.block-page-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.block-page-title {
+  font-size: 15px;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-page-arrow {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.block-page-link:hover .block-page-arrow {
+  opacity: 1;
+  transform: translate(2px, -2px);
+}
+
+.block-page-link-deleted {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.block-page-link-deleted:hover {
+  background: transparent;
+  color: var(--text-tertiary);
+}
