@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   ExternalLink, Play, Globe, Clock, Target, Calendar, 
   Plus, Minus, MessageSquare, Settings, Sliders, Pause, 
-  RotateCcw, MoreHorizontal, Check, Trash2, Copy, X
+  RotateCcw, MoreHorizontal, Check, Trash2, Copy, X,
+  Trophy, Flame, Star, Book, Coffee, Heart, Smile, CheckCircle, HelpCircle
 } from 'lucide-react';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { useBlockStore } from '../../../stores/blockStore';
@@ -15,9 +16,9 @@ export default function EmbedBlock({ block }) {
   
   // Widget settings
   const widgetSettings = block.properties?.widgetSettings || {
-    theme: 'neobrutalist',
-    bgColor: '#e0f2fe',
-    textColor: '#0f172a',
+    theme: 'sleekdark',
+    bgColor: '#17171e',
+    textColor: '#f3f3f4',
     title: '',
     targetDate: '',
     workTime: 25,
@@ -295,11 +296,10 @@ export default function EmbedBlock({ block }) {
     if (effectiveType === 'progress_bar') {
       return (
         <ProgressWidget 
-          settings={widgetSettings} 
+          block={block}
           themeClass={themeClass} 
           textColor={textColor} 
           bgColor={bgColor} 
-          blockId={block.id}
           engine={engine}
         />
       );
@@ -508,25 +508,87 @@ export default function EmbedBlock({ block }) {
 
             {/* Progress-specific Settings */}
             {effectiveType === 'progress_bar' && (
-              <div className="customizer-flex-row">
-                <div className="customizer-row">
-                  <label className="customizer-label">Current</label>
-                  <input 
-                    type="number" 
-                    className="customizer-input" 
-                    value={widgetSettings.current}
-                    onChange={(e) => updateWidgetSetting('current', Math.max(0, parseInt(e.target.value) || 0))}
-                  />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="customizer-flex-row">
+                  <div className="customizer-row">
+                    <label className="customizer-label">Current</label>
+                    <input 
+                      type="number" 
+                      className="customizer-input" 
+                      value={widgetSettings.current ?? 0}
+                      onChange={(e) => updateWidgetSetting('current', Math.max(0, parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div className="customizer-row">
+                    <label className="customizer-label">Goal Target</label>
+                    <input 
+                      type="number" 
+                      className="customizer-input" 
+                      min={1}
+                      value={widgetSettings.target ?? 10}
+                      onChange={(e) => updateWidgetSetting('target', Math.max(1, parseInt(e.target.value) || 10))}
+                    />
+                  </div>
                 </div>
-                <div className="customizer-row">
-                  <label className="customizer-label">Goal Target</label>
-                  <input 
-                    type="number" 
-                    className="customizer-input" 
-                    min={1}
-                    value={widgetSettings.target}
-                    onChange={(e) => updateWidgetSetting('target', Math.max(1, parseInt(e.target.value) || 10))}
-                  />
+                
+                <div className="customizer-flex-row">
+                  <div className="customizer-row">
+                    <label className="customizer-label">Unit Label</label>
+                    <input 
+                      type="text" 
+                      className="customizer-input" 
+                      placeholder="e.g. books"
+                      value={widgetSettings.unit || ''}
+                      onChange={(e) => updateWidgetSetting('unit', e.target.value)}
+                    />
+                  </div>
+                  <div className="customizer-row">
+                    <label className="customizer-label">Increment Step</label>
+                    <input 
+                      type="number" 
+                      className="customizer-input" 
+                      min={1}
+                      value={widgetSettings.step ?? 1}
+                      onChange={(e) => updateWidgetSetting('step', Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                  </div>
+                </div>
+
+                <div className="customizer-flex-row">
+                  <div className="customizer-row">
+                    <label className="customizer-label">Gradient Theme</label>
+                    <select 
+                      className="customizer-select"
+                      value={widgetSettings.gradient || 'lavender'}
+                      onChange={(e) => updateWidgetSetting('gradient', e.target.value)}
+                    >
+                      <option value="lavender">Default Lavender</option>
+                      <option value="sunset">Sunset Fire</option>
+                      <option value="ocean">Ocean Breeze</option>
+                      <option value="forest">Forest Glow</option>
+                      <option value="midnight">Midnight Purple</option>
+                      <option value="gold">Electric Gold</option>
+                    </select>
+                  </div>
+                  <div className="customizer-row">
+                    <label className="customizer-label">Icon</label>
+                    <select 
+                      className="customizer-select"
+                      value={widgetSettings.icon || 'target'}
+                      onChange={(e) => updateWidgetSetting('icon', e.target.value)}
+                    >
+                      <option value="target">Target</option>
+                      <option value="trophy">Trophy</option>
+                      <option value="flame">Flame</option>
+                      <option value="star">Star</option>
+                      <option value="book">Book</option>
+                      <option value="coffee">Coffee</option>
+                      <option value="heart">Heart</option>
+                      <option value="smile">Smile</option>
+                      <option value="check">Check</option>
+                      <option value="none">Question Mark</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
@@ -734,7 +796,8 @@ function PomodoroWidget({ settings, themeClass, textColor, bgColor, blockId, eng
       else if (mode === 'short_break') setTimeLeft(settings.breakTime * 60);
       else if (mode === 'long_break') setTimeLeft(15 * 60);
     }
-  }, [settings.workTime, settings.breakTime, mode, isRunning]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.workTime, settings.breakTime]);
 
   useEffect(() => {
     if (isRunning) {
@@ -840,58 +903,514 @@ function PomodoroWidget({ settings, themeClass, textColor, bgColor, blockId, eng
   );
 }
 
-function ProgressWidget({ settings, themeClass, textColor, bgColor, blockId, engine }) {
-  const current = settings.current || 0;
-  const target = settings.target || 10;
-  const percentage = Math.round((current / target) * 100);
+function ProgressWidget({ block, themeClass, textColor, bgColor, engine }) {
+  const settings = block.properties?.widgetSettings || {};
+  const goals = settings.goals || [];
+  const hasGoals = goals.length > 0;
+  
+  // Dynamic resolution of current and target based on sub-goals checklist
+  const current = hasGoals ? goals.filter(g => g.completed).length : (settings.current || 0);
+  const target = hasGoals ? goals.length : (settings.target || 10);
+  const unit = settings.unit || '';
+  const step = settings.step || 1;
+  const gradient = settings.gradient || 'lavender';
+  const iconName = settings.icon || 'target';
+
+  // Display value can be tempCurrent (if dragging) or calculated current
+  const [tempCurrent, setTempCurrent] = useState(null);
+  const displayCurrent = tempCurrent !== null ? tempCurrent : current;
+  const percentage = Math.round((displayCurrent / target) * 100);
+  const isCompleted = displayCurrent >= target;
+
+  // Title inline editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState(settings.title || 'Goal Progress');
+
+  // Stats inline editing state
+  const [isEditingCurrent, setIsEditingCurrent] = useState(false);
+  const [currentInput, setCurrentInput] = useState(current.toString());
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [targetInput, setTargetInput] = useState(target.toString());
+
+  // Sub-goals checklist local states
+  const [newGoalText, setNewGoalText] = useState('');
+  const [editingGoalId, setEditingGoalId] = useState(null);
+  const [goalEditText, setGoalEditText] = useState('');
+
+  // Dragging states
+  const barRef = useRef(null);
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+
+  // Confetti states
+  const canvasRef = useRef(null);
+  const [showCanvas, setShowCanvas] = useState(false);
+
+  // Track previous value to trigger celebration confetti
+  const prevCurrentRef = useRef(current);
+
+  useEffect(() => {
+    setTitleInput(settings.title || 'Goal Progress');
+  }, [settings.title]);
+
+  useEffect(() => {
+    setCurrentInput(current.toString());
+  }, [current]);
+
+  useEffect(() => {
+    setTargetInput(target.toString());
+  }, [target]);
+
+  // Confetti triggering on transition to completed
+  useEffect(() => {
+    if (current >= target && prevCurrentRef.current < target) {
+      triggerConfetti();
+    }
+    prevCurrentRef.current = current;
+  }, [current, target]);
+
+  const triggerConfetti = () => {
+    setShowCanvas(true);
+    // Give state a frame to render the canvas
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.offsetWidth || 400;
+      canvas.height = canvas.parentElement.offsetHeight || 140;
+
+      const colors = ['#2E5BFF', '#8B5CF6', '#4ade80', '#facc15', '#f87171', '#FF512F', '#00F2FE'];
+      const particles = [];
+      for (let i = 0; i < 60; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 40,
+          y: canvas.height / 2 + (Math.random() - 0.5) * 20,
+          vx: (Math.random() - 0.5) * 5,
+          vy: -Math.random() * 4 - 3,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: Math.random() * 5 + 3,
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 12,
+          opacity: 1,
+          decay: Math.random() * 0.018 + 0.012
+        });
+      }
+
+      let animId;
+      const render = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let active = 0;
+        particles.forEach(p => {
+          if (p.opacity <= 0) return;
+          active++;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.14; // gravity
+          p.vx *= 0.98; // drag
+          p.rotation += p.rotationSpeed;
+          p.opacity -= p.decay;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation * Math.PI / 180);
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.opacity;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+        });
+
+        if (active > 0) {
+          animId = requestAnimationFrame(render);
+        } else {
+          setShowCanvas(false);
+        }
+      };
+      render();
+    }, 50);
+  };
 
   const handleIncrement = () => {
-    if (current < target) {
-      engine.updateBlock(blockId, {
-        properties: {
+    if (hasGoals) return;
+    const nextVal = Math.min(target, current + step);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
           ...settings,
-          widgetSettings: {
-            ...settings.widgetSettings,
-            current: current + 1
-          }
+          current: nextVal
         }
-      });
-    }
+      }
+    });
   };
 
   const handleDecrement = () => {
-    if (current > 0) {
-      engine.updateBlock(blockId, {
-        properties: {
+    if (hasGoals) return;
+    const nextVal = Math.max(0, current - step);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
           ...settings,
+          current: nextVal
+        }
+      }
+    });
+  };
+
+  const handleSaveTitle = () => {
+    const val = titleInput.trim();
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          title: val || 'Goal Progress'
+        }
+      }
+    });
+    setIsEditingTitle(false);
+  };
+
+  const handleSaveCurrent = () => {
+    if (hasGoals) return;
+    const val = Math.max(0, parseInt(currentInput) || 0);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          current: val
+        }
+      }
+    });
+    setIsEditingCurrent(false);
+  };
+
+  const handleSaveTarget = () => {
+    if (hasGoals) return;
+    const val = Math.max(1, parseInt(targetInput) || 10);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          target: val
+        }
+      }
+    });
+    setIsEditingTarget(false);
+  };
+
+  const handleBarMouseDown = (e) => {
+    if (hasGoals || isEditingCurrent || isEditingTarget) return;
+    e.preventDefault();
+    setIsDraggingProgress(true);
+
+    const updateTempFromX = (clientX) => {
+      if (!barRef.current) return;
+      const rect = barRef.current.getBoundingClientRect();
+      const width = rect.width;
+      const offsetX = Math.max(0, Math.min(clientX - rect.left, width));
+      const pct = offsetX / width;
+      const val = Math.round(pct * target);
+      setTempCurrent(val);
+      return val;
+    };
+
+    let finalVal = updateTempFromX(e.clientX);
+
+    const handleMouseMove = (moveEvent) => {
+      finalVal = updateTempFromX(moveEvent.clientX);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      setIsDraggingProgress(false);
+
+      engine.updateBlock(block.id, {
+        properties: {
+          ...block.properties,
           widgetSettings: {
-            ...settings.widgetSettings,
-            current: current - 1
+            ...settings,
+            current: finalVal
           }
         }
       });
-    }
+      setTempCurrent(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   };
+
+  // Sub-goals checklist operations
+  const handleAddGoal = () => {
+    if (!newGoalText.trim()) return;
+    const newGoal = {
+      id: Math.random().toString(36).substring(2, 9),
+      text: newGoalText.trim(),
+      completed: false
+    };
+    const updatedGoals = [...goals, newGoal];
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          goals: updatedGoals,
+          target: updatedGoals.length,
+          current: updatedGoals.filter(g => g.completed).length
+        }
+      }
+    });
+    setNewGoalText('');
+  };
+
+  const handleToggleGoal = (id) => {
+    const updatedGoals = goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          goals: updatedGoals,
+          current: updatedGoals.filter(g => g.completed).length
+        }
+      }
+    });
+  };
+
+  const handleStartEditGoal = (id, text) => {
+    setEditingGoalId(id);
+    setGoalEditText(text);
+  };
+
+  const handleSaveGoalText = (id) => {
+    if (!goalEditText.trim()) return;
+    const updatedGoals = goals.map(g => g.id === id ? { ...g, text: goalEditText.trim() } : g);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          goals: updatedGoals
+        }
+      }
+    });
+    setEditingGoalId(null);
+  };
+
+  const handleDeleteGoal = (id) => {
+    const updatedGoals = goals.filter(g => g.id !== id);
+    engine.updateBlock(block.id, {
+      properties: {
+        ...block.properties,
+        widgetSettings: {
+          ...settings,
+          goals: updatedGoals,
+          target: updatedGoals.length,
+          current: updatedGoals.filter(g => g.completed).length
+        }
+      }
+    });
+  };
+
+  // Icon mapping
+  const IconComponent = (() => {
+    const IconMap = {
+      target: Target,
+      trophy: Trophy,
+      flame: Flame,
+      star: Star,
+      book: Book,
+      coffee: Coffee,
+      heart: Heart,
+      smile: Smile,
+      check: CheckCircle,
+      none: HelpCircle
+    };
+    return IconMap[iconName] || Target;
+  })();
+
+  const gradientClass = `gradient-${gradient}`;
 
   return (
     <div 
       className={`widget-progress-container ${themeClass}`}
       style={{ backgroundColor: bgColor, color: textColor }}
     >
+      {showCanvas && (
+        <canvas ref={canvasRef} className="widget-progress-canvas" />
+      )}
+
       <div className="widget-progress-header">
-        <div className="widget-progress-title">{settings.title || 'Goal Progress'}</div>
-        <div className="widget-progress-stats">{current} / {target} ({percentage}%)</div>
+        <div className="widget-progress-title-wrapper">
+          <div className={`widget-progress-icon ${isCompleted ? 'completed' : ''}`}>
+            <IconComponent size={16} />
+          </div>
+          {isEditingTitle ? (
+            <input
+              autoFocus
+              type="text"
+              className="widget-progress-title-input"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
+            />
+          ) : (
+            <div 
+              className="widget-progress-title" 
+              onDoubleClick={() => setIsEditingTitle(true)}
+              title="Double click to rename"
+            >
+              {settings.title || 'Goal Progress'}
+            </div>
+          )}
+        </div>
+
+        <div className={`widget-progress-stats ${isCompleted ? 'completed' : ''}`}>
+          {isEditingCurrent ? (
+            <input
+              autoFocus
+              disabled={hasGoals}
+              type="number"
+              className="widget-progress-stats-input"
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onBlur={handleSaveCurrent}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveCurrent()}
+            />
+          ) : (
+            <span 
+              onClick={() => !hasGoals && setIsEditingCurrent(true)}
+              title={hasGoals ? "Controlled by sub-goals list" : "Click to edit current progress"}
+              style={{ cursor: hasGoals ? 'default' : 'pointer' }}
+            >
+              {displayCurrent}
+            </span>
+          )}
+          <span>/</span>
+          {isEditingTarget ? (
+            <input
+              autoFocus
+              disabled={hasGoals}
+              type="number"
+              className="widget-progress-stats-input"
+              value={targetInput}
+              onChange={(e) => setTargetInput(e.target.value)}
+              onBlur={handleSaveTarget}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveTarget()}
+            />
+          ) : (
+            <span 
+              onClick={() => !hasGoals && setIsEditingTarget(true)}
+              title={hasGoals ? "Controlled by sub-goals list" : "Click to edit target goal"}
+              style={{ cursor: hasGoals ? 'default' : 'pointer' }}
+            >
+              {target}
+            </span>
+          )}
+          {unit && <span style={{ fontSize: '11px', opacity: 0.7, marginLeft: '4px' }}>{unit}</span>}
+          <span style={{ fontSize: '11px', opacity: 0.6, marginLeft: '6px' }}>({percentage}%)</span>
+        </div>
       </div>
-      <div className="widget-progress-bar-bg">
-        <div className="widget-progress-bar-fill" style={{ width: `${Math.min(percentage, 100)}%` }} />
+
+      <div 
+        ref={barRef}
+        className={`widget-progress-bar-bg ${isCompleted ? 'completed' : ''}`}
+        onMouseDown={handleBarMouseDown}
+        style={{ cursor: hasGoals ? 'default' : 'ew-resize' }}
+        title={hasGoals ? "Progress controlled by sub-goals checklist below" : "Click and drag to scrub progress"}
+      >
+        <div 
+          className={`widget-progress-bar-fill ${gradientClass} ${isCompleted ? 'completed' : ''}`} 
+          style={{ width: `${Math.min(percentage, 100)}%` }} 
+        />
       </div>
+
+      {/* Checklist of sub-goals */}
+      <div className="widget-progress-goals-list" contentEditable={false}>
+        {goals.map(goal => (
+          <div key={goal.id} className="widget-progress-goal-item">
+            <div 
+              className={`widget-progress-goal-checkbox ${goal.completed ? 'checked' : ''}`}
+              onClick={() => handleToggleGoal(goal.id)}
+            >
+              <Check size={10} strokeWidth={3} />
+            </div>
+            {editingGoalId === goal.id ? (
+              <input
+                autoFocus
+                type="text"
+                className="widget-progress-goal-input"
+                value={goalEditText}
+                onChange={(e) => setGoalEditText(e.target.value)}
+                onBlur={() => handleSaveGoalText(goal.id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveGoalText(goal.id)}
+              />
+            ) : (
+              <div 
+                className={`widget-progress-goal-label ${goal.completed ? 'completed' : ''}`}
+                onDoubleClick={() => handleStartEditGoal(goal.id, goal.text)}
+                title="Double click to edit text"
+              >
+                {goal.text}
+              </div>
+            )}
+            <button 
+              className="widget-progress-goal-delete" 
+              onClick={() => handleDeleteGoal(goal.id)}
+              title="Delete sub-goal"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        ))}
+        
+        <input
+          type="text"
+          className="widget-progress-add-goal-input"
+          placeholder="+ Add a sub-goal goal..."
+          value={newGoalText}
+          onChange={(e) => setNewGoalText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAddGoal()}
+        />
+      </div>
+
       <div className="widget-progress-actions">
-        <button className="widget-progress-btn" onClick={handleDecrement} disabled={current <= 0}>
+        {hasGoals ? (
+          <span className="widget-progress-step-label" style={{ marginRight: 'auto', opacity: 0.6 }}>Check off goals to progress</span>
+        ) : (
+          step > 1 && (
+            <span className="widget-progress-step-label">Step: ±{step}</span>
+          )
+        )}
+        <button 
+          className="widget-progress-btn" 
+          onClick={handleDecrement} 
+          disabled={hasGoals || current <= 0}
+          title={hasGoals ? "Manual counter disabled" : `Decrease by ${step}`}
+        >
           <Minus size={12} />
         </button>
-        <button className="widget-progress-btn" onClick={handleIncrement} disabled={current >= target}>
+        <button 
+          className="widget-progress-btn" 
+          onClick={handleIncrement} 
+          disabled={hasGoals || current >= target}
+          title={hasGoals ? "Manual counter disabled" : `Increase by ${step}`}
+        >
           <Plus size={12} />
         </button>
+        {isCompleted && (
+          <button 
+            className="widget-progress-btn widget-progress-celebrate-btn" 
+            onClick={triggerConfetti}
+            title="Celebrate!"
+          >
+            🎉
+          </button>
+        )}
       </div>
     </div>
   );

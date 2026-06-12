@@ -757,6 +757,7 @@
 }
 
 /* --- Progress Widget Rendering --- */
+/* --- Progress Widget Rendering --- */
 .widget-progress-container {
   display: flex;
   flex-direction: column;
@@ -765,47 +766,187 @@
   width: 100%;
   height: 100%;
   padding: 24px;
+  position: relative;
+}
+
+.widget-progress-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .widget-progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.widget-progress-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.widget-progress-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.widget-progress-icon.completed {
+  color: var(--success);
+  animation: pulse-icon 1.5s infinite;
+}
+
+@keyframes pulse-icon {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
 .widget-progress-title {
   font-size: 14px;
   font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+  transition: background 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-progress-title:hover {
+  background: var(--bg-hover);
+}
+
+.widget-progress-title-input {
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+  width: 100%;
 }
 
 .widget-progress-stats {
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-mono);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.widget-progress-stats:hover {
+  background: var(--bg-hover);
+}
+
+.widget-progress-stats-input {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background: var(--bg-active);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
   color: var(--accent-primary);
+  text-align: center;
+  width: 48px;
+  padding: 1px 4px;
+  outline: none;
 }
 
 .widget-progress-bar-bg {
   width: 100%;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 5px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
   overflow: hidden;
   position: relative;
   border: 1px solid var(--border-subtle);
+  cursor: ew-resize;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.widget-progress-bar-bg:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-default);
 }
 
 .widget-progress-bar-fill {
   height: 100%;
-  background: var(--accent-gradient);
-  border-radius: 5px;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 6px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+/* Gradients */
+.gradient-sunset {
+  background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
+}
+.gradient-ocean {
+  background: linear-gradient(90deg, #2E5BFF 0%, #00F2FE 100%) !important;
+}
+.gradient-forest {
+  background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%) !important;
+}
+.gradient-midnight {
+  background: linear-gradient(90deg, #7F00FF 0%, #E100FF 100%) !important;
+}
+.gradient-gold {
+  background: linear-gradient(90deg, #F21B3F 0%, #FF9900 100%) !important;
+}
+.gradient-lavender {
+  background: var(--accent-gradient) !important;
+}
+
+/* Completion styling */
+.widget-progress-bar-bg.completed {
+  border-color: var(--success);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.25);
+}
+
+.widget-progress-bar-fill.completed {
+  background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%) !important;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+}
+
+.widget-progress-stats.completed {
+  color: var(--success);
+  font-weight: 800;
 }
 
 .widget-progress-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.widget-progress-step-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-right: 4px;
 }
 
 .widget-progress-btn {
@@ -815,17 +956,172 @@
   width: 28px;
   height: 28px;
   border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.widget-progress-btn:hover:not(:disabled) {
+  background: var(--bg-active);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.widget-progress-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.widget-progress-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.widget-progress-celebrate-btn {
+  background: var(--success-subtle) !important;
+  border: 1px solid var(--success) !important;
+  color: var(--success) !important;
+}
+
+.widget-progress-celebrate-btn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.2) !important;
+  border-color: var(--success) !important;
+}
+
+/* --- Progress Widget Sub-goals Checklist --- */
+.widget-progress-goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.widget-progress-goal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.widget-progress-goal-item:hover {
+  background: var(--bg-hover);
+}
+
+.widget-progress-goal-checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  background: transparent;
+  transition: all 0.15s ease;
+  color: white;
+  flex-shrink: 0;
+}
+
+.widget-progress-goal-checkbox.checked {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.widget-progress-goal-checkbox svg {
+  opacity: 0;
+  transform: scale(0.6);
   transition: all 0.15s ease;
 }
 
-.widget-progress-btn:hover {
-  background: var(--bg-active);
-  border-color: var(--accent-primary);
+.widget-progress-goal-checkbox.checked svg {
+  opacity: 1;
+  transform: scale(1);
 }
+
+.widget-progress-goal-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 0.15s ease;
+  text-align: left;
+}
+
+.widget-progress-goal-label.completed {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.widget-progress-goal-input {
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-active);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 0 4px;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+}
+
+.widget-progress-goal-delete {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.widget-progress-goal-item:hover .widget-progress-goal-delete {
+  opacity: 1;
+}
+
+.widget-progress-goal-delete:hover {
+  color: var(--error);
+  background: var(--bg-hover);
+}
+
+.widget-progress-add-goal-input {
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 4px;
+  padding: 6px 10px;
+  width: 100%;
+  outline: none;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.widget-progress-add-goal-input:focus {
+  border-style: solid;
+  border-color: var(--accent-primary);
+  background: var(--bg-hover);
+}
+
+.widget-progress-add-goal-input::placeholder {
+  color: var(--text-placeholder);
+}
+
 
 /* Comment Overlay Inside Block */
 .block-embed-comment-box {

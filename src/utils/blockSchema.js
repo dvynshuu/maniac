@@ -148,9 +148,9 @@ export const BLOCK_PROPERTY_DEFAULTS = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'neobrutalist',
-      bgColor: '#e0f2fe',
-      textColor: '#0f172a',
+      theme: 'sleekdark',
+      bgColor: '#17171e',
+      textColor: '#f3f3f4',
       title: 'Left in This Month',
       targetDate: '',
       workTime: 25,
@@ -164,9 +164,9 @@ export const BLOCK_PROPERTY_DEFAULTS = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'neobrutalist',
-      bgColor: '#fee2e2', // soft red
-      textColor: '#0f172a',
+      theme: 'sleekdark',
+      bgColor: '#17171e',
+      textColor: '#f3f3f4',
       title: 'Focus Timer',
       targetDate: '',
       workTime: 25,
@@ -180,9 +180,9 @@ export const BLOCK_PROPERTY_DEFAULTS = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'neobrutalist',
-      bgColor: '#fef08a', // soft yellow
-      textColor: '#0f172a',
+      theme: 'sleekdark',
+      bgColor: '#17171e',
+      textColor: '#f3f3f4',
       title: 'Goal Tracker',
       targetDate: '',
       workTime: 25,
