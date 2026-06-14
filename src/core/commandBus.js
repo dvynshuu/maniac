@@ -22,8 +22,42 @@ import { trace, event } from './observability';
 import { nanoid } from 'nanoid';
 import PersistenceWorker from './persistenceWorker?worker';
 import { useSecurityStore } from '../stores/securityStore';
+import { useUIStore } from '../stores/uiStore';
 
 export const persistenceWorker = new PersistenceWorker();
+
+// Wrap postMessage to automatically set isSaving: true
+const originalPostMessage = persistenceWorker.postMessage.bind(persistenceWorker);
+persistenceWorker.postMessage = (msg) => {
+  if (msg?.type === 'ENQUEUE_OP') {
+    useUIStore.getState().setIsSaving(true);
+  }
+  originalPostMessage(msg);
+};
+
+// Handle worker completion messages to toggle isSaving and trigger Vault Synced
+let lastVaultSyncedNotificationTime = 0;
+persistenceWorker.onmessage = (e) => {
+  const { type } = e.data;
+  if (type === 'FLUSH_COMPLETE') {
+    useUIStore.getState().setIsSaving(false);
+    
+    // Throttle Vault Synced notification to once every 30s
+    const now = Date.now();
+    if (now - lastVaultSyncedNotificationTime > 30000) {
+      lastVaultSyncedNotificationTime = now;
+      import('../stores/notificationStore').then(({ useNotificationStore }) => {
+        useNotificationStore.getState().addNotification(
+          'Vault Synced',
+          'Latest changes securely encrypted and stored.',
+          'security'
+        );
+      });
+    }
+  } else if (type === 'FLUSH_ERROR') {
+    useUIStore.getState().setIsSaving(false);
+  }
+};
 
 // Send keys whenever they change
 useSecurityStore.subscribe((state) => {

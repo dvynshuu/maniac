@@ -214,8 +214,11 @@ async function flushQueue() {
       });
     }
 
+    self.postMessage({ type: 'FLUSH_COMPLETE', timestamp: Date.now() });
+
   } catch (error) {
     console.error('[PersistenceWorker] Flush failed:', error?.name, error?.message, error?.stack, error);
+    self.postMessage({ type: 'FLUSH_ERROR', error: error?.message || 'Unknown error' });
     // Put items back into the queue
     for (const [table, map] of snapshot) {
       if (!pendingQueue.has(table)) pendingQueue.set(table, new Map());

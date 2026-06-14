@@ -91,6 +91,10 @@ db.version(10).stores({
   crdt_updates: '++id, pageId, timestamp'
 });
 
+db.version(11).stores({
+  notifications: 'id, type, title, desc, isRead, createdAt'
+});
+
 export const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';

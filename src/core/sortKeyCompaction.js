@@ -147,6 +147,13 @@ async function runCompaction() {
 
     if (totalCompacted > 0) {
       console.debug(`[Compaction] Compacted sort keys for ${totalCompacted} pages`);
+      import('../stores/notificationStore').then(({ useNotificationStore }) => {
+        useNotificationStore.getState().addNotification(
+          'System Optimized',
+          `Garbage collection reclaimed local storage space and optimized sort keys for ${totalCompacted} pages.`,
+          'system'
+        );
+      });
     }
   } catch (err) {
     console.warn('[Compaction] Background compaction failed:', err);

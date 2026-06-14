@@ -18,6 +18,7 @@ import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import GraphView from './GraphView';
 import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
+import { useNotificationStore } from '../../stores/notificationStore';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -31,6 +32,13 @@ function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState('Appearance');
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+
+  const loadNotifications = useNotificationStore((s) => s.loadNotifications);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const openSettings = (tab = 'Appearance') => {
     setSettingsTab(tab);
@@ -72,6 +80,9 @@ function Dashboard() {
           <div style={{ position: 'relative' }}>
             <button aria-label="Notifications" className="icon-btn" onClick={() => togglePopover('notifications')}>
               <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="notification-badge pulsing" />
+              )}
             </button>
             {activePopover === 'notifications' && <NotificationsPopover onClose={() => setActivePopover(null)} />}
           </div>

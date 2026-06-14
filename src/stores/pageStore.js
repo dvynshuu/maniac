@@ -242,6 +242,14 @@ export const usePageStore = create((set, get) => ({
     }));
 
     await db.pages.update(id, { isArchived: true, updatedAt: now });
+
+    import('./notificationStore').then(({ useNotificationStore }) => {
+      useNotificationStore.getState().addNotification(
+        'Page Archived',
+        `"${page.title || 'Untitled'}" was moved to the archives.`,
+        'info'
+      );
+    });
   },
 
   restorePage: async (id) => {
@@ -257,6 +265,14 @@ export const usePageStore = create((set, get) => ({
     }));
 
     await db.pages.update(id, { isArchived: false, updatedAt: now });
+
+    import('./notificationStore').then(({ useNotificationStore }) => {
+      useNotificationStore.getState().addNotification(
+        'Page Restored',
+        `"${page.title || 'Untitled'}" was restored to your workspace.`,
+        'info'
+      );
+    });
   },
 
   movePage: async (pageId, newParentId) => {

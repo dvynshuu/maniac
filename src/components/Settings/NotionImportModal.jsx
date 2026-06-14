@@ -116,6 +116,13 @@ export default function NotionImportModal() {
       setProgress({ phase: 'complete', percent: 100, detail: 'Import complete!' });
       setStep('complete');
       useUIStore.getState().addToast(`Successfully imported ${pages.length} pages from Notion!`, 'success');
+      import('../../stores/notificationStore').then(({ useNotificationStore }) => {
+        useNotificationStore.getState().addNotification(
+          'Notion Import',
+          `Successfully imported ${pages.length} pages, ${blocks.length} blocks, and ${blobs.length} images from Notion ZIP export.`,
+          'info'
+        );
+      });
     } catch (err) {
       setError('Import failed: ' + (err.message || 'Unknown error'));
       setStep('preview');
