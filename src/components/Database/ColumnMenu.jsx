@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PROPERTY_TYPES, PROPERTY_TYPE_META } from '../../utils/constants';
 import { useDatabaseStore } from '../../stores/databaseStore';
+import { useBlockStore } from '../../stores/blockStore';
 import { db } from '../../db/database';
+import { createId } from '../../utils/helpers';
 import * as Icons from 'lucide-react';
 import { Trash2, Type, Hash, Tag, Tags, Calendar, CheckSquare, Link, Mail, Phone, Clock, ChevronRight } from 'lucide-react';
 
@@ -121,38 +123,105 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
             </div>
           </button>
 
-          {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP) && (
+          {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP || property.type === PROPERTY_TYPES.FORMULA) && (
             <div className="db-menu-divider" />
           )}
 
           {property.type === PROPERTY_TYPES.RELATION && (
-            <div style={{ padding: '8px' }}>
-              <label className="db-field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                Connect to Database
-              </label>
-              <select 
-                className="db-menu-select"
-                value={property.config?.relatedDatabaseId || ''}
-                onChange={(e) => {
-                  updateProperty(blockId, property.id, {
-                    config: { ...property.config, relatedDatabaseId: e.target.value }
-                  });
-                }}
-                style={{
-                  width: '100%',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  fontSize: '12px',
-                  padding: '4px 6px'
-                }}
-              >
-                <option value="">Select a database...</option>
-                {dbBlocks.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+            <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label className="db-field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                  Connect to Database
+                </label>
+                <select 
+                  className="db-menu-select"
+                  value={property.config?.relatedDatabaseId || ''}
+                  onChange={(e) => {
+                    updateProperty(blockId, property.id, {
+                      config: { ...property.config, relatedDatabaseId: e.target.value }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    padding: '4px 6px'
+                  }}
+                >
+                  <option value="">Select a database...</option>
+                  {dbBlocks.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {property.config?.relatedDatabaseId && (
+                <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
+                  {property.config?.reciprocalPropertyId ? (
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span>Linked with reciprocal column in target database.</span>
+                      <button 
+                        className="db-add-row-btn" 
+                        onClick={() => {
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, reciprocalPropertyId: undefined }
+                          });
+                        }}
+                        style={{ marginTop: '4px', width: '100%', justifyContent: 'center' }}
+                      >
+                        Remove Reciprocal Link
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="db-field-label" style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                        Reciprocal Column Name
+                      </label>
+                      <input 
+                        className="db-menu-input"
+                        placeholder="e.g. Related to..."
+                        id="recip-name-input"
+                        style={{ marginBottom: '6px' }}
+                      />
+                      <button 
+                        className="db-add-row-btn" 
+                        onClick={async () => {
+                          const recipName = document.getElementById('recip-name-input')?.value?.trim();
+                          const targetDbId = property.config.relatedDatabaseId;
+                          const currentBlock = useBlockStore.getState().getBlock(blockId);
+                          const currentDbName = currentBlock?.properties?.name || 'original database';
+                          
+                          const recipId = `prop_rel_${createId()}`;
+                          const reciprocalProperty = {
+                            id: recipId,
+                            name: recipName || `Related to ${currentDbName}`,
+                            type: PROPERTY_TYPES.RELATION,
+                            width: 200,
+                            config: {
+                              relatedDatabaseId: blockId,
+                              reciprocalPropertyId: property.id
+                            }
+                          };
+
+                          await useDatabaseStore.getState().addPropertyToSchema(targetDbId, reciprocalProperty);
+                          await updateProperty(blockId, property.id, {
+                            config: {
+                              ...property.config,
+                              reciprocalPropertyId: recipId
+                            }
+                          });
+                        }}
+                        style={{ width: '100%', justifyContent: 'center' }}
+                      >
+                        Create Reciprocal Column
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -243,6 +312,122 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          )}
+
+          {property.type === PROPERTY_TYPES.FORMULA && (
+            <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label className="db-field-label" style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                Formula Expression
+              </label>
+              <textarea
+                className="db-menu-textarea"
+                placeholder="e.g. prop('Price') * prop('Quantity')"
+                value={property.config?.formula || ''}
+                onChange={(e) => {
+                  updateProperty(blockId, property.id, {
+                    config: { ...property.config, formula: e.target.value }
+                  });
+                }}
+                id="formula-textarea"
+                style={{
+                  width: '100%',
+                  minHeight: '60px',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  padding: '4px 6px',
+                  fontFamily: 'monospace',
+                  resize: 'vertical'
+                }}
+              />
+              <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '6px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Click to insert:</span>
+                
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '80px', overflowY: 'auto', marginBottom: '6px' }}>
+                  {currentSchema.filter(p => p.id !== property.id).map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        const txtArea = document.getElementById('formula-textarea');
+                        if (txtArea) {
+                          const val = property.config?.formula || '';
+                          const start = txtArea.selectionStart;
+                          const end = txtArea.selectionEnd;
+                          const insertStr = `prop("${p.name}")`;
+                          const next = val.substring(0, start) + insertStr + val.substring(end);
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, formula: next }
+                          });
+                          setTimeout(() => {
+                            txtArea.focus();
+                            txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                          }, 50);
+                        }
+                      }}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '1px 6px',
+                        fontSize: '10px',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p.name || 'Untitled'}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+                  {[
+                    { label: 'concat()', code: 'concat(a, b)' },
+                    { label: 'if()', code: 'if(cond, t, f)' },
+                    { label: 'lower()', code: 'lower(text)' },
+                    { label: 'upper()', code: 'upper(text)' },
+                    { label: 'contains()', code: 'contains(text, word)' },
+                    { label: 'dateAdd()', code: 'dateAdd(date, 5, "days")' },
+                    { label: 'length()', code: 'length(text)' },
+                    { label: 'add()', code: 'add(a, b)' },
+                    { label: 'subtract()', code: 'subtract(a, b)' }
+                  ].map(fn => (
+                    <button
+                      key={fn.label}
+                      onClick={() => {
+                        const txtArea = document.getElementById('formula-textarea');
+                        if (txtArea) {
+                          const val = property.config?.formula || '';
+                          const start = txtArea.selectionStart;
+                          const end = txtArea.selectionEnd;
+                          const insertStr = fn.code;
+                          const next = val.substring(0, start) + insertStr + val.substring(end);
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, formula: next }
+                          });
+                          setTimeout(() => {
+                            txtArea.focus();
+                            txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                          }, 50);
+                        }
+                      }}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '1px 5px',
+                        fontSize: '10px',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {fn.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

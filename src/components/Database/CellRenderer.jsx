@@ -7,6 +7,7 @@ import SelectDropdown from './SelectDropdown';
 import DatePicker from './DatePicker';
 import { useDatabaseStore } from '../../stores/databaseStore';
 import { db } from '../../db/database';
+import { resolvePropertyValue } from '../../core/queryEngine';
 
 function RelationDropdown({ relatedDatabaseId, selectedRowIds, onChange, stopEditing }) {
   const [search, setSearch] = useState('');
@@ -134,7 +135,8 @@ export default function CellRenderer({
   startEditing, 
   stopEditing,
   blockId,
-  rowValues
+  rowValues,
+  row
 }) {
   const inputRef = useRef(null);
   const [localValue, setLocalValue] = useState(value);
@@ -460,6 +462,16 @@ export default function CellRenderer({
         );
       }
 
+      case PROPERTY_TYPES.FORMULA: {
+        const currentSchema = useDatabaseStore.getState().getDatabaseData(blockId)?.schema || [];
+        const formulaVal = resolvePropertyValue(row || { id: '', values: rowValues }, property, currentSchema);
+        return (
+          <div className="db-cell-formula text-xs font-mono" style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            {formulaVal !== undefined && formulaVal !== null && formulaVal !== '' ? String(formulaVal) : 'Empty'}
+          </div>
+        );
+      }
+
       default:
         return <div className="text-error">Error</div>;
     }
@@ -471,7 +483,8 @@ export default function CellRenderer({
       onDoubleClick={
         property.type !== PROPERTY_TYPES.CHECKBOX && 
         property.type !== PROPERTY_TYPES.CREATED_AT && 
-        property.type !== PROPERTY_TYPES.ROLLUP 
+        property.type !== PROPERTY_TYPES.ROLLUP &&
+        property.type !== PROPERTY_TYPES.FORMULA
           ? startEditing 
           : undefined
       }

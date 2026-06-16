@@ -15,6 +15,78 @@ const encryptCellForDB = async (cellObj) => {
   }
   return dbCell;
 };
+
+const syncReciprocalRelation = async (blockId, rowId, propertyId, newValue, oldValue) => {
+  const { schema } = useDatabaseStore.getState().getDatabaseData(blockId);
+  const prop = schema.find(p => p.id === propertyId);
+  if (!prop || prop.type !== 'relation') return;
+
+  const { relatedDatabaseId, reciprocalPropertyId } = prop.config || {};
+  if (!relatedDatabaseId || !reciprocalPropertyId) return;
+
+  const prevArray = Array.isArray(oldValue) ? oldValue : [];
+  const nextArray = Array.isArray(newValue) ? newValue : [];
+
+  const added = nextArray.filter(id => !prevArray.includes(id));
+  const removed = prevArray.filter(id => !nextArray.includes(id));
+
+  const targetStore = useDatabaseStore.getState();
+
+  if (!targetStore.databases[relatedDatabaseId]) {
+    const block = await db.blocks.get(relatedDatabaseId);
+    if (block) {
+      await targetStore.initializeDatabase(relatedDatabaseId, block.properties?.schema || [], []);
+    }
+  }
+
+  const updateTargetCell = async (targetRowId, isAdd) => {
+    const targetData = targetStore.getDatabaseData(relatedDatabaseId);
+    const targetRow = targetData.rows.find(r => r.id === targetRowId);
+    if (!targetRow) return;
+
+    const currentRecipVal = Array.isArray(targetRow.values[reciprocalPropertyId]) 
+      ? targetRow.values[reciprocalPropertyId] 
+      : [];
+
+    let nextRecipVal;
+    if (isAdd) {
+      nextRecipVal = currentRecipVal.includes(rowId) ? currentRecipVal : [...currentRecipVal, rowId];
+    } else {
+      nextRecipVal = currentRecipVal.filter(id => id !== rowId);
+    }
+
+    const updatedRows = targetData.rows.map(r => {
+      if (r.id === targetRowId) {
+        return {
+          ...r,
+          updatedAt: Date.now(),
+          values: { ...r.values, [reciprocalPropertyId]: nextRecipVal }
+        };
+      }
+      return r;
+    });
+
+    targetStore._updateLocal(relatedDatabaseId, { rows: updatedRows });
+
+    const cell = {
+      id: `${targetRowId}_${reciprocalPropertyId}`,
+      rowId: targetRowId,
+      blockId: relatedDatabaseId,
+      propertyId: reciprocalPropertyId,
+      value: nextRecipVal,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const encryptedCell = await encryptCellForDB(cell);
+    await db.database_cells.put(encryptedCell);
+  };
+
+  await Promise.all([
+    ...added.map(id => updateTargetCell(id, true)),
+    ...removed.map(id => updateTargetCell(id, false))
+  ]);
+};
+
 const EMPTY_ARRAY = [];
 
 const DEFAULT_SCHEMA = [
@@ -260,6 +332,26 @@ export const useDatabaseStore = create((set, get) => ({
     return newProp;
   },
 
+  addPropertyToSchema: async (blockId, property) => {
+    const data = get().databases[blockId];
+    let schema = [];
+    if (data && data.initialized) {
+      schema = data.schema;
+    } else {
+      const block = useBlockStore.getState().getBlock(blockId);
+      if (block) {
+        schema = block.properties?.schema || [];
+      } else {
+        const dbBlock = await db.blocks.get(blockId);
+        schema = dbBlock?.properties?.schema || [];
+      }
+    }
+    const newSchema = [...schema, property];
+
+    get()._updateLocal(blockId, { schema: newSchema });
+    await get()._immediateSave(blockId, { schema: newSchema });
+  },
+
   updateProperty: async (blockId, propertyId, updates) => {
     const { schema } = get().getDatabaseData(blockId);
     const newSchema = schema.map(p => p.id === propertyId ? { ...p, ...updates } : p);
@@ -340,6 +432,9 @@ export const useDatabaseStore = create((set, get) => ({
 
   updateCell: (blockId, rowId, propertyId, value) => {
     const { rows } = get().getDatabaseData(blockId);
+    const oldRow = rows.find(r => r.id === rowId);
+    const oldValue = oldRow ? oldRow.values[propertyId] : null;
+
     let updatedRow = null;
     const newRows = rows.map(row => {
       if (row.id === rowId) {
@@ -373,11 +468,17 @@ export const useDatabaseStore = create((set, get) => ({
       encryptCellForDB(cell).then(encryptedCell => {
         db.database_cells.put(encryptedCell);
       });
+
+      // Reciprocal sync
+      syncReciprocalRelation(blockId, rowId, propertyId, value, oldValue);
     }
   },
 
   updateCellImmediate: async (blockId, rowId, propertyId, value) => {
     const { rows } = get().getDatabaseData(blockId);
+    const oldRow = rows.find(r => r.id === rowId);
+    const oldValue = oldRow ? oldRow.values[propertyId] : null;
+
     let updatedRow = null;
     const newRows = rows.map(row => {
       if (row.id === rowId) {
@@ -412,6 +513,9 @@ export const useDatabaseStore = create((set, get) => ({
       const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: updatedRow.updatedAt };
       const encryptedCell = await encryptCellForDB(cell);
       await db.database_cells.put(encryptedCell);
+
+      // Reciprocal sync
+      await syncReciprocalRelation(blockId, rowId, propertyId, value, oldValue);
     }
   },
 

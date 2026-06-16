@@ -106,6 +106,7 @@ export const PROPERTY_TYPES = {
   CREATED_AT: 'created_at',
   RELATION: 'relation',
   ROLLUP: 'rollup',
+  FORMULA: 'formula',
 };
 
 export const PROPERTY_TYPE_META = {
@@ -121,6 +122,7 @@ export const PROPERTY_TYPE_META = {
   [PROPERTY_TYPES.CREATED_AT]:   { label: 'Created',      icon: 'Clock',      description: 'Auto timestamp' },
   [PROPERTY_TYPES.RELATION]:     { label: 'Relation',     icon: 'Database',   description: 'Link another database' },
   [PROPERTY_TYPES.ROLLUP]:       { label: 'Rollup',       icon: 'Sigma',      description: 'Aggregate linked values' },
+  [PROPERTY_TYPES.FORMULA]:      { label: 'Formula',      icon: 'Calculator', description: 'Calculate values' },
 };
 
 export const PROPERTY_COLORS = [

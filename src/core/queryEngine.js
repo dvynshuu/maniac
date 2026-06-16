@@ -10,14 +10,16 @@ import { useStore } from 'zustand';
 import { useBlockStore } from '../stores/blockStore';
 import { useDatabaseStore } from '../stores/databaseStore';
 import { useBacklinkStore } from '../stores/backlinkStore';
+import { evaluateFormula } from './formulaEngine';
 
 const EMPTY_ARRAY = [];
 
 /**
  * Resolves a property value, including dynamic aggregation for Rollups.
  */
-export function resolvePropertyValue(row, prop, schema) {
+export function resolvePropertyValue(row, prop, schema, visited = new Set()) {
   if (!prop) return undefined;
+  
   if (prop.type === 'rollup') {
     const { relationPropertyId, targetPropertyId, calculate } = prop.config || {};
     if (!relationPropertyId || !targetPropertyId) return '';
@@ -36,7 +38,8 @@ export function resolvePropertyValue(row, prop, schema) {
 
     const values = relatedRowIds.map(id => {
       const r = relatedRows.find(item => item.id === id);
-      return r ? r.values[targetPropertyId] : null;
+      // Pass the visited set to target property resolution to prevent loops
+      return r ? resolvePropertyValue(r, relatedDb.schema.find(p => p.id === targetPropertyId), relatedDb.schema, visited) : null;
     }).filter(v => v !== undefined && v !== null && v !== '');
 
     switch (calculate) {
@@ -68,6 +71,17 @@ export function resolvePropertyValue(row, prop, schema) {
       default:
         return values.join(', ');
     }
+  }
+
+  if (prop.type === 'formula') {
+    const formulaStr = prop.config?.formula;
+    if (visited.has(prop.id)) {
+      return '#CYCLE!';
+    }
+    visited.add(prop.id);
+    const result = evaluateFormula(formulaStr, row, schema, row.values, resolvePropertyValue, visited);
+    visited.delete(prop.id);
+    return result;
   }
 
   return row.values[prop.id];

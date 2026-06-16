@@ -44,6 +44,7 @@ const DataRow = memo(({ row, schema, blockId, activeCell, editingCell, onCellInt
             onFocus={() => onCellInteraction('active', row.id, prop.id)}
             blockId={blockId}
             rowValues={row.values}
+            row={row}
           />
         </td>
       ))}
