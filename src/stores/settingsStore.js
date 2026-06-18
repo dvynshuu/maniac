@@ -37,6 +37,10 @@ export const useSettingsStore = create(
       stalePageAlerts: true,
       stalePageThresholdDays: 14,
 
+      // ─── Active Recall (SRS) ─────────────────────────
+      srsStreak: 0,
+      srsLastReviewDate: null,
+
       // ─── Setters ─────────────────────────────────────
       setSetting: (key, value) => set({ [key]: value }),
       
@@ -62,6 +66,8 @@ export const useSettingsStore = create(
         soundEnabled: false,
         stalePageAlerts: true,
         stalePageThresholdDays: 14,
+        srsStreak: 0,
+        srsLastReviewDate: null,
       }),
     }),
     {

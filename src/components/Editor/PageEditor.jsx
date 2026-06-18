@@ -13,7 +13,7 @@ import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
 import EmojiIcon from '../Common/EmojiIcon';
 import { debounce } from '../../utils/helpers';
-import { ImageIcon, X, Cloud } from 'lucide-react';
+import { ImageIcon, X, Cloud, Brain } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
@@ -21,6 +21,7 @@ import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useSelectionStore } from '../../core/editor/selectionStore';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
 import { DragDropContext } from './DragDropContext';
+import ActiveRecallPanel from './ActiveRecallPanel';
 
 function PageEditor({ pageId: pageIdProp } = {}) {
   const { pageId: paramPageId } = useParams();
@@ -42,6 +43,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showCoverHover, setShowCoverHover] = useState(false);
   const [coverUrl, setCoverUrl] = useState(null);
+  const [showSrsPopover, setShowSrsPopover] = useState(false);
   const titleInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const [scrollElement, setScrollElement] = useState(null);
@@ -294,18 +296,52 @@ function PageEditor({ pageId: pageIdProp } = {}) {
       {!isModal && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
           <Breadcrumb />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-            {isSaving ? (
-              <>
-                <Cloud size={14} className="animate-pulse" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Cloud size={14} style={{ color: 'var(--success)' }} />
-                <span>Saved</span>
-              </>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
+            <button
+              onClick={() => setShowSrsPopover(!showSrsPopover)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: page.srsEnabled ? 'rgba(46, 91, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                border: page.srsEnabled ? '1px solid rgba(46, 91, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: page.srsEnabled ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+            >
+              <Brain size={13} />
+              <span>Active Recall</span>
+              {page.srsEnabled && page.srsNextReview && page.srsNextReview <= Date.now() && (
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f87171' }} />
+              )}
+            </button>
+
+            {showSrsPopover && (
+              <ActiveRecallPanel 
+                page={page} 
+                updatePage={updatePage} 
+                onClose={() => setShowSrsPopover(false)} 
+              />
             )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isSaving ? (
+                <>
+                  <Cloud size={14} className="animate-pulse" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Cloud size={14} style={{ color: 'var(--success)' }} />
+                  <span>Saved</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -15,10 +15,12 @@ import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
+import { useNotificationStore } from '../../stores/notificationStore';
+import { Flame } from 'lucide-react';
+import RecallChallengeModal from './RecallChallengeModal';
 import GraphView from './GraphView';
 import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
-import { useNotificationStore } from '../../stores/notificationStore';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -119,6 +121,15 @@ function IntelligenceTab({ navigate }) {
   const { nextActions, forgetting, weeklyFocus, knowledgeVelocity, analyze, isAnalyzing } = useIntelligenceStore();
   const key = useSecurityStore(s => s.derivedKey);
 
+  // Active Recall additions
+  const pages = usePageStore(s => s.pages);
+  const updatePage = usePageStore(s => s.updatePage);
+  const srsStreak = useSettingsStore(s => s.srsStreak);
+  const [srsModalOpen, setSrsModalOpen] = useState(false);
+
+  const srsPages = pages.filter(p => p.srsEnabled);
+  const duePages = srsPages.filter(p => p.srsNextReview && p.srsNextReview <= Date.now());
+
   useEffect(() => {
     analyze();
   }, [key]);
@@ -142,6 +153,78 @@ function IntelligenceTab({ navigate }) {
         </div>
         <p style={{ fontSize: '16px', color: 'var(--text-tertiary)', margin: 0 }}>Intelligence derived from your behavior and content.</p>
       </div>
+
+      {/* Active Recall Spaced Repetition Card */}
+      <div 
+        className="intelligence-card" 
+        style={{ 
+          background: duePages.length > 0 ? 'rgba(46, 91, 255, 0.04)' : 'var(--bg-secondary)', 
+          border: duePages.length > 0 ? '1px solid rgba(46, 91, 255, 0.25)' : '1px solid var(--border-subtle)',
+          borderRadius: '16px', 
+          padding: '24px', 
+          marginBottom: '32px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(46, 91, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Brain size={20} color="var(--accent-primary)" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Active Recall Queue</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                {srsPages.length === 0 
+                  ? 'Enable Spaced Repetition on your pages to retain information.' 
+                  : duePages.length === 0 
+                    ? 'All caught up! Your memory traces are reinforced and stable.' 
+                    : `${duePages.length} notes are due for cognitive recall checks.`}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#fb923c', fontWeight: 'bold', background: 'rgba(251, 146, 60, 0.08)', padding: '6px 12px', borderRadius: '20px' }}>
+            <Flame size={16} fill="#fb923c" />
+            <span>Streak: {srsStreak || 0}d</span>
+          </div>
+        </div>
+
+        {srsPages.length > 0 && (
+          <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', width: '100%', overflow: 'hidden' }}>
+            <div 
+              style={{
+                height: '100%',
+                background: 'var(--accent-primary)',
+                width: `${srsPages.length > 0 ? ((srsPages.length - duePages.length) / srsPages.length) * 100 : 0}%`,
+                transition: 'width 0.3s ease'
+              }}
+            />
+          </div>
+        )}
+
+        {duePages.length > 0 ? (
+          <button 
+            className="btn btn-primary"
+            onClick={() => setSrsModalOpen(true)}
+            style={{ padding: '12px', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+          >
+            <Brain size={16} /> Start Recall Checks ({duePages.length} due)
+          </button>
+        ) : srsPages.length === 0 ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+            Tip: Go to any page and toggle "Active Recall" in the page header to add it to your daily practice.
+          </div>
+        ) : null}
+      </div>
+
+      {srsModalOpen && (
+        <RecallChallengeModal 
+          duePages={duePages} 
+          updatePage={updatePage} 
+          onClose={() => setSrsModalOpen(false)} 
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
         {/* Next Actions */}

@@ -266,6 +266,141 @@ export default function CellRenderer({
     }
   };
 
+  const renderNumericProgressValue = (rawValue) => {
+    const num = parseFloat(rawValue);
+    if (isNaN(num)) {
+      return <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>—</span>;
+    }
+
+    // Get configuration
+    const numberFormat = property.config?.numberFormat || 'number';
+    const decimalPlaces = property.config?.decimalPlaces !== undefined ? property.config.decimalPlaces : 0;
+    const showAs = property.config?.showAs || 'number';
+    const showNumber = property.config?.showNumber !== false;
+    const progressColor = property.config?.progressColor || 'blue';
+    
+    // Max value: default to 1 if percent format and not set, or 100 if number
+    const maxValue = property.config?.maxValue !== undefined 
+      ? parseFloat(property.config.maxValue) 
+      : (numberFormat === 'percent' ? 1 : 100);
+
+    // Compute percentage (for Bar and Ring)
+    let percentage = 0;
+    if (maxValue > 0) {
+      percentage = Math.min(100, Math.max(0, (num / maxValue) * 100));
+    }
+
+    // Value formatting
+    let displayValue = num;
+    let prefix = '';
+    let suffix = '';
+
+    if (numberFormat === 'percent') {
+      // If max value is 1 (like 0.42 = 42%), multiply by 100 for display
+      displayValue = maxValue === 1 ? num * 100 : num;
+      suffix = '%';
+    } else if (numberFormat === 'usd') {
+      prefix = '$';
+    } else if (numberFormat === 'eur') {
+      prefix = '€';
+    } else if (numberFormat === 'gbp') {
+      prefix = '£';
+    }
+
+    const formattedNum = displayValue.toFixed(decimalPlaces);
+    const label = `${prefix}${formattedNum}${suffix}`;
+
+    // Get hex color mapping
+    const colorsMap = {
+      blue: 'var(--accent-primary)',
+      green: 'var(--success)',
+      purple: '#a78bfa',
+      orange: 'var(--warning)',
+      red: '#f87171'
+    };
+    const color = colorsMap[progressColor] || 'var(--accent-primary)';
+
+    if (showAs === 'bar') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', minWidth: '85px', padding: '2px 0' }}>
+          <div 
+            style={{ 
+              height: '6px', 
+              background: 'rgba(255, 255, 255, 0.08)', 
+              borderRadius: '3px', 
+              flex: 1, 
+              overflow: 'hidden',
+              display: 'flex'
+            }}
+          >
+            <div 
+              style={{ 
+                height: '100%', 
+                background: color, 
+                width: `${percentage}%`,
+                transition: 'width 0.3s ease',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+          {showNumber && (
+            <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+              {label}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    if (showAs === 'ring') {
+      const radius = 6;
+      const strokeWidth = 2.0;
+      const circumference = 2 * Math.PI * radius;
+      const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '60px', padding: '2px 0' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ transform: 'rotate(-90deg)', overflow: 'visible', flexShrink: 0 }}>
+            {/* Background track circle */}
+            <circle
+              cx="8"
+              cy="8"
+              r={radius}
+              fill="transparent"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth={strokeWidth}
+            />
+            {/* Colored progress circle */}
+            <circle
+              cx="8"
+              cy="8"
+              r={radius}
+              fill="transparent"
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            />
+          </svg>
+          {showNumber && (
+            <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+              {label}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // Plain Number format
+    return (
+      <div className="db-cell-number text-right" style={{ fontFamily: 'monospace', color: 'var(--text-primary)', width: '100%', fontSize: '12px' }}>
+        {label}
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (property.type) {
       case PROPERTY_TYPES.TEXT:
@@ -294,7 +429,7 @@ export default function CellRenderer({
             onKeyDown={handleKeyDown}
           />
         ) : (
-          <div className="db-cell-number text-right">{value || ''}</div>
+          renderNumericProgressValue(value)
         );
 
       case PROPERTY_TYPES.CHECKBOX:
@@ -455,6 +590,10 @@ export default function CellRenderer({
 
       case PROPERTY_TYPES.ROLLUP: {
         const rollupVal = getRollupValue();
+        const num = parseFloat(rollupVal);
+        if (rollupVal !== null && rollupVal !== '' && !isNaN(num)) {
+          return renderNumericProgressValue(rollupVal);
+        }
         return (
           <div className="db-cell-rollup text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
             {rollupVal !== null ? String(rollupVal) : 'Empty'}
@@ -465,6 +604,10 @@ export default function CellRenderer({
       case PROPERTY_TYPES.FORMULA: {
         const currentSchema = useDatabaseStore.getState().getDatabaseData(blockId)?.schema || [];
         const formulaVal = resolvePropertyValue(row || { id: '', values: rowValues }, property, currentSchema);
+        const num = parseFloat(formulaVal);
+        if (formulaVal !== undefined && formulaVal !== null && formulaVal !== '' && !isNaN(num)) {
+          return renderNumericProgressValue(formulaVal);
+        }
         return (
           <div className="db-cell-formula text-xs font-mono" style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
             {formulaVal !== undefined && formulaVal !== null && formulaVal !== '' ? String(formulaVal) : 'Empty'}

@@ -123,6 +123,215 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
             </div>
           </button>
 
+          {/* Progress / Number Visualization Panel */}
+          {(property.type === PROPERTY_TYPES.NUMBER || property.type === PROPERTY_TYPES.ROLLUP || property.type === PROPERTY_TYPES.FORMULA) && (
+            <>
+              <div className="db-menu-divider" />
+              <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Format & Visuals</div>
+                
+                {/* Number Format */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Number format</span>
+                  <select
+                    className="db-menu-select"
+                    value={property.config?.numberFormat || 'number'}
+                    onChange={(e) => {
+                      const fmt = e.target.value;
+                      const defaultMax = fmt === 'percent' ? 1 : 100;
+                      updateProperty(blockId, property.id, {
+                        config: { 
+                          ...property.config, 
+                          numberFormat: fmt,
+                          maxValue: property.config?.maxValue !== undefined ? property.config.maxValue : defaultMax
+                        }
+                      });
+                    }}
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      padding: '2px 4px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="number">Number</option>
+                    <option value="percent">Percent</option>
+                    <option value="usd">US Dollar ($)</option>
+                    <option value="eur">Euro (€)</option>
+                    <option value="gbp">Pound (£)</option>
+                  </select>
+                </div>
+
+                {/* Decimal Places */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Decimal places</span>
+                  <select
+                    className="db-menu-select"
+                    value={property.config?.decimalPlaces !== undefined ? property.config.decimalPlaces : 0}
+                    onChange={(e) => {
+                      updateProperty(blockId, property.id, {
+                        config: { ...property.config, decimalPlaces: Number(e.target.value) }
+                      });
+                    }}
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      padding: '2px 4px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {[0, 1, 2, 3, 4].map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Show as Toggle */}
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>Show as</div>
+                  <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-subtle)', padding: '2px', gap: '2px' }}>
+                    {[
+                      { value: 'number', label: 'Number' },
+                      { value: 'bar', label: 'Bar' },
+                      { value: 'ring', label: 'Ring' }
+                    ].map(opt => {
+                      const active = (property.config?.showAs || 'number') === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            updateProperty(blockId, property.id, {
+                              config: { ...property.config, showAs: opt.value }
+                            });
+                          }}
+                          style={{
+                            flex: 1,
+                            background: active ? 'var(--bg-hover)' : 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                            fontSize: '11px',
+                            fontWeight: active ? 'bold' : 'normal',
+                            padding: '4px 0',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Conditional Visual Settings (if Bar or Ring) */}
+                {((property.config?.showAs || 'number') !== 'number') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                    {/* Color */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Color</span>
+                      <select
+                        value={property.config?.progressColor || 'blue'}
+                        onChange={(e) => {
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, progressColor: e.target.value }
+                          });
+                        }}
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-primary)',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="blue">Blue</option>
+                        <option value="green">Green</option>
+                        <option value="purple">Purple</option>
+                        <option value="orange">Orange</option>
+                        <option value="red">Red</option>
+                      </select>
+                    </div>
+
+                    {/* Show Number Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Show number</span>
+                      <button
+                        type="button"
+                        className={`setting-toggle ${(property.config?.showNumber !== false) ? 'on' : ''}`}
+                        onClick={() => {
+                          const val = property.config?.showNumber !== false;
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, showNumber: !val }
+                          });
+                        }}
+                        style={{
+                          width: '32px',
+                          height: '16px',
+                          borderRadius: '8px',
+                          background: (property.config?.showNumber !== false) ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+                          border: 'none',
+                          position: 'relative',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div 
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            background: '#fff',
+                            position: 'absolute',
+                            top: '3px',
+                            left: (property.config?.showNumber !== false) ? '19px' : '3px',
+                            transition: 'left 0.2s'
+                          }}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Max Value */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Max value</span>
+                      <input
+                        type="number"
+                        className="db-menu-input"
+                        value={property.config?.maxValue !== undefined ? property.config.maxValue : (property.config?.numberFormat === 'percent' ? 1 : 100)}
+                        onChange={(e) => {
+                          updateProperty(blockId, property.id, {
+                            config: { ...property.config, maxValue: parseFloat(e.target.value) || 100 }
+                          });
+                        }}
+                        style={{
+                          width: '60px',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-primary)',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          textAlign: 'right'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP || property.type === PROPERTY_TYPES.FORMULA) && (
             <div className="db-menu-divider" />
           )}
