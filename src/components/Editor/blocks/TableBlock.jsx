@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator } from 'lucide-react';
+import { evaluateFormula } from '../../../core/formulaEngine';
+import { getPlainText } from '../../../utils/helpers';
 
 // TableCell component to manage contentEditable cells cleanly
 const TableCell = React.memo(({ value, onInput, onBlur, className, rowIndex, colIndex, ...props }) => {
@@ -64,6 +66,9 @@ export default function TableBlock({ block }) {
   const [rowHeights, setRowHeights] = useState(isMigrated ? (block.properties.rowHeights || [40, 40]) : [40, 40]);
   const [rowColors, setRowColors] = useState(block.properties.rowColors || {});
   const [colColors, setColColors] = useState(block.properties.colColors || {});
+  const [colTypes, setColTypes] = useState(block.properties.colTypes || {});
+  const [colConfigs, setColConfigs] = useState(block.properties.colConfigs || {});
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   
   const [resizingCol, setResizingCol] = useState(null);
   const [resizingRow, setResizingRow] = useState(null);
@@ -92,7 +97,9 @@ export default function TableBlock({ block }) {
           columnWidths: [200, 200],
           rowHeights: [40, 40],
           rowColors: {},
-          colColors: {}
+          colColors: {},
+          colTypes: {},
+          colConfigs: {}
         } 
       });
     }
@@ -133,7 +140,9 @@ const isArraysEqual = (arr1, arr2) => {
     if (block.properties.hasHeaderCol !== undefined) setHasHeaderCol(block.properties.hasHeaderCol);
     if (block.properties.rowColors) setRowColors(block.properties.rowColors);
     if (block.properties.colColors) setColColors(block.properties.colColors);
-  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors]);
+    if (block.properties.colTypes) setColTypes(block.properties.colTypes);
+    if (block.properties.colConfigs) setColConfigs(block.properties.colConfigs);
+  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs]);
 
   const saveTimerRef = useRef(null);
 
@@ -144,11 +153,11 @@ const isArraysEqual = (arr1, arr2) => {
     }
   };
 
-  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors) => {
+  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs) => {
     cancelDebouncedSave();
     saveTimerRef.current = setTimeout(() => {
       const sanitizedCells = newCells.map(row => row.map(cell => sanitize(cell)));
-      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors);
+      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs);
     }, 500);
   };
 
@@ -158,7 +167,7 @@ const isArraysEqual = (arr1, arr2) => {
     };
   }, []);
 
-  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors) => {
+  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs) => {
     cancelDebouncedSave();
     engine.updateBlock(block.id, { 
       properties: { 
@@ -168,7 +177,9 @@ const isArraysEqual = (arr1, arr2) => {
         columnWidths: newWidths,
         rowHeights: newHeights,
         rowColors: newRowColors,
-        colColors: newColColors
+        colColors: newColColors,
+        colTypes: newColTypes,
+        colConfigs: newColConfigs
       } 
     });
   };
@@ -180,6 +191,7 @@ const isArraysEqual = (arr1, arr2) => {
     setSelectedColIndex(null);
     setSearchQuery('');
     setColorMenu(null);
+    setTypeMenuOpen(false);
   };
 
   const handleCellInput = (rowIndex, colIndex, html) => {
@@ -238,10 +250,32 @@ const isArraysEqual = (arr1, arr2) => {
       }
     });
 
+    const newColTypes = {};
+    Object.entries(colTypes).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k >= targetIdx) {
+        newColTypes[k + 1] = val;
+      } else {
+        newColTypes[k] = val;
+      }
+    });
+
+    const newColConfigs = {};
+    Object.entries(colConfigs).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k >= targetIdx) {
+        newColConfigs[k + 1] = val;
+      } else {
+        newColConfigs[k] = val;
+      }
+    });
+
     setCells(newCells);
     setColumnWidths(newWidths);
     setColColors(newColColors);
-    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors);
+    setColTypes(newColTypes);
+    setColConfigs(newColConfigs);
+    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors, newColTypes, newColConfigs);
   };
 
   const clearColumn = (index) => {
@@ -269,10 +303,32 @@ const isArraysEqual = (arr1, arr2) => {
       }
     });
 
+    const newColTypes = {};
+    Object.entries(colTypes).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k > index) {
+        newColTypes[k - 1] = val;
+      } else if (k < index) {
+        newColTypes[k] = val;
+      }
+    });
+
+    const newColConfigs = {};
+    Object.entries(colConfigs).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k > index) {
+        newColConfigs[k - 1] = val;
+      } else if (k < index) {
+        newColConfigs[k] = val;
+      }
+    });
+
     setCells(newCells);
     setColumnWidths(newWidths);
     setColColors(newColColors);
-    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors);
+    setColTypes(newColTypes);
+    setColConfigs(newColConfigs);
+    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors, newColTypes, newColConfigs);
   };
 
   const insertRow = (index, position) => {
@@ -378,10 +434,38 @@ const isArraysEqual = (arr1, arr2) => {
       newColColors[index + 1] = colColors[index];
     }
 
+    const newColTypes = {};
+    Object.entries(colTypes).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k > index) {
+        newColTypes[k + 1] = val;
+      } else {
+        newColTypes[k] = val;
+      }
+    });
+    if (colTypes[index]) {
+      newColTypes[index + 1] = colTypes[index];
+    }
+
+    const newColConfigs = {};
+    Object.entries(colConfigs).forEach(([key, val]) => {
+      const k = parseInt(key, 10);
+      if (k > index) {
+        newColConfigs[k + 1] = val;
+      } else {
+        newColConfigs[k] = val;
+      }
+    });
+    if (colConfigs[index]) {
+      newColConfigs[index + 1] = JSON.parse(JSON.stringify(colConfigs[index]));
+    }
+
     setCells(newCells);
     setColumnWidths(newWidths);
     setColColors(newColColors);
-    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors);
+    setColTypes(newColTypes);
+    setColConfigs(newColConfigs);
+    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors, newColTypes, newColConfigs);
   };
 
   const applyColor = (type, index, colorName) => {
@@ -395,6 +479,198 @@ const isArraysEqual = (arr1, arr2) => {
       save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, newColColors);
     }
     closeMenu();
+  };
+
+  const setColumnType = (colIndex, newType) => {
+    const nextColTypes = { ...colTypes, [colIndex]: newType };
+    let nextColConfigs = { ...colConfigs };
+    if (newType === 'formula') {
+      nextColConfigs[colIndex] = {
+        formula: '',
+        numberFormat: 'number',
+        decimalPlaces: 0,
+        showAs: 'number',
+        progressColor: 'blue'
+      };
+    } else {
+      delete nextColConfigs[colIndex];
+    }
+    setColTypes(nextColTypes);
+    setColConfigs(nextColConfigs);
+    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, nextColTypes, nextColConfigs);
+    setTypeMenuOpen(false);
+  };
+
+  const getColumnLetter = (index) => {
+    let letter = '';
+    let temp = index;
+    while (temp >= 0) {
+      letter = String.fromCharCode((temp % 26) + 65) + letter;
+      temp = Math.floor(temp / 26) - 1;
+    }
+    return letter;
+  };
+
+  const resolveTableValue = (rowObj, prop, currentSchema, visited = new Set()) => {
+    const cIndex = parseInt(prop.id, 10);
+    const colType = colTypes[cIndex] || 'text';
+    if (colType === 'formula') {
+      const formulaStr = colConfigs[cIndex]?.formula;
+      if (!formulaStr) return '';
+      if (visited.has(prop.id)) {
+        return '#CYCLE!';
+      }
+      visited.add(prop.id);
+      const result = evaluateFormula(
+        formulaStr,
+        rowObj,
+        currentSchema,
+        rowObj.values,
+        resolveTableValue,
+        visited
+      );
+      visited.delete(prop.id);
+      return result;
+    }
+    const cellHtml = rowObj.values[prop.id] || '';
+    return getPlainText(cellHtml).trim();
+  };
+
+  const renderFormulaValue = (rawValue, colIndex) => {
+    const config = colConfigs[colIndex] || {};
+    const numberFormat = config.numberFormat || 'number';
+    const decimalPlaces = config.decimalPlaces !== undefined ? config.decimalPlaces : 0;
+    const showAs = config.showAs || 'number';
+    const progressColor = config.progressColor || 'blue';
+    const showNumber = config.showNumber !== false;
+
+    const num = parseFloat(rawValue);
+    if (isNaN(num)) {
+      if (rawValue === '#CYCLE!') {
+        return <span className="font-mono text-xs" style={{ color: 'var(--text-error)' }}>{rawValue}</span>;
+      }
+      if (typeof rawValue === 'string' && rawValue.startsWith('#ERROR:')) {
+        return <span className="font-mono text-xs" style={{ color: 'var(--text-error)' }} title={rawValue}>#ERROR!</span>;
+      }
+      return (
+        <div className="table-cell-formula text-xs font-mono italic" style={{ color: 'var(--text-secondary)' }}>
+          {rawValue !== undefined && rawValue !== null && rawValue !== '' ? String(rawValue) : 'Empty'}
+        </div>
+      );
+    }
+
+    const maxValue = config.maxValue !== undefined 
+      ? parseFloat(config.maxValue) 
+      : (numberFormat === 'percent' ? 1 : 100);
+
+    let percentage = 0;
+    if (maxValue > 0) {
+      percentage = Math.min(100, Math.max(0, (num / maxValue) * 100));
+    }
+
+    let displayValue = num;
+    let prefix = '';
+    let suffix = '';
+
+    if (numberFormat === 'percent') {
+      displayValue = maxValue === 1 ? num * 100 : num;
+      suffix = '%';
+    } else if (numberFormat === 'usd') {
+      prefix = '$';
+    } else if (numberFormat === 'eur') {
+      prefix = '€';
+    } else if (numberFormat === 'gbp') {
+      prefix = '£';
+    }
+
+    const formattedNum = displayValue.toFixed(decimalPlaces);
+    const label = `${prefix}${formattedNum}${suffix}`;
+
+    const colorsMap = {
+      blue: 'var(--accent-primary)',
+      green: 'var(--success)',
+      purple: '#a78bfa',
+      orange: 'var(--warning)',
+      red: '#f87171'
+    };
+    const color = colorsMap[progressColor] || 'var(--accent-primary)';
+
+    if (showAs === 'bar') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', minWidth: '85px', padding: '2px 0' }}>
+          <div 
+            style={{ 
+              height: '6px', 
+              background: 'rgba(255, 255, 255, 0.08)', 
+              borderRadius: '3px', 
+              flex: 1, 
+              overflow: 'hidden',
+              display: 'flex'
+            }}
+          >
+            <div 
+              style={{ 
+                height: '100%', 
+                background: color, 
+                width: `${percentage}%`,
+                transition: 'width 0.3s ease',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+          {showNumber && (
+            <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+              {label}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    if (showAs === 'ring') {
+      const radius = 6;
+      const strokeWidth = 2.0;
+      const circumference = 2 * Math.PI * radius;
+      const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '60px', padding: '2px 0' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ transform: 'rotate(-90deg)', overflow: 'visible', flexShrink: 0 }}>
+            <circle
+              cx="8"
+              cy="8"
+              r={radius}
+              fill="transparent"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth={strokeWidth}
+            />
+            <circle
+              cx="8"
+              cy="8"
+              r={radius}
+              fill="transparent"
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            />
+          </svg>
+          {showNumber && (
+            <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+              {label}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ fontFamily: 'monospace', color: 'var(--text-primary)', width: '100%', fontSize: '12px', textAlign: 'right' }}>
+        {label}
+      </div>
+    );
   };
 
   // Resizing Handlers
@@ -587,15 +863,57 @@ const isArraysEqual = (arr1, arr2) => {
                             </div>
                           )}
 
-                          <TableCell
-                            key={`cell-${rowIndex}-${colIndex}`}
-                            className="table-cell-editable"
-                            data-row={rowIndex}
-                            data-col={colIndex}
-                            value={cell}
-                            onInput={(html) => handleCellInput(rowIndex, colIndex, html)}
-                            onBlur={(html) => handleCellBlur(rowIndex, colIndex, html)}
-                          />
+                          {colTypes[colIndex] === 'formula' && !isHeaderRow ? (
+                            <div className="table-cell-readonly font-mono" style={{ padding: '8px', minHeight: '34px', display: 'flex', alignItems: 'center', width: '100%' }}>
+                              {(() => {
+                                const rowObj = {
+                                  id: String(rowIndex),
+                                  values: {}
+                                };
+                                row.forEach((val, c) => {
+                                  rowObj.values[String(c)] = val;
+                                });
+
+                                const mockSchema = [];
+                                columnWidths.forEach((_, c) => {
+                                  const letter = getColumnLetter(c);
+                                  const headerText = (hasHeader && cells[0]?.[c]) ? getPlainText(cells[0][c]).trim() : '';
+                                  const colType = colTypes[c] || 'text';
+                                  const colConfig = colConfigs[c] || {};
+                                  
+                                  mockSchema.push({
+                                    id: String(c),
+                                    name: headerText || letter,
+                                    type: colType,
+                                    config: colConfig
+                                  });
+
+                                  if (headerText && headerText.toLowerCase() !== letter.toLowerCase()) {
+                                    mockSchema.push({
+                                      id: String(c),
+                                      name: letter,
+                                      type: colType,
+                                      config: colConfig
+                                    });
+                                  }
+                                });
+
+                                const currentProperty = mockSchema.find(p => p.id === String(colIndex));
+                                const val = resolveTableValue(rowObj, currentProperty, mockSchema);
+                                return renderFormulaValue(val, colIndex);
+                              })()}
+                            </div>
+                          ) : (
+                            <TableCell
+                              key={`cell-${rowIndex}-${colIndex}`}
+                              className="table-cell-editable"
+                              data-row={rowIndex}
+                              data-col={colIndex}
+                              value={cell}
+                              onInput={(html) => handleCellInput(rowIndex, colIndex, html)}
+                              onBlur={(html) => handleCellBlur(rowIndex, colIndex, html)}
+                            />
+                          )}
 
                           {/* Resizers */}
                           <div 
@@ -678,6 +996,32 @@ const isArraysEqual = (arr1, arr2) => {
                 ))}
               </div>
             </div>
+          ) : typeMenuOpen ? (
+            // Type Submenu Panel
+            <div className="color-menu-panel">
+              <div className="color-menu-header" onClick={() => setTypeMenuOpen(false)}>
+                <BackIcon size={14} style={{ marginRight: '6px' }} />
+                <span>Type</span>
+              </div>
+              <div className="color-menu-list">
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'text')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Columns size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Text</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'formula')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Calculator size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Formula</span>
+                </div>
+              </div>
+            </div>
           ) : (
             // Main Column Menu
             <>
@@ -691,7 +1035,349 @@ const isArraysEqual = (arr1, arr2) => {
                   autoFocus
                 />
               </div>
+
+              {/* Type Switch Button */}
+              <button 
+                className="table-menu-item" 
+                onClick={() => setTypeMenuOpen(true)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'inherit',
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  borderRadius: '4px'
+                }}
+              >
+                <Calculator size={14} style={{ marginRight: '8px' }} />
+                <span style={{ flexGrow: 1, fontSize: '13px' }}>Type</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
+                  <span style={{ fontSize: '11px' }}>{colTypes[colMenu.index] === 'formula' ? 'Formula' : 'Text'}</span>
+                  <ChevronRight size={14} />
+                </div>
+              </button>
+
+              <div className="table-menu-divider" style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
               
+              {/* Formula configs rendering inside menu if column is formula */}
+              {colTypes[colMenu.index] === 'formula' && (
+                <>
+                  {/* Format & Visuals */}
+                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Format & Visuals</div>
+                    
+                    {/* Number Format */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Number format</span>
+                      <select
+                        value={colConfigs[colMenu.index]?.numberFormat || 'number'}
+                        onChange={(e) => {
+                          const fmt = e.target.value;
+                          const defaultMax = fmt === 'percent' ? 1 : 100;
+                          const nextConfigs = {
+                            ...colConfigs,
+                            [colMenu.index]: {
+                              ...colConfigs[colMenu.index],
+                              numberFormat: fmt,
+                              maxValue: colConfigs[colMenu.index]?.maxValue !== undefined ? colConfigs[colMenu.index].maxValue : defaultMax
+                            }
+                          };
+                          setColConfigs(nextConfigs);
+                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                        }}
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-primary)',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="number">Number</option>
+                        <option value="percent">Percent</option>
+                        <option value="usd">US Dollar ($)</option>
+                        <option value="eur">Euro (€)</option>
+                        <option value="gbp">Pound (£)</option>
+                      </select>
+                    </div>
+
+                    {/* Decimal Places */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Decimal places</span>
+                      <select
+                        value={colConfigs[colMenu.index]?.decimalPlaces !== undefined ? colConfigs[colMenu.index].decimalPlaces : 0}
+                        onChange={(e) => {
+                          const nextConfigs = {
+                            ...colConfigs,
+                            [colMenu.index]: {
+                              ...colConfigs[colMenu.index],
+                              decimalPlaces: Number(e.target.value)
+                            }
+                          };
+                          setColConfigs(nextConfigs);
+                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                        }}
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-primary)',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {[0, 1, 2, 3, 4].map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Show as */}
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>Show as</div>
+                      <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-subtle)', padding: '2px', gap: '2px' }}>
+                        {[
+                          { value: 'number', label: 'Number' },
+                          { value: 'bar', label: 'Bar' },
+                          { value: 'ring', label: 'Ring' }
+                        ].map(opt => {
+                          const active = (colConfigs[colMenu.index]?.showAs || 'number') === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                const nextConfigs = {
+                                  ...colConfigs,
+                                  [colMenu.index]: {
+                                    ...colConfigs[colMenu.index],
+                                    showAs: opt.value
+                                  }
+                                };
+                                setColConfigs(nextConfigs);
+                                save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                              }}
+                              style={{
+                                flex: 1,
+                                background: active ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                                border: 'none',
+                                outline: 'none',
+                                color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                fontSize: '11px',
+                                fontWeight: active ? 'bold' : 'normal',
+                                padding: '4px 0',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Color selection if Bar or Ring */}
+                    {((colConfigs[colMenu.index]?.showAs || 'number') !== 'number') && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Color</span>
+                        <select
+                          value={colConfigs[colMenu.index]?.progressColor || 'blue'}
+                          onChange={(e) => {
+                            const nextConfigs = {
+                              ...colConfigs,
+                              [colMenu.index]: {
+                                ...colConfigs[colMenu.index],
+                                progressColor: e.target.value
+                              }
+                            };
+                            setColConfigs(nextConfigs);
+                            save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                          }}
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-primary)',
+                            fontSize: '11px',
+                            padding: '2px 4px',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="blue">Blue</option>
+                          <option value="green">Green</option>
+                          <option value="purple">Purple</option>
+                          <option value="orange">Orange</option>
+                          <option value="red">Red</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="table-menu-divider" style={{ borderTop: '1px dashed var(--border-subtle)', margin: '4px 0' }} />
+
+                  {/* Formula Expression */}
+                  <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                      Formula Expression
+                    </label>
+                    <textarea
+                      placeholder="e.g. prop('Price') * prop('Quantity')"
+                      value={colConfigs[colMenu.index]?.formula || ''}
+                      onChange={(e) => {
+                        const nextConfigs = {
+                          ...colConfigs,
+                          [colMenu.index]: {
+                            ...colConfigs[colMenu.index],
+                            formula: e.target.value
+                          }
+                        };
+                        setColConfigs(nextConfigs);
+                        save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                      }}
+                      id="formula-textarea"
+                      style={{
+                        width: '100%',
+                        minHeight: '60px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                        padding: '4px 6px',
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                        outline: 'none'
+                      }}
+                    />
+
+                    {/* Click to Insert */}
+                    <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '6px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Click to insert:</span>
+                      
+                      {/* Column list */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '80px', overflowY: 'auto', marginBottom: '6px' }}>
+                        {columnWidths.map((_, c) => {
+                          if (c === colMenu.index) return null;
+                          const letter = getColumnLetter(c);
+                          const headerText = (hasHeader && cells[0]?.[c]) ? getPlainText(cells[0][c]).trim() : '';
+                          const insertName = headerText || letter;
+                          return (
+                            <button
+                              key={c}
+                              onClick={() => {
+                                const txtArea = document.getElementById('formula-textarea');
+                                if (txtArea) {
+                                  const val = colConfigs[colMenu.index]?.formula || '';
+                                  const start = txtArea.selectionStart;
+                                  const end = txtArea.selectionEnd;
+                                  const insertStr = `prop("${insertName}")`;
+                                  const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
+                                  
+                                  const nextConfigs = {
+                                    ...colConfigs,
+                                    [colMenu.index]: {
+                                      ...colConfigs[colMenu.index],
+                                      formula: nextFormula
+                                    }
+                                  };
+                                  setColConfigs(nextConfigs);
+                                  save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+
+                                  setTimeout(() => {
+                                    txtArea.focus();
+                                    txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                                  }, 50);
+                                }
+                              }}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '1px 6px',
+                                fontSize: '10px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {insertName}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Helper functions */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+                        {[
+                          { label: 'concat()', code: 'concat(a, b)' },
+                          { label: 'if()', code: 'if(cond, t, f)' },
+                          { label: 'lower()', code: 'lower(text)' },
+                          { label: 'upper()', code: 'upper(text)' },
+                          { label: 'contains()', code: 'contains(text, word)' },
+                          { label: 'dateAdd()', code: 'dateAdd(date, 5, "days")' },
+                          { label: 'length()', code: 'length(text)' },
+                          { label: 'add()', code: 'add(a, b)' },
+                          { label: 'subtract()', code: 'subtract(a, b)' }
+                        ].map(fn => (
+                          <button
+                            key={fn.label}
+                            onClick={() => {
+                              const txtArea = document.getElementById('formula-textarea');
+                              if (txtArea) {
+                                const val = colConfigs[colMenu.index]?.formula || '';
+                                const start = txtArea.selectionStart;
+                                const end = txtArea.selectionEnd;
+                                const insertStr = fn.code;
+                                const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
+                                
+                                const nextConfigs = {
+                                  ...colConfigs,
+                                  [colMenu.index]: {
+                                    ...colConfigs[colMenu.index],
+                                    formula: nextFormula
+                                  }
+                                };
+                                setColConfigs(nextConfigs);
+                                save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+
+                                setTimeout(() => {
+                                  txtArea.focus();
+                                  txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                                }, 50);
+                              }
+                            }}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '1px 5px',
+                              fontSize: '10px',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {fn.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="table-menu-divider" style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+                </>
+              )}
+
               <div className="menu-options-list">
                 {getFilteredActions([
                   { id: 'header_row', label: 'Header row', icon: Table, type: 'toggle', active: hasHeader, action: () => {
@@ -717,9 +1403,10 @@ const isArraysEqual = (arr1, arr2) => {
                       key={opt.id} 
                       className={`table-menu-item ${opt.danger ? 'danger' : ''}`} 
                       onClick={opt.action}
+                      style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
                     >
                       <Icon size={14} style={{ marginRight: '8px', flexShrink: 0 }} />
-                      <span style={{ flexGrow: 1 }}>{opt.label}</span>
+                      <span style={{ flexGrow: 1, fontSize: '13px' }}>{opt.label}</span>
                       {opt.type === 'toggle' && (
                         <div className={`table-menu-toggle-switch ${opt.active ? 'is-active' : ''}`}>
                           <div className="switch-knob" />

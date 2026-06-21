@@ -18,7 +18,7 @@ import TableBlock from './blocks/TableBlock';
 import ToggleBlock from './blocks/ToggleBlock';
 import EmbedBlock from './blocks/EmbedBlock';
 import SyncedBlock from './blocks/SyncedBlock';
-import DatabaseBlock from '../Database/DatabaseBlock';
+// import DatabaseBlock from '../Database/DatabaseBlock';
 import TrackerBlock from '../Tracker/TrackerBlock';
 import MathBlock from './blocks/MathBlock';
 import ColumnListBlock from './blocks/ColumnListBlock';
@@ -162,8 +162,8 @@ const BlockRenderer = memo(({ blockId, index }) => {
         
       case BLOCK_TYPES.TABLE:
         return <TableBlock block={block} index={index} />;
-      case BLOCK_TYPES.DATABASE:
-        return <DatabaseBlock block={block} index={index} />;
+      case 'database':
+        return <div className="text-sm text-secondary italic p-4">Database block deactivated</div>;
 
       case BLOCK_TYPES.TOGGLE:
         return <ToggleBlock block={block} index={index} />;
@@ -305,7 +305,7 @@ const BlockRenderer = memo(({ blockId, index }) => {
       {/* Skip generic child rendering for blocks that manage their own children */}
       {childBlockIds.length > 0 && 
        block.type !== BLOCK_TYPES.TOGGLE && 
-       block.type !== BLOCK_TYPES.DATABASE && 
+       block.type !== 'database' && 
        block.type !== BLOCK_TYPES.COLUMN_LIST && 
        block.type !== BLOCK_TYPES.COLUMN && (
         <div className="block-children">

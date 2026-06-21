@@ -249,7 +249,6 @@ export function useBlockVisible(blockId) {
   // Natively check if the block needs pinning to avoid 1-frame unmounts
   const type = useBlockStore(s => s.blockMap[blockId]?.type);
   const needsPinning = type === BLOCK_TYPES.EMBED || 
-                       type === BLOCK_TYPES.DATABASE || 
                        type === BLOCK_TYPES.TRACKER ||
                        type === BLOCK_TYPES.COLUMN_LIST ||
                        type === BLOCK_TYPES.COLUMN;
