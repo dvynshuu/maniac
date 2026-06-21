@@ -73,7 +73,7 @@ class Tokenizer {
     }
 
     // Single-character operators/syntax
-    if ('+-*/%(),><!'.includes(char)) {
+    if ('+-*/%(),><!:'.includes(char)) {
       this.pos++;
       return { type: 'OPERATOR', value: char };
     }
@@ -157,7 +157,7 @@ class Parser {
         if (next.value !== ')') throw new Error(`Expected ')' after function ${name}`);
         return { type: 'CALL', name, arguments: args };
       }
-      throw new Error(`Unexpected identifier: ${name}`);
+      return { type: 'CELL_REF', name };
     }
 
     throw new Error(`Unexpected token: ${JSON.stringify(token)}`);
@@ -171,15 +171,122 @@ class Parser {
       case '<': case '<=': case '>': case '>=': return 4;
       case '+': case '-': return 5;
       case '*': case '/': case '%': return 6;
+      case ':': return 8; // Range operator has high precedence
       default: return -1;
     }
   }
+}
+
+function parseCellRef(name) {
+  const match = name.match(/^([A-Z]+)([0-9]+)$/i);
+  if (!match) return null;
+  const colStr = match[1].toUpperCase();
+  const rowStr = match[2];
+  
+  let colIndex = 0;
+  for (let i = 0; i < colStr.length; i++) {
+    colIndex = colIndex * 26 + (colStr.charCodeAt(i) - 64);
+  }
+  colIndex = colIndex - 1; // 0-based
+  
+  const rowIndex = parseInt(rowStr, 10) - 1; // 0-based (row 1 is index 0)
+  return { colIndex, rowIndex };
+}
+
+function getPlainText(html) {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+}
+
+function isNumericValue(str) {
+  if (str === undefined || str === null || str === '') return false;
+  const clean = String(str).replace(/[$,€£%]/g, '').replace(/,/g, '').trim();
+  return clean !== '' && !isNaN(parseFloat(clean)) && isFinite(clean);
+}
+
+function resolveCellVal(rowIndex, colIndex, context) {
+  const cells = context.row?.cells;
+  if (!cells || rowIndex < 0 || rowIndex >= cells.length || colIndex < 0 || colIndex >= cells[rowIndex].length) {
+    return '';
+  }
+  
+  const colTypes = context.row?.colTypes || {};
+  const colConfigs = context.row?.colConfigs || {};
+  const hasHeader = context.row?.hasHeader || false;
+  
+  let val = '';
+  if (colTypes[colIndex] === 'formula') {
+    const formulaStr = colConfigs[colIndex]?.formula;
+    if (!formulaStr) return '';
+    
+    const propId = String(colIndex);
+    if (context.visited.has(propId)) {
+      return '#CYCLE!';
+    }
+    
+    context.visited.add(propId);
+    
+    const targetRowObj = {
+      id: String(rowIndex),
+      values: {},
+      cells,
+      colTypes,
+      colConfigs,
+      hasHeader
+    };
+    cells[rowIndex].forEach((val, c) => {
+      targetRowObj.values[String(c)] = val;
+    });
+    
+    const prop = context.schema.find(p => p.id === propId);
+    if (!prop) {
+      context.visited.delete(propId);
+      return '';
+    }
+    
+    if (context.resolvePropertyValue) {
+      val = context.resolvePropertyValue(targetRowObj, prop, context.schema, context.visited);
+    } else {
+      val = targetRowObj.values[propId] ?? '';
+    }
+    
+    context.visited.delete(propId);
+  } else {
+    const cellHtml = cells[rowIndex][colIndex] || '';
+    val = getPlainText(cellHtml).trim();
+  }
+
+  // Convert to numeric float if value is numeric, to support arithmetic operations like '+' on numbers instead of strings
+  if (val !== undefined && val !== null && val !== '' && isNumericValue(val)) {
+    return parseFloat(String(val).replace(/[$,€£%]/g, '').replace(/,/g, ''));
+  }
+  
+  return val ?? '';
+}
+
+function flattenArgs(args) {
+  const result = [];
+  const recurse = (val) => {
+    if (Array.isArray(val)) {
+      val.forEach(recurse);
+    } else if (val !== undefined && val !== null && val !== '') {
+      result.push(val);
+    }
+  };
+  args.forEach(recurse);
+  return result;
 }
 
 function evaluateNode(node, context) {
   switch (node.type) {
     case 'LITERAL':
       return node.value;
+
+    case 'CELL_REF': {
+      const ref = parseCellRef(node.name);
+      if (!ref) return '';
+      return resolveCellVal(ref.rowIndex, ref.colIndex, context);
+    }
 
     case 'UNARY': {
       const val = evaluateNode(node.operand, context);
@@ -189,6 +296,32 @@ function evaluateNode(node, context) {
     }
 
     case 'BINARY': {
+      if (node.operator === ':') {
+        if (node.left.type !== 'CELL_REF' || node.right.type !== 'CELL_REF') {
+          throw new Error("Range operator ':' requires cell references, e.g. A1:B5");
+        }
+        const start = parseCellRef(node.left.name);
+        const end = parseCellRef(node.right.name);
+        if (!start || !end) {
+          throw new Error("Invalid cell reference in range");
+        }
+        const cells = context.row?.cells;
+        if (!cells) return [];
+        
+        const minRow = Math.min(start.rowIndex, end.rowIndex);
+        const maxRow = Math.min(Math.max(start.rowIndex, end.rowIndex), cells.length - 1);
+        const minCol = Math.min(start.colIndex, end.colIndex);
+        const maxCol = Math.min(Math.max(start.colIndex, end.colIndex), (cells[0]?.length || 1) - 1);
+        
+        const values = [];
+        for (let r = minRow; r <= maxRow; r++) {
+          for (let c = minCol; c <= maxCol; c++) {
+            values.push(resolveCellVal(r, c, context));
+          }
+        }
+        return values;
+      }
+
       const left = evaluateNode(node.left, context);
       const right = evaluateNode(node.right, context);
       switch (node.operator) {
@@ -238,6 +371,35 @@ function evaluateNode(node, context) {
           }
           context.visited.delete(prop.id);
           return val ?? '';
+        }
+
+        case 'sum': {
+          const flat = flattenArgs(args).map(Number).filter(n => !isNaN(n));
+          return flat.reduce((sum, n) => sum + n, 0);
+        }
+
+        case 'avg':
+        case 'average': {
+          const flat = flattenArgs(args).map(Number).filter(n => !isNaN(n));
+          if (flat.length === 0) return 0;
+          return flat.reduce((sum, n) => sum + n, 0) / flat.length;
+        }
+
+        case 'count': {
+          const flat = flattenArgs(args).filter(val => val !== undefined && val !== null && String(val).trim() !== '');
+          return flat.length;
+        }
+
+        case 'max': {
+          const flat = flattenArgs(args).map(Number).filter(n => !isNaN(n));
+          if (flat.length === 0) return 0;
+          return Math.max(...flat);
+        }
+
+        case 'min': {
+          const flat = flattenArgs(args).map(Number).filter(n => !isNaN(n));
+          if (flat.length === 0) return 0;
+          return Math.min(...flat);
         }
 
         case 'concat':

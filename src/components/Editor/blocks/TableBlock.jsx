@@ -43,6 +43,108 @@ const TableCell = React.memo(({ value, onInput, onBlur, className, rowIndex, col
   );
 });
 
+// Selector for Column calculations in Summary row
+const SummaryCellSelector = ({ colIndex, config, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
+
+  const options = [
+    { value: 'none', label: 'None' },
+    { value: 'sum', label: 'Sum' },
+    { value: 'avg', label: 'Average' },
+    { value: 'count', label: 'Count' },
+    { value: 'max', label: 'Max' },
+    { value: 'min', label: 'Min' }
+  ];
+
+  const currentLabel = options.find(o => o.value === config)?.label || 'Calculate';
+
+  return (
+    <div ref={containerRef} className="summary-cell-selector-container" style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+      <div 
+        onClick={() => setOpen(!open)}
+        className="summary-cell-trigger"
+        style={{
+          cursor: 'pointer',
+          padding: '8px 10px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '4px',
+          color: config === 'none' ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+          minHeight: '32px',
+          width: '100%',
+          boxSizing: 'border-box',
+          userSelect: 'none'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {config === 'none' ? 'Calculate' : `${currentLabel}: ${value}`}
+        </span>
+        <span style={{ fontSize: '9px', opacity: 0.5, flexShrink: 0 }}>▼</span>
+      </div>
+
+      {open && (
+        <div 
+          className="summary-dropdown-menu"
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: 0,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-default)',
+            borderRadius: '6px',
+            boxShadow: 'var(--shadow-md)',
+            padding: '4px',
+            zIndex: 100,
+            minWidth: '110px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            marginBottom: '4px'
+          }}
+        >
+          {options.map(opt => (
+            <div
+              key={opt.value}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              style={{
+                padding: '6px 8px',
+                fontSize: '12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: config === opt.value ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                color: config === opt.value ? 'var(--text-primary)' : 'var(--text-secondary)',
+                textAlign: 'left'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = config === opt.value ? 'rgba(255, 255, 255, 0.08)' : 'transparent'}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const NOTION_COLORS = [
   { name: 'default', label: 'Default', bg: 'transparent', preview: 'rgba(255, 255, 255, 0.1)' },
   { name: 'gray', label: 'Gray', bg: 'rgba(120, 120, 120, 0.12)', preview: 'rgba(120, 120, 120, 0.4)' },
@@ -69,6 +171,8 @@ export default function TableBlock({ block }) {
   const [colTypes, setColTypes] = useState(block.properties.colTypes || {});
   const [colConfigs, setColConfigs] = useState(block.properties.colConfigs || {});
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [hasSummaryRow, setHasSummaryRow] = useState(block.properties.hasSummaryRow || false);
+  const [summaryRowConfigs, setSummaryRowConfigs] = useState(block.properties.summaryRowConfigs || {});
   
   const [resizingCol, setResizingCol] = useState(null);
   const [resizingRow, setResizingRow] = useState(null);
@@ -142,7 +246,9 @@ const isArraysEqual = (arr1, arr2) => {
     if (block.properties.colColors) setColColors(block.properties.colColors);
     if (block.properties.colTypes) setColTypes(block.properties.colTypes);
     if (block.properties.colConfigs) setColConfigs(block.properties.colConfigs);
-  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs]);
+    if (block.properties.hasSummaryRow !== undefined) setHasSummaryRow(block.properties.hasSummaryRow);
+    if (block.properties.summaryRowConfigs) setSummaryRowConfigs(block.properties.summaryRowConfigs);
+  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs, block.properties.hasSummaryRow, block.properties.summaryRowConfigs]);
 
   const saveTimerRef = useRef(null);
 
@@ -153,11 +259,11 @@ const isArraysEqual = (arr1, arr2) => {
     }
   };
 
-  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs) => {
+  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs) => {
     cancelDebouncedSave();
     saveTimerRef.current = setTimeout(() => {
       const sanitizedCells = newCells.map(row => row.map(cell => sanitize(cell)));
-      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs);
+      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs, newHasSummary, newSummaryConfigs);
     }, 500);
   };
 
@@ -167,7 +273,7 @@ const isArraysEqual = (arr1, arr2) => {
     };
   }, []);
 
-  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs) => {
+  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs) => {
     cancelDebouncedSave();
     engine.updateBlock(block.id, { 
       properties: { 
@@ -179,7 +285,9 @@ const isArraysEqual = (arr1, arr2) => {
         rowColors: newRowColors,
         colColors: newColColors,
         colTypes: newColTypes,
-        colConfigs: newColConfigs
+        colConfigs: newColConfigs,
+        hasSummaryRow: newHasSummary,
+        summaryRowConfigs: newSummaryConfigs
       } 
     });
   };
@@ -207,7 +315,19 @@ const isArraysEqual = (arr1, arr2) => {
     const sanitized = sanitize(html);
     const newCells = [...cells];
     newCells[rowIndex] = [...newCells[rowIndex]];
-    newCells[rowIndex][colIndex] = sanitized;
+    
+    // Auto-format cell value if numberFormat is configured for this column
+    let val = sanitized;
+    const config = colConfigs[colIndex] || {};
+    if (config.numberFormat) {
+      const text = getPlainText(sanitized).trim();
+      if (isNumericValue(text)) {
+        const num = parseFloat(text.replace(/[$,€£%]/g, '').replace(/,/g, ''));
+        val = formatNumberValue(num, config.numberFormat, config.decimalPlaces !== undefined ? config.decimalPlaces : 0);
+      }
+    }
+    
+    newCells[rowIndex][colIndex] = val;
     setCells(newCells);
     save(newCells);
   };
@@ -511,6 +631,169 @@ const isArraysEqual = (arr1, arr2) => {
     return letter;
   };
 
+  const isNumericValue = (str) => {
+    if (str === undefined || str === null) return false;
+    const clean = getPlainText(str).trim();
+    if (clean === '') return false;
+    const numericClean = clean.replace(/[$,€£%]/g, '').replace(/,/g, '').trim();
+    return !isNaN(parseFloat(numericClean)) && isFinite(numericClean);
+  };
+
+  const isColNumeric = (colIndex) => {
+    if (colTypes[colIndex] === 'formula') return true;
+    const startIndex = hasHeader ? 1 : 0;
+    let numericCount = 0;
+    let totalCount = 0;
+    for (let r = startIndex; r < cells.length; r++) {
+      const cellVal = cells[r]?.[colIndex];
+      if (cellVal !== undefined && cellVal !== null) {
+        const text = getPlainText(cellVal).trim();
+        if (text !== '') {
+          totalCount++;
+          if (isNumericValue(text)) {
+            numericCount++;
+          }
+        }
+      }
+    }
+    return totalCount > 0 && (numericCount / totalCount) >= 0.5;
+  };
+
+  const formatNumberValue = (val, format, decimalPlaces = 2) => {
+    const num = parseFloat(String(val).replace(/[$,€£%]/g, '').replace(/,/g, ''));
+    if (isNaN(num)) return val;
+    const fixed = num.toFixed(decimalPlaces);
+    switch (format) {
+      case 'percent':
+        return `${fixed}%`;
+      case 'usd':
+        return `$${fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+      case 'eur':
+        return `€${fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+      case 'gbp':
+        return `£${fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+      case 'number':
+      default:
+        return fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+  };
+
+  const formatWholeColumn = (colIndex, format) => {
+    const decimals = colConfigs[colIndex]?.decimalPlaces !== undefined ? colConfigs[colIndex].decimalPlaces : 0;
+    const nextCells = cells.map((row, r) => {
+      if (hasHeader && r === 0) return row;
+      const newRow = [...row];
+      const text = getPlainText(newRow[colIndex]).trim();
+      if (isNumericValue(text)) {
+        const num = parseFloat(text.replace(/[$,€£%]/g, '').replace(/,/g, ''));
+        newRow[colIndex] = formatNumberValue(num, format, decimals);
+      }
+      return newRow;
+    });
+    const nextConfigs = {
+      ...colConfigs,
+      [colIndex]: {
+        ...colConfigs[colIndex],
+        numberFormat: format
+      }
+    };
+    setCells(nextCells);
+    setColConfigs(nextConfigs);
+    save(nextCells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+  };
+
+  const calculateSummaryValue = (colIndex, config) => {
+    if (config === 'none') return '';
+    const startIndex = hasHeader ? 1 : 0;
+    const values = [];
+    for (let r = startIndex; r < cells.length; r++) {
+      let val = '';
+      if (colTypes[colIndex] === 'formula') {
+        const rowObj = {
+          id: String(r),
+          values: {},
+          cells,
+          colTypes,
+          colConfigs,
+          hasHeader
+        };
+        cells[r].forEach((v, c) => {
+          rowObj.values[String(c)] = v;
+        });
+
+        const mockSchema = [];
+        columnWidths.forEach((_, c) => {
+          const letter = getColumnLetter(c);
+          const headerText = (hasHeader && cells[0]?.[c]) ? getPlainText(cells[0][c]).trim() : '';
+          const colType = colTypes[c] || 'text';
+          const colConfig = colConfigs[c] || {};
+          
+          mockSchema.push({
+            id: String(c),
+            name: headerText || letter,
+            type: colType,
+            config: colConfig
+          });
+
+          if (headerText && headerText.toLowerCase() !== letter.toLowerCase()) {
+            mockSchema.push({
+              id: String(c),
+              name: letter,
+              type: colType,
+              config: colConfig
+            });
+          }
+        });
+
+        const currentProperty = mockSchema.find(p => p.id === String(colIndex));
+        val = resolveTableValue(rowObj, currentProperty, mockSchema);
+      } else {
+        val = getPlainText(cells[r]?.[colIndex] || '').trim();
+      }
+      values.push(val);
+    }
+    
+    if (config === 'count') {
+      const nonEmpty = values.filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+      return nonEmpty.length;
+    }
+    
+    const numbers = values
+      .map(v => {
+        if (v === undefined || v === null || String(v).trim() === '') return NaN;
+        const clean = String(v).replace(/[$,€£%]/g, '').replace(/,/g, '').trim();
+        return parseFloat(clean);
+      })
+      .filter(n => !isNaN(n));
+      
+    if (numbers.length === 0) {
+      if (config === 'sum' || config === 'avg') return 0;
+      return '-';
+    }
+    
+    let result = 0;
+    switch (config) {
+      case 'sum':
+        result = numbers.reduce((a, b) => a + b, 0);
+        break;
+      case 'avg':
+        result = numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        break;
+      case 'max':
+        result = Math.max(...numbers);
+        break;
+      case 'min':
+        result = Math.min(...numbers);
+        break;
+      default:
+        return '';
+    }
+    
+    const format = colConfigs[colIndex]?.numberFormat || 'number';
+    const decimals = colConfigs[colIndex]?.decimalPlaces !== undefined ? colConfigs[colIndex].decimalPlaces : 0;
+    return formatNumberValue(result, format, decimals);
+  };
+
   const resolveTableValue = (rowObj, prop, currentSchema, visited = new Set()) => {
     const cIndex = parseInt(prop.id, 10);
     const colType = colTypes[cIndex] || 'text';
@@ -803,6 +1086,9 @@ const isArraysEqual = (arr1, arr2) => {
                         <Tag 
                           key={colIndex} 
                           className={cellClasses}
+                          style={{
+                            textAlign: isColNumeric(colIndex) ? 'right' : 'left'
+                          }}
                           onMouseEnter={() => {
                             setHoveredRowIndex(rowIndex);
                             setHoveredColIndex(colIndex);
@@ -864,11 +1150,15 @@ const isArraysEqual = (arr1, arr2) => {
                           )}
 
                           {colTypes[colIndex] === 'formula' && !isHeaderRow ? (
-                            <div className="table-cell-readonly font-mono" style={{ padding: '8px', minHeight: '34px', display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <div className="table-cell-readonly font-mono" style={{ padding: '8px', minHeight: '34px', display: 'flex', alignItems: 'center', width: '100%', justifyContent: isColNumeric(colIndex) ? 'flex-end' : 'flex-start' }}>
                               {(() => {
                                 const rowObj = {
                                   id: String(rowIndex),
-                                  values: {}
+                                  values: {},
+                                  cells: cells,
+                                  colTypes: colTypes,
+                                  colConfigs: colConfigs,
+                                  hasHeader: hasHeader
                                 };
                                 row.forEach((val, c) => {
                                   rowObj.values[String(c)] = val;
@@ -910,6 +1200,7 @@ const isArraysEqual = (arr1, arr2) => {
                               data-row={rowIndex}
                               data-col={colIndex}
                               value={cell}
+                              style={{ textAlign: isColNumeric(colIndex) ? 'right' : 'left' }}
                               onInput={(html) => handleCellInput(rowIndex, colIndex, html)}
                               onBlur={(html) => handleCellBlur(rowIndex, colIndex, html)}
                             />
@@ -931,6 +1222,53 @@ const isArraysEqual = (arr1, arr2) => {
                     })}
                   </tr>
                 ))}
+                {hasSummaryRow && (
+                  <tr className="notion-tr is-summary-row" style={{ height: '36px', borderTop: '2px double rgb(60, 60, 60)', background: 'var(--bg-secondary)' }}>
+                    {columnWidths.map((width, colIndex) => {
+                      const Tag = 'td';
+                      const activeColor = colColors[colIndex] || 'default';
+                      
+                      const cellClasses = [
+                        'notion-td',
+                        'is-summary-cell',
+                        `cell-bg-${activeColor}`,
+                        hasHeaderCol && colIndex === 0 ? 'is-header-col-cell' : '',
+                      ].filter(Boolean).join(' ');
+
+                      const summaryConfig = summaryRowConfigs[colIndex] || 'none';
+                      const summaryValue = calculateSummaryValue(colIndex, summaryConfig);
+
+                      return (
+                        <Tag 
+                          key={`summary-${colIndex}`} 
+                          className={cellClasses}
+                          style={{
+                            padding: '0',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            textAlign: isColNumeric(colIndex) ? 'right' : 'left',
+                            verticalAlign: 'middle',
+                            position: 'relative'
+                          }}
+                        >
+                          <SummaryCellSelector 
+                            colIndex={colIndex}
+                            config={summaryConfig}
+                            value={summaryValue}
+                            onChange={(nextConfig) => {
+                              const nextConfigs = {
+                                ...summaryRowConfigs,
+                                [colIndex]: nextConfig
+                              };
+                              setSummaryRowConfigs(nextConfigs);
+                              save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow, nextConfigs);
+                            }}
+                          />
+                        </Tag>
+                      );
+                    })}
+                  </tr>
+                )}
               </tbody>
             </table>
 
@@ -1036,6 +1374,78 @@ const isArraysEqual = (arr1, arr2) => {
                 />
               </div>
 
+              {/* Numeric Column Auto-Detection suggestion */}
+              {isColNumeric(colMenu.index) && !colConfigs[colMenu.index]?.numberFormat && (
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>💡 Numeric column detected</span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    Would you like to format this column?
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button 
+                      onClick={() => {
+                        formatWholeColumn(colMenu.index, 'number');
+                        closeMenu();
+                      }}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Number
+                    </button>
+                    <button 
+                      onClick={() => {
+                        formatWholeColumn(colMenu.index, 'usd');
+                        closeMenu();
+                      }}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      USD ($)
+                    </button>
+                    <button 
+                      onClick={() => {
+                        formatWholeColumn(colMenu.index, 'percent');
+                        closeMenu();
+                      }}
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Percent (%)
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Type Switch Button */}
               <button 
                 className="table-menu-item" 
@@ -1064,8 +1474,8 @@ const isArraysEqual = (arr1, arr2) => {
 
               <div className="table-menu-divider" style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
               
-              {/* Formula configs rendering inside menu if column is formula */}
-              {colTypes[colMenu.index] === 'formula' && (
+              {/* Format & Visuals rendering inside menu if formula or numeric */}
+              {(colTypes[colMenu.index] === 'formula' || isColNumeric(colMenu.index) || colConfigs[colMenu.index]?.numberFormat) && (
                 <>
                   {/* Format & Visuals */}
                   <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1078,17 +1488,7 @@ const isArraysEqual = (arr1, arr2) => {
                         value={colConfigs[colMenu.index]?.numberFormat || 'number'}
                         onChange={(e) => {
                           const fmt = e.target.value;
-                          const defaultMax = fmt === 'percent' ? 1 : 100;
-                          const nextConfigs = {
-                            ...colConfigs,
-                            [colMenu.index]: {
-                              ...colConfigs[colMenu.index],
-                              numberFormat: fmt,
-                              maxValue: colConfigs[colMenu.index]?.maxValue !== undefined ? colConfigs[colMenu.index].maxValue : defaultMax
-                            }
-                          };
-                          setColConfigs(nextConfigs);
-                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                          formatWholeColumn(colMenu.index, fmt);
                         }}
                         style={{
                           background: 'var(--bg-secondary)',
@@ -1115,15 +1515,28 @@ const isArraysEqual = (arr1, arr2) => {
                       <select
                         value={colConfigs[colMenu.index]?.decimalPlaces !== undefined ? colConfigs[colMenu.index].decimalPlaces : 0}
                         onChange={(e) => {
+                          const dp = Number(e.target.value);
                           const nextConfigs = {
                             ...colConfigs,
                             [colMenu.index]: {
                               ...colConfigs[colMenu.index],
-                              decimalPlaces: Number(e.target.value)
+                              decimalPlaces: dp
                             }
                           };
                           setColConfigs(nextConfigs);
-                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                          // Re-format column values with new decimals
+                          const nextCells = cells.map((row, r) => {
+                            if (hasHeader && r === 0) return row;
+                            const newRow = [...row];
+                            const text = getPlainText(newRow[colMenu.index]).trim();
+                            if (isNumericValue(text)) {
+                              const num = parseFloat(text.replace(/[$,€£%]/g, '').replace(/,/g, ''));
+                              newRow[colMenu.index] = formatNumberValue(num, colConfigs[colMenu.index]?.numberFormat || 'number', dp);
+                            }
+                            return newRow;
+                          });
+                          setCells(nextCells);
+                          save(nextCells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
                         }}
                         style={{
                           background: 'var(--bg-secondary)',
@@ -1383,12 +1796,17 @@ const isArraysEqual = (arr1, arr2) => {
                   { id: 'header_row', label: 'Header row', icon: Table, type: 'toggle', active: hasHeader, action: () => {
                     const next = !hasHeader;
                     setHasHeader(next);
-                    save(cells, next, hasHeaderCol);
+                    save(cells, next, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow);
                   }},
                   { id: 'header_col', label: 'Header column', icon: Columns, type: 'toggle', active: hasHeaderCol, action: () => {
                     const next = !hasHeaderCol;
                     setHasHeaderCol(next);
-                    save(cells, hasHeader, next);
+                    save(cells, hasHeader, next, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow);
+                  }},
+                  { id: 'summary_row', label: 'Summary row', icon: Calculator, type: 'toggle', active: hasSummaryRow, action: () => {
+                    const next = !hasSummaryRow;
+                    setHasSummaryRow(next);
+                    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, next);
                   }},
                   { id: 'color', label: 'Color', icon: Palette, type: 'submenu', action: () => setColorMenu('col') },
                   { id: 'insert_left', label: 'Insert left', icon: ArrowLeft, action: () => { insertColumn(colMenu.index, 'left'); closeMenu(); } },
@@ -1479,12 +1897,17 @@ const isArraysEqual = (arr1, arr2) => {
                   { id: 'header_row', label: 'Header row', icon: Table, type: 'toggle', active: hasHeader, action: () => {
                     const next = !hasHeader;
                     setHasHeader(next);
-                    save(cells, next, hasHeaderCol);
+                    save(cells, next, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow);
                   }},
                   { id: 'header_col', label: 'Header column', icon: Columns, type: 'toggle', active: hasHeaderCol, action: () => {
                     const next = !hasHeaderCol;
                     setHasHeaderCol(next);
-                    save(cells, hasHeader, next);
+                    save(cells, hasHeader, next, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow);
+                  }},
+                  { id: 'summary_row', label: 'Summary row', icon: Calculator, type: 'toggle', active: hasSummaryRow, action: () => {
+                    const next = !hasSummaryRow;
+                    setHasSummaryRow(next);
+                    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, next);
                   }},
                   { id: 'color', label: 'Color', icon: Palette, type: 'submenu', action: () => setColorMenu('row') },
                   { id: 'insert_above', label: 'Insert above', icon: ArrowUp, action: () => { insertRow(rowMenu.index, 'above'); closeMenu(); } },

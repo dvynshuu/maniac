@@ -6086,3 +6086,37 @@ button {
   color: var(--text-primary);
   background: var(--bg-active);
 }
+
+/* Table Summary Row */
+.is-summary-row {
+  border-top: 2px double var(--border-default) !important;
+  background: var(--bg-secondary);
+}
+
+.is-summary-cell {
+  border-top: 2px double var(--border-default) !important;
+  vertical-align: middle !important;
+}
+
+.summary-cell-trigger {
+  transition: background var(--transition-fast);
+}
+
+.summary-cell-trigger:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.summary-dropdown-menu {
+  animation: summaryDropdownFadeIn var(--transition-fast) ease;
+}
+
+@keyframes summaryDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
