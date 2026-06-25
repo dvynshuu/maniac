@@ -6143,3 +6143,81 @@ button {
   background: rgba(35, 131, 226, 0.05) !important;
   box-shadow: inset 0 0 0 1px var(--accent-primary) !important;
 }
+
+/* Range selection highlight classes */
+.is-in-range-selected {
+  background: rgba(35, 131, 226, 0.08) !important;
+}
+
+.range-selected-left {
+  border-left: 2px solid var(--accent-primary) !important;
+}
+
+.range-selected-right {
+  border-right: 2px solid var(--accent-primary) !important;
+}
+
+.range-selected-top {
+  border-top: 2px solid var(--accent-primary) !important;
+}
+
+.range-selected-bottom {
+  border-bottom: 2px solid var(--accent-primary) !important;
+}
+
+/* Formula autocomplete search panel styling */
+.formula-search-container {
+  padding: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow: hidden;
+}
+
+.formula-search-input {
+  width: 100%;
+  padding: 4px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 11px;
+  outline: none;
+}
+
+.formula-helper-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 180px;
+}
+
+.formula-helper-item {
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background var(--transition-fast);
+}
+
+.formula-helper-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.formula-helper-name {
+  font-family: monospace;
+  color: var(--accent-primary);
+}
+
+.formula-helper-desc {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}

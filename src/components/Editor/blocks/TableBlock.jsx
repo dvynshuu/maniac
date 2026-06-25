@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download } from 'lucide-react';
 import { evaluateFormula } from '../../../core/formulaEngine';
 import { getPlainText } from '../../../utils/helpers';
 
@@ -182,6 +182,16 @@ export default function TableBlock({ block }) {
   
   // Keyboard navigation smart focus
   const [pendingFocus, setPendingFocus] = useState(null); // { row: number, col: number }
+
+  // Range selection states
+  const [selectionStart, setSelectionStart] = useState(null); // { row: number, col: number }
+  const [selectionEnd, setSelectionEnd] = useState(null); // { row: number, col: number }
+  const [isSelectingRange, setIsSelectingRange] = useState(false);
+
+  // Formula autocomplete states
+  const [formulaSearch, setFormulaSearch] = useState('');
+  const [formulaHelperTab, setFormulaHelperTab] = useState('functions'); // 'functions' | 'properties'
+  
   
   const [resizingCol, setResizingCol] = useState(null);
   const [resizingRow, setResizingRow] = useState(null);
@@ -623,6 +633,253 @@ const isArraysEqual = (arr1, arr2) => {
       setColColors(newColColors);
       save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, newColColors);
     }
+    closeMenu();
+  };
+
+  // --- Advanced Range Selection & Copy-Paste ---
+
+  const handleCellMouseDown = (e, r, c) => {
+    if (e.button !== 0) return;
+    
+    const isEditMode = document.activeElement && document.activeElement.getAttribute('contenteditable') === 'true';
+    const clickedActive = document.activeElement === e.target;
+    
+    if (isEditMode && clickedActive) {
+      return;
+    }
+    
+    closeMenu();
+    
+    setSelectionStart({ row: r, col: c });
+    setSelectionEnd({ row: r, col: c });
+    setIsSelectingRange(true);
+  };
+
+  const handleCellMouseEnterRange = (e, r, c) => {
+    if (!isSelectingRange || !selectionStart) return;
+    setSelectionEnd({ row: r, col: c });
+  };
+
+  const handleGlobalMouseUp = useCallback(() => {
+    setIsSelectingRange(false);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [handleGlobalMouseUp]);
+
+  const clearSelection = useCallback(() => {
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  }, []);
+
+  const isCellInRange = (r, c) => {
+    if (!selectionStart || !selectionEnd) return false;
+    const minR = Math.min(selectionStart.row, selectionEnd.row);
+    const maxR = Math.max(selectionStart.row, selectionEnd.row);
+    const minC = Math.min(selectionStart.col, selectionEnd.col);
+    const maxC = Math.max(selectionStart.col, selectionEnd.col);
+    return r >= minR && r <= maxR && c >= minC && c <= maxC;
+  };
+
+  const getRangeBorderClass = (r, c) => {
+    if (!selectionStart || !selectionEnd) return '';
+    const minR = Math.min(selectionStart.row, selectionEnd.row);
+    const maxR = Math.max(selectionStart.row, selectionEnd.row);
+    const minC = Math.min(selectionStart.col, selectionEnd.col);
+    const maxC = Math.max(selectionStart.col, selectionEnd.col);
+
+    if (r < minR || r > maxR || c < minC || c > maxC) return '';
+
+    const classes = [];
+    if (r === minR) classes.push('range-selected-top');
+    if (r === maxR) classes.push('range-selected-bottom');
+    if (c === minC) classes.push('range-selected-left');
+    if (c === maxC) classes.push('range-selected-right');
+    return classes.join(' ');
+  };
+
+  const handleTableKeyDown = useCallback((e) => {
+    if (!selectionStart || !selectionEnd) return;
+    
+    const active = document.activeElement;
+    const isEditing = active && active.getAttribute('contenteditable') === 'true';
+    if (isEditing) return;
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      
+      const minR = Math.min(selectionStart.row, selectionEnd.row);
+      const maxR = Math.max(selectionStart.row, selectionEnd.row);
+      const minC = Math.min(selectionStart.col, selectionEnd.col);
+      const maxC = Math.max(selectionStart.col, selectionEnd.col);
+
+      const newCells = cells.map((row, r) => {
+        if (r >= minR && r <= maxR) {
+          return row.map((cell, c) => {
+            if (c >= minC && c <= maxC) {
+              return '';
+            }
+            return cell;
+          });
+        }
+        return row;
+      });
+      setCells(newCells);
+      save(newCells);
+    } else if (e.key === 'Escape') {
+      clearSelection();
+    }
+  }, [selectionStart, selectionEnd, cells]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleTableKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleTableKeyDown);
+    };
+  }, [handleTableKeyDown]);
+
+  const handleRangeCopy = useCallback((e) => {
+    if (!selectionStart || !selectionEnd) return;
+    const active = document.activeElement;
+    const isEditing = active && active.getAttribute('contenteditable') === 'true';
+    if (isEditing) return;
+
+    e.preventDefault();
+
+    const minR = Math.min(selectionStart.row, selectionEnd.row);
+    const maxR = Math.max(selectionStart.row, selectionEnd.row);
+    const minC = Math.min(selectionStart.col, selectionEnd.col);
+    const maxC = Math.max(selectionStart.col, selectionEnd.col);
+
+    const rowsText = [];
+    for (let r = minR; r <= maxR; r++) {
+      const colText = [];
+      for (let c = minC; c <= maxC; c++) {
+        colText.push(getPlainText(cells[r]?.[c] || ''));
+      }
+      rowsText.push(colText.join('\t'));
+    }
+    const clipboardText = rowsText.join('\n');
+    e.clipboardData.setData('text/plain', clipboardText);
+  }, [selectionStart, selectionEnd, cells]);
+
+  useEffect(() => {
+    const handleCopy = (e) => handleRangeCopy(e);
+    window.addEventListener('copy', handleCopy);
+    return () => {
+      window.removeEventListener('copy', handleCopy);
+    };
+  }, [handleRangeCopy]);
+
+  const parseClipboardTable = (text) => {
+    const lines = text.split(/\r?\n/);
+    if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
+      return null;
+    }
+
+    const isMarkdown = lines.some(line => line.includes('|')) && 
+                       lines.some(line => /^[|:\s-]+$/.test(line.replace(/[^|:\s-]/g, '')) && line.includes('-'));
+
+    if (isMarkdown) {
+      const parsedRows = [];
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed === '') return;
+        if (/^[|:\s-]+$/.test(trimmed.replace(/[^|:\s-]/g, '')) && trimmed.includes('-')) {
+          return;
+        }
+        let cellsInRow = trimmed.split('|').map(c => c.trim());
+        if (trimmed.startsWith('|')) {
+          cellsInRow.shift();
+        }
+        if (trimmed.endsWith('|')) {
+          cellsInRow.pop();
+        }
+        parsedRows.push(cellsInRow);
+      });
+      return parsedRows;
+    }
+
+    const isTSV = lines.some(line => line.includes('\t'));
+    if (isTSV) {
+      return lines.map(line => line.split('\t'));
+    }
+
+    return lines.map(line => line.split(','));
+  };
+
+  const handleCellPaste = (e, rowIndex, colIndex) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    const parsedGrid = parseClipboardTable(text);
+    if (!parsedGrid || parsedGrid.length === 0) return;
+
+    const isMultiCellPaste = parsedGrid.length > 1 || parsedGrid[0].length > 1;
+    if (isMultiCellPaste) {
+      e.preventDefault();
+      
+      const parsedRows = parsedGrid.length;
+      const parsedCols = Math.max(...parsedGrid.map(r => r.length));
+
+      let newCells = cells.map(row => [...row]);
+      let newWidths = [...columnWidths];
+      let newHeights = [...rowHeights];
+
+      const targetRowCount = rowIndex + parsedRows;
+      const targetColCount = colIndex + parsedCols;
+
+      if (targetRowCount > newCells.length) {
+        const rowsToAdd = targetRowCount - newCells.length;
+        for (let i = 0; i < rowsToAdd; i++) {
+          newCells.push(new Array(newCells[0].length).fill(''));
+          newHeights.push(40);
+        }
+      }
+
+      if (targetColCount > newCells[0].length) {
+        const colsToAdd = targetColCount - newCells[0].length;
+        newCells = newCells.map(row => [...row, ...new Array(colsToAdd).fill('')]);
+        for (let i = 0; i < colsToAdd; i++) {
+          newWidths.push(200);
+        }
+      }
+
+      for (let r = 0; r < parsedRows; r++) {
+        for (let c = 0; c < parsedGrid[r].length; c++) {
+          newCells[rowIndex + r][colIndex + c] = sanitize(parsedGrid[r][c]);
+        }
+      }
+
+      setCells(newCells);
+      setColumnWidths(newWidths);
+      setRowHeights(newHeights);
+      save(newCells, hasHeader, hasHeaderCol, newWidths, newHeights);
+    }
+  };
+
+  const exportToCSV = () => {
+    const csvContent = [];
+    cells.forEach(row => {
+      const rowCleaned = row.map(cell => {
+        const plainText = getPlainText(cell).replace(/"/g, '""');
+        return `"${plainText}"`;
+      });
+      csvContent.push(rowCleaned.join(','));
+    });
+    
+    const blob = new Blob([csvContent.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `table_${block.id}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     closeMenu();
   };
 
@@ -1343,6 +1600,9 @@ const isArraysEqual = (arr1, arr2) => {
                       const isRowDragOver = draggedItem?.type === 'row' && dragOverIndex === rowIndex;
                       const isColDragOver = draggedItem?.type === 'col' && dragOverIndex === colIndex;
 
+                      const inRange = isCellInRange(rowIndex, colIndex);
+                      const borderRangeClass = getRangeBorderClass(rowIndex, colIndex);
+
                       const cellClasses = [
                         'notion-td',
                         `cell-bg-${activeColor}`,
@@ -1360,6 +1620,9 @@ const isArraysEqual = (arr1, arr2) => {
                         isRowDragOver && dragOverSide === 'bottom' ? 'drag-over-bottom' : '',
                         isColDragOver && dragOverSide === 'left' ? 'drag-over-left' : '',
                         isColDragOver && dragOverSide === 'right' ? 'drag-over-right' : '',
+                        // Range selection highlighting & borders
+                        inRange ? 'is-in-range-selected' : '',
+                        borderRangeClass,
                       ].filter(Boolean).join(' ');
 
                       const showColPill = hoveredColIndex === colIndex || isColSelected;
@@ -1372,14 +1635,16 @@ const isArraysEqual = (arr1, arr2) => {
                           style={{
                             textAlign: isColNumeric(colIndex) ? 'right' : 'left'
                           }}
-                          onMouseEnter={() => {
+                          onMouseEnter={(e) => {
                             setHoveredRowIndex(rowIndex);
                             setHoveredColIndex(colIndex);
+                            handleCellMouseEnterRange(e, rowIndex, colIndex);
                           }}
                           onMouseLeave={() => {
                             setHoveredRowIndex(null);
                             setHoveredColIndex(null);
                           }}
+                          onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
                           onDragOver={(e) => handleDragOverCell(e, rowIndex, colIndex)}
                           onDragLeave={handleDragLeaveCell}
                           onDrop={(e) => handleDropCell(e, rowIndex, colIndex)}
@@ -1496,6 +1761,7 @@ const isArraysEqual = (arr1, arr2) => {
                               onInput={(html) => handleCellInput(rowIndex, colIndex, html)}
                               onBlur={(html) => handleCellBlur(rowIndex, colIndex, html)}
                               onKeyDown={(e) => handleCellKeyDown(e, rowIndex, colIndex)}
+                              onPaste={(e) => handleCellPaste(e, rowIndex, colIndex)}
                             />
                           )}
 
@@ -1968,114 +2234,163 @@ const isArraysEqual = (arr1, arr2) => {
                       }}
                     />
 
-                    {/* Click to Insert */}
-                    <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '6px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Click to insert:</span>
-                      
-                      {/* Column list */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '80px', overflowY: 'auto', marginBottom: '6px' }}>
-                        {columnWidths.map((_, c) => {
-                          if (c === colMenu.index) return null;
-                          const letter = getColumnLetter(c);
-                          const headerText = (hasHeader && cells[0]?.[c]) ? getPlainText(cells[0][c]).trim() : '';
-                          const insertName = headerText || letter;
-                          return (
+                    {/* Searchable Click to Insert */}
+                    <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: '8px', marginTop: '6px' }}>
+                      <div className="formula-search-container">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>Formula Autocomplete Helper</span>
+                          {/* Tabs */}
+                          <div style={{ display: 'flex', gap: '8px' }}>
                             <button
-                              key={c}
-                              onClick={() => {
-                                const txtArea = document.getElementById('formula-textarea');
-                                if (txtArea) {
-                                  const val = colConfigs[colMenu.index]?.formula || '';
-                                  const start = txtArea.selectionStart;
-                                  const end = txtArea.selectionEnd;
-                                  const insertStr = `prop("${insertName}")`;
-                                  const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
-                                  
-                                  const nextConfigs = {
-                                    ...colConfigs,
-                                    [colMenu.index]: {
-                                      ...colConfigs[colMenu.index],
-                                      formula: nextFormula
-                                    }
-                                  };
-                                  setColConfigs(nextConfigs);
-                                  save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
-
-                                  setTimeout(() => {
-                                    txtArea.focus();
-                                    txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
-                                  }, 50);
-                                }
-                              }}
+                              onClick={() => setFormulaHelperTab('functions')}
                               style={{
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '1px 6px',
+                                background: 'none',
+                                border: 'none',
+                                outline: 'none',
                                 fontSize: '10px',
-                                color: 'var(--text-secondary)',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                fontWeight: formulaHelperTab === 'functions' ? 'bold' : 'normal',
+                                color: formulaHelperTab === 'functions' ? 'var(--accent-primary)' : 'var(--text-tertiary)'
                               }}
                             >
-                              {insertName}
+                              Functions
                             </button>
-                          );
-                        })}
-                      </div>
+                            <button
+                              onClick={() => setFormulaHelperTab('properties')}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                outline: 'none',
+                                fontSize: '10px',
+                                cursor: 'pointer',
+                                fontWeight: formulaHelperTab === 'properties' ? 'bold' : 'normal',
+                                color: formulaHelperTab === 'properties' ? 'var(--accent-primary)' : 'var(--text-tertiary)'
+                              }}
+                            >
+                              Columns
+                            </button>
+                          </div>
+                        </div>
 
-                      {/* Helper functions */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '100px', overflowY: 'auto' }}>
-                        {[
-                          { label: 'concat()', code: 'concat(a, b)' },
-                          { label: 'if()', code: 'if(cond, t, f)' },
-                          { label: 'lower()', code: 'lower(text)' },
-                          { label: 'upper()', code: 'upper(text)' },
-                          { label: 'contains()', code: 'contains(text, word)' },
-                          { label: 'dateAdd()', code: 'dateAdd(date, 5, "days")' },
-                          { label: 'length()', code: 'length(text)' },
-                          { label: 'add()', code: 'add(a, b)' },
-                          { label: 'subtract()', code: 'subtract(a, b)' }
-                        ].map(fn => (
-                          <button
-                            key={fn.label}
-                            onClick={() => {
-                              const txtArea = document.getElementById('formula-textarea');
-                              if (txtArea) {
-                                const val = colConfigs[colMenu.index]?.formula || '';
-                                const start = txtArea.selectionStart;
-                                const end = txtArea.selectionEnd;
-                                const insertStr = fn.code;
-                                const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
-                                
-                                const nextConfigs = {
-                                  ...colConfigs,
-                                  [colMenu.index]: {
-                                    ...colConfigs[colMenu.index],
-                                    formula: nextFormula
-                                  }
-                                };
-                                setColConfigs(nextConfigs);
-                                save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                        <input
+                          type="text"
+                          className="formula-search-input"
+                          placeholder={`Search ${formulaHelperTab}...`}
+                          value={formulaSearch}
+                          onChange={(e) => setFormulaSearch(e.target.value)}
+                        />
 
-                                setTimeout(() => {
-                                  txtArea.focus();
-                                  txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
-                                }, 50);
+                        <div className="formula-helper-list">
+                          {formulaHelperTab === 'properties' ? (
+                            columnWidths.map((_, c) => {
+                              if (c === colMenu.index) return null;
+                              const letter = getColumnLetter(c);
+                              const headerText = (hasHeader && cells[0]?.[c]) ? getPlainText(cells[0][c]).trim() : '';
+                              const insertName = headerText || letter;
+                              
+                              if (formulaSearch && !insertName.toLowerCase().includes(formulaSearch.toLowerCase())) {
+                                return null;
                               }
-                            }}
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.02)',
-                              border: '1px solid var(--border-default)',
-                              borderRadius: 'var(--radius-sm)',
-                              padding: '1px 5px',
-                              fontSize: '10px',
-                              color: 'var(--text-primary)',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {fn.label}
-                          </button>
-                        ))}
+
+                              const insertStr = `prop("${insertName}")`;
+
+                              return (
+                                <div
+                                  key={c}
+                                  className="formula-helper-item"
+                                  onClick={() => {
+                                    const txtArea = document.getElementById('formula-textarea');
+                                    if (txtArea) {
+                                      const val = colConfigs[colMenu.index]?.formula || '';
+                                      const start = txtArea.selectionStart;
+                                      const end = txtArea.selectionEnd;
+                                      const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
+                                      
+                                      const nextConfigs = {
+                                        ...colConfigs,
+                                        [colMenu.index]: {
+                                          ...colConfigs[colMenu.index],
+                                          formula: nextFormula
+                                        }
+                                      };
+                                      setColConfigs(nextConfigs);
+                                      save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+
+                                      setTimeout(() => {
+                                        txtArea.focus();
+                                        txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                                      }, 50);
+                                    }
+                                  }}
+                                >
+                                  <span className="formula-helper-name">{insertName}</span>
+                                  <span className="formula-helper-desc">prop("{insertName}")</span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            [
+                              { label: 'prop()', code: 'prop("Column")', desc: 'Value of another column' },
+                              { label: 'sum()', code: 'sum(A:B)', desc: 'Sum of cells in range' },
+                              { label: 'avg()', code: 'avg(A:B)', desc: 'Average of cells' },
+                              { label: 'count()', code: 'count(A:B)', desc: 'Count non-empty cells' },
+                              { label: 'max()', code: 'max(A:B)', desc: 'Find maximum cell' },
+                              { label: 'min()', code: 'min(A:B)', desc: 'Find minimum cell' },
+                              { label: 'if()', code: 'if(cond, t, f)', desc: 'If statement' },
+                              { label: 'and()', code: 'and(a, b)', desc: 'Logical AND' },
+                              { label: 'or()', code: 'or(a, b)', desc: 'Logical OR' },
+                              { label: 'not()', code: 'not(a)', desc: 'Logical NOT' },
+                              { label: 'concat()', code: 'concat(a, b)', desc: 'Concatenate strings' },
+                              { label: 'lower()', code: 'lower(text)', desc: 'Lowercase text' },
+                              { label: 'upper()', code: 'upper(text)', desc: 'Uppercase text' },
+                              { label: 'length()', code: 'length(text)', desc: 'Length of string' },
+                              { label: 'contains()', code: 'contains(t, sub)', desc: 'Check if contains' },
+                              { label: 'add()', code: 'add(a, b)', desc: 'Adds two numbers' },
+                              { label: 'subtract()', code: 'subtract(a, b)', desc: 'Subtracts numbers' },
+                              { label: 'multiply()', code: 'multiply(a, b)', desc: 'Multiplies numbers' },
+                              { label: 'divide()', code: 'divide(a, b)', desc: 'Divides numbers' },
+                              { label: 'dateAdd()', code: 'dateAdd(d, 5, "days")', desc: 'Add duration to date' }
+                            ]
+                            .filter(fn => 
+                              fn.label.toLowerCase().includes(formulaSearch.toLowerCase()) || 
+                              fn.desc.toLowerCase().includes(formulaSearch.toLowerCase())
+                            )
+                            .map(fn => (
+                              <div
+                                key={fn.label}
+                                className="formula-helper-item"
+                                onClick={() => {
+                                  const txtArea = document.getElementById('formula-textarea');
+                                  if (txtArea) {
+                                    const val = colConfigs[colMenu.index]?.formula || '';
+                                    const start = txtArea.selectionStart;
+                                    const end = txtArea.selectionEnd;
+                                    const insertStr = fn.code;
+                                    const nextFormula = val.substring(0, start) + insertStr + val.substring(end);
+                                    
+                                    const nextConfigs = {
+                                      ...colConfigs,
+                                      [colMenu.index]: {
+                                        ...colConfigs[colMenu.index],
+                                        formula: nextFormula
+                                      }
+                                    };
+                                    setColConfigs(nextConfigs);
+                                    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+
+                                    setTimeout(() => {
+                                      txtArea.focus();
+                                      txtArea.selectionStart = txtArea.selectionEnd = start + insertStr.length;
+                                    }, 50);
+                                  }
+                                }}
+                              >
+                                <span className="formula-helper-name">{fn.label}</span>
+                                <span className="formula-helper-desc">{fn.desc}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2211,6 +2526,7 @@ const isArraysEqual = (arr1, arr2) => {
                   { id: 'insert_above', label: 'Insert above', icon: ArrowUp, action: () => { insertRow(rowMenu.index, 'above'); closeMenu(); } },
                   { id: 'insert_below', label: 'Insert below', icon: ArrowDown, action: () => { insertRow(rowMenu.index, 'below'); closeMenu(); } },
                   { id: 'duplicate', label: 'Duplicate', icon: Copy, shortcut: 'Ctrl+D', action: () => { duplicateRow(rowMenu.index); closeMenu(); } },
+                  { id: 'export_csv', label: 'Export as CSV', icon: Download, action: () => { exportToCSV(); } },
                   { id: 'clear', label: 'Clear contents', icon: XCircle, action: () => { clearRow(rowMenu.index); closeMenu(); } },
                   { id: 'delete', label: 'Delete', icon: Trash2, danger: true, action: () => { deleteRow(rowMenu.index); closeMenu(); } }
                 ]).map(opt => {
