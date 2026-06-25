@@ -173,6 +173,15 @@ export default function TableBlock({ block }) {
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   const [hasSummaryRow, setHasSummaryRow] = useState(block.properties.hasSummaryRow || false);
   const [summaryRowConfigs, setSummaryRowConfigs] = useState(block.properties.summaryRowConfigs || {});
+  const [isFitToPage, setIsFitToPage] = useState(block.properties.isFitToPage || false);
+  
+  // Drag and Drop reordering states
+  const [draggedItem, setDraggedItem] = useState(null); // { type: 'row' | 'col', index: number }
+  const [dragOverIndex, setDragOverIndex] = useState(null); // number
+  const [dragOverSide, setDragOverSide] = useState(null); // 'left' | 'right' | 'top' | 'bottom'
+  
+  // Keyboard navigation smart focus
+  const [pendingFocus, setPendingFocus] = useState(null); // { row: number, col: number }
   
   const [resizingCol, setResizingCol] = useState(null);
   const [resizingRow, setResizingRow] = useState(null);
@@ -248,7 +257,22 @@ const isArraysEqual = (arr1, arr2) => {
     if (block.properties.colConfigs) setColConfigs(block.properties.colConfigs);
     if (block.properties.hasSummaryRow !== undefined) setHasSummaryRow(block.properties.hasSummaryRow);
     if (block.properties.summaryRowConfigs) setSummaryRowConfigs(block.properties.summaryRowConfigs);
-  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs, block.properties.hasSummaryRow, block.properties.summaryRowConfigs]);
+    if (block.properties.isFitToPage !== undefined) setIsFitToPage(block.properties.isFitToPage);
+  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs, block.properties.hasSummaryRow, block.properties.summaryRowConfigs, block.properties.isFitToPage]);
+
+  // Handle pending focus on cell updates
+  useEffect(() => {
+    if (pendingFocus) {
+      const { row, col } = pendingFocus;
+      const timer = setTimeout(() => {
+        const focused = focusCell(row, col);
+        if (focused) {
+          setPendingFocus(null);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [cells, pendingFocus]);
 
   const saveTimerRef = useRef(null);
 
@@ -259,11 +283,11 @@ const isArraysEqual = (arr1, arr2) => {
     }
   };
 
-  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs) => {
+  const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs, newFitToPage = isFitToPage) => {
     cancelDebouncedSave();
     saveTimerRef.current = setTimeout(() => {
       const sanitizedCells = newCells.map(row => row.map(cell => sanitize(cell)));
-      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs, newHasSummary, newSummaryConfigs);
+      save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs, newHasSummary, newSummaryConfigs, newFitToPage);
     }, 500);
   };
 
@@ -273,7 +297,7 @@ const isArraysEqual = (arr1, arr2) => {
     };
   }, []);
 
-  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs) => {
+  const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs, newFitToPage = isFitToPage) => {
     cancelDebouncedSave();
     engine.updateBlock(block.id, { 
       properties: { 
@@ -287,7 +311,8 @@ const isArraysEqual = (arr1, arr2) => {
         colTypes: newColTypes,
         colConfigs: newColConfigs,
         hasSummaryRow: newHasSummary,
-        summaryRowConfigs: newSummaryConfigs
+        summaryRowConfigs: newSummaryConfigs,
+        isFitToPage: newFitToPage
       } 
     });
   };
@@ -600,6 +625,256 @@ const isArraysEqual = (arr1, arr2) => {
     }
     closeMenu();
   };
+
+  // --- Reordering, Keyboard Navigation & Drag-and-Drop ---
+
+  const reorderArray = (arr, fromIndex, toIndex) => {
+    const nextArr = [...arr];
+    const [moved] = nextArr.splice(fromIndex, 1);
+    nextArr.splice(toIndex, 0, moved);
+    return nextArr;
+  };
+
+  const reorderObjectKeys = (obj, fromIndex, toIndex, totalCount) => {
+    const nextObj = {};
+    const indexMap = [];
+    for (let i = 0; i < totalCount; i++) {
+      indexMap.push(i);
+    }
+    const reorderedMap = reorderArray(indexMap, fromIndex, toIndex);
+    reorderedMap.forEach((oldIndex, newIndex) => {
+      if (obj[oldIndex] !== undefined) {
+        nextObj[newIndex] = obj[oldIndex];
+      }
+    });
+    return nextObj;
+  };
+
+  const reorderColumns = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    const colCount = columnWidths.length;
+    if (fromIdx < 0 || fromIdx >= colCount || toIdx < 0 || toIdx >= colCount) return;
+
+    const newCells = cells.map(row => reorderArray(row, fromIdx, toIdx));
+    const newWidths = reorderArray(columnWidths, fromIdx, toIdx);
+    const newColColors = reorderObjectKeys(colColors, fromIdx, toIdx, colCount);
+    const newColTypes = reorderObjectKeys(colTypes, fromIdx, toIdx, colCount);
+    const newColConfigs = reorderObjectKeys(colConfigs, fromIdx, toIdx, colCount);
+    const newSummaryRowConfigs = reorderObjectKeys(summaryRowConfigs, fromIdx, toIdx, colCount);
+
+    setCells(newCells);
+    setColumnWidths(newWidths);
+    setColColors(newColColors);
+    setColTypes(newColTypes);
+    setColConfigs(newColConfigs);
+    setSummaryRowConfigs(newSummaryRowConfigs);
+
+    save(newCells, hasHeader, hasHeaderCol, newWidths, rowHeights, rowColors, newColColors, newColTypes, newColConfigs, hasSummaryRow, newSummaryRowConfigs);
+  };
+
+  const reorderRows = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    const rowCount = cells.length;
+    if (fromIdx < 0 || fromIdx >= rowCount || toIdx < 0 || toIdx >= rowCount) return;
+
+    const newCells = reorderArray(cells, fromIdx, toIdx);
+    const newHeights = reorderArray(rowHeights, fromIdx, toIdx);
+    const newRowColors = reorderObjectKeys(rowColors, fromIdx, toIdx, rowCount);
+
+    setCells(newCells);
+    setRowHeights(newHeights);
+    setRowColors(newRowColors);
+
+    save(newCells, hasHeader, hasHeaderCol, columnWidths, newHeights, newRowColors, colColors, colTypes, colConfigs, hasSummaryRow, summaryRowConfigs);
+  };
+
+  const placeCaretAtEnd = (el) => {
+    el.focus();
+    if (typeof window.getSelection !== "undefined" && typeof document.createRange !== "undefined") {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  };
+
+  const focusCell = (r, c) => {
+    const colCount = cells[0].length;
+    const rowCount = cells.length;
+    if (r >= 0 && r < rowCount && c >= 0 && c < colCount) {
+      if (colTypes[c] === 'formula') return false;
+      const el = document.querySelector(`.table-cell-editable[data-row="${r}"][data-col="${c}"]`);
+      if (el) {
+        placeCaretAtEnd(el);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const focusNextCell = (startRow, startCol, direction = 'forward') => {
+    const colCount = cells[0].length;
+    const rowCount = cells.length;
+    
+    let currRow = startRow;
+    let currCol = startCol;
+    
+    while (currRow >= 0 && currRow < rowCount) {
+      if (direction === 'forward') {
+        if (colTypes[currCol] !== 'formula' || (currRow === 0 && hasHeader)) {
+          const el = document.querySelector(`.table-cell-editable[data-row="${currRow}"][data-col="${currCol}"]`);
+          if (el) {
+            placeCaretAtEnd(el);
+            return true;
+          }
+        }
+        currCol++;
+        if (currCol >= colCount) {
+          currCol = 0;
+          currRow++;
+        }
+      } else {
+        if (colTypes[currCol] !== 'formula' || (currRow === 0 && hasHeader)) {
+          const el = document.querySelector(`.table-cell-editable[data-row="${currRow}"][data-col="${currCol}"]`);
+          if (el) {
+            placeCaretAtEnd(el);
+            return true;
+          }
+        }
+        currCol--;
+        if (currCol < 0) {
+          currCol = colCount - 1;
+          currRow--;
+        }
+      }
+    }
+    
+    if (direction === 'forward' && currRow >= rowCount) {
+      setPendingFocus({ row: rowCount, col: 0 });
+      addRow(rowCount);
+      return true;
+    }
+    
+    return false;
+  };
+
+  const handleCellKeyDown = (e, rowIndex, colIndex) => {
+    const colCount = cells[0].length;
+    const rowCount = cells.length;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const isShift = e.shiftKey;
+      
+      let nextCol = colIndex;
+      let nextRow = rowIndex;
+      
+      if (isShift) {
+        nextCol--;
+        if (nextCol < 0) {
+          nextCol = colCount - 1;
+          nextRow--;
+        }
+        focusNextCell(nextRow, nextCol, 'backward');
+      } else {
+        nextCol++;
+        if (nextCol >= colCount) {
+          nextCol = 0;
+          nextRow++;
+        }
+        focusNextCell(nextRow, nextCol, 'forward');
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (rowIndex < rowCount - 1) {
+        e.preventDefault();
+        focusNextCell(rowIndex + 1, colIndex, 'forward');
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (rowIndex > 0) {
+        e.preventDefault();
+        focusNextCell(rowIndex - 1, colIndex, 'backward');
+      }
+    }
+  };
+
+  // Drag-and-drop column/row reordering handlers
+  const handleDragStartCol = (e, index) => {
+    setDraggedItem({ type: 'col', index });
+    e.dataTransfer.setData('text/plain', `col:${index}`);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
+
+  const handleDragStartRow = (e, index) => {
+    setDraggedItem({ type: 'row', index });
+    e.dataTransfer.setData('text/plain', `row:${index}`);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
+
+  const handleDragOverCell = (e, rowIndex, colIndex) => {
+    if (!draggedItem) return;
+    e.preventDefault();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (draggedItem.type === 'col') {
+      const mouseX = e.clientX - rect.left;
+      const side = mouseX < rect.width / 2 ? 'left' : 'right';
+      setDragOverIndex(colIndex);
+      setDragOverSide(side);
+    } else if (draggedItem.type === 'row') {
+      const mouseY = e.clientY - rect.top;
+      const side = mouseY < rect.height / 2 ? 'top' : 'bottom';
+      setDragOverIndex(rowIndex);
+      setDragOverSide(side);
+    }
+  };
+
+  const handleDragLeaveCell = () => {
+    setDragOverIndex(null);
+    setDragOverSide(null);
+  };
+
+  const handleDropCell = (e, rowIndex, colIndex) => {
+    if (!draggedItem) return;
+    e.preventDefault();
+
+    const fromIdx = draggedItem.index;
+    if (draggedItem.type === 'col') {
+      let toIdx = colIndex;
+      if (dragOverSide === 'right' && fromIdx > toIdx) {
+        toIdx += 1;
+      } else if (dragOverSide === 'left' && fromIdx < toIdx) {
+        toIdx -= 1;
+      }
+      reorderColumns(fromIdx, toIdx);
+    } else if (draggedItem.type === 'row') {
+      let toIdx = rowIndex;
+      if (dragOverSide === 'bottom' && fromIdx > toIdx) {
+        toIdx += 1;
+      } else if (dragOverSide === 'top' && fromIdx < toIdx) {
+        toIdx -= 1;
+      }
+      reorderRows(fromIdx, toIdx);
+    }
+
+    handleDragEnd();
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverIndex(null);
+    setDragOverSide(null);
+  };
+
 
   const setColumnType = (colIndex, newType) => {
     const nextColTypes = { ...colTypes, [colIndex]: newType };
@@ -1041,10 +1316,10 @@ const isArraysEqual = (arr1, arr2) => {
           <div style={{ display: 'flex', position: 'relative' }}>
             
             {/* Table layout */}
-            <table className="notion-table" style={{ width: totalWidth || '100%' }}>
+            <table className="notion-table" style={{ width: isFitToPage ? '100%' : (totalWidth || '100%') }}>
               <colgroup>
                 {columnWidths.map((width, i) => (
-                  <col key={i} style={{ width }} />
+                  <col key={i} style={{ width: isFitToPage ? `${(width / totalWidth) * 100}%` : width }} />
                 ))}
               </colgroup>
               <tbody>
@@ -1065,6 +1340,9 @@ const isArraysEqual = (arr1, arr2) => {
                       const isRowSelected = selectedRowIndex === rowIndex;
                       const isColSelected = selectedColIndex === colIndex;
 
+                      const isRowDragOver = draggedItem?.type === 'row' && dragOverIndex === rowIndex;
+                      const isColDragOver = draggedItem?.type === 'col' && dragOverIndex === colIndex;
+
                       const cellClasses = [
                         'notion-td',
                         `cell-bg-${activeColor}`,
@@ -1077,6 +1355,11 @@ const isArraysEqual = (arr1, arr2) => {
                         isRowSelected && colIndex === row.length - 1 ? 'selected-right-edge' : '',
                         isColSelected && rowIndex === 0 ? 'selected-top-edge' : '',
                         isColSelected && rowIndex === cells.length - 1 ? 'selected-bottom-edge' : '',
+                        // Drag indicators
+                        isRowDragOver && dragOverSide === 'top' ? 'drag-over-top' : '',
+                        isRowDragOver && dragOverSide === 'bottom' ? 'drag-over-bottom' : '',
+                        isColDragOver && dragOverSide === 'left' ? 'drag-over-left' : '',
+                        isColDragOver && dragOverSide === 'right' ? 'drag-over-right' : '',
                       ].filter(Boolean).join(' ');
 
                       const showColPill = hoveredColIndex === colIndex || isColSelected;
@@ -1097,6 +1380,9 @@ const isArraysEqual = (arr1, arr2) => {
                             setHoveredRowIndex(null);
                             setHoveredColIndex(null);
                           }}
+                          onDragOver={(e) => handleDragOverCell(e, rowIndex, colIndex)}
+                          onDragLeave={handleDragLeaveCell}
+                          onDrop={(e) => handleDropCell(e, rowIndex, colIndex)}
                         >
                           
                           {/* Column Selector Handle Pill (appears at the top of first cell in each col) */}
@@ -1104,6 +1390,9 @@ const isArraysEqual = (arr1, arr2) => {
                             <div className="col-handle-wrapper">
                               <div 
                                 className={`col-handle-pill ${isColSelected ? 'is-selected' : ''} ${showColPill ? 'is-visible' : ''}`}
+                                draggable
+                                onDragStart={(e) => handleDragStartCol(e, colIndex)}
+                                onDragEnd={handleDragEnd}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedColIndex(colIndex);
@@ -1129,6 +1418,9 @@ const isArraysEqual = (arr1, arr2) => {
                             <div className="row-handle-wrapper">
                               <div 
                                 className={`row-handle-pill ${isRowSelected ? 'is-selected' : ''} ${showRowPill ? 'is-visible' : ''}`}
+                                draggable
+                                onDragStart={(e) => handleDragStartRow(e, rowIndex)}
+                                onDragEnd={handleDragEnd}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedRowIndex(rowIndex);
@@ -1203,6 +1495,7 @@ const isArraysEqual = (arr1, arr2) => {
                               style={{ textAlign: isColNumeric(colIndex) ? 'right' : 'left' }}
                               onInput={(html) => handleCellInput(rowIndex, colIndex, html)}
                               onBlur={(html) => handleCellBlur(rowIndex, colIndex, html)}
+                              onKeyDown={(e) => handleCellKeyDown(e, rowIndex, colIndex)}
                             />
                           )}
 
@@ -1908,6 +2201,11 @@ const isArraysEqual = (arr1, arr2) => {
                     const next = !hasSummaryRow;
                     setHasSummaryRow(next);
                     save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, next);
+                  }},
+                  { id: 'fit_to_page', label: 'Fit to page width', icon: Columns, type: 'toggle', active: isFitToPage, action: () => {
+                    const next = !isFitToPage;
+                    setIsFitToPage(next);
+                    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow, summaryRowConfigs, next);
                   }},
                   { id: 'color', label: 'Color', icon: Palette, type: 'submenu', action: () => setColorMenu('row') },
                   { id: 'insert_above', label: 'Insert above', icon: ArrowUp, action: () => { insertRow(rowMenu.index, 'above'); closeMenu(); } },
