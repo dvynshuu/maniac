@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag } from 'lucide-react';
 import { evaluateFormula } from '../../../core/formulaEngine';
-import { getPlainText } from '../../../utils/helpers';
+import { getPlainText, createId } from '../../../utils/helpers';
 
 // TableCell component to manage contentEditable cells cleanly
 const TableCell = React.memo(({ value, onInput, onBlur, className, rowIndex, colIndex, ...props }) => {
@@ -158,6 +158,18 @@ const NOTION_COLORS = [
   { name: 'red', label: 'Red', bg: 'rgba(248, 113, 113, 0.12)', preview: 'rgba(248, 113, 113, 0.4)' },
 ];
 
+const SELECT_TAG_COLORS = [
+  { name: 'gray', bg: 'rgba(120, 120, 120, 0.18)', text: '#9ca3af' },
+  { name: 'brown', bg: 'rgba(140, 90, 60, 0.18)', text: '#ca8a04' },
+  { name: 'orange', bg: 'rgba(249, 115, 22, 0.18)', text: '#fb923c' },
+  { name: 'yellow', bg: 'rgba(250, 204, 21, 0.18)', text: '#facc15' },
+  { name: 'green', bg: 'rgba(74, 222, 128, 0.18)', text: '#4ade80' },
+  { name: 'blue', bg: 'rgba(96, 165, 250, 0.18)', text: '#60a5fa' },
+  { name: 'purple', bg: 'rgba(167, 139, 250, 0.18)', text: '#c084fc' },
+  { name: 'pink', bg: 'rgba(244, 114, 182, 0.18)', text: '#f472b6' },
+  { name: 'red', bg: 'rgba(248, 113, 113, 0.18)', text: '#f87171' }
+];
+
 export default function TableBlock({ block }) {
   const isMigrated = !block.properties.columns; 
   
@@ -174,6 +186,10 @@ export default function TableBlock({ block }) {
   const [hasSummaryRow, setHasSummaryRow] = useState(block.properties.hasSummaryRow || false);
   const [summaryRowConfigs, setSummaryRowConfigs] = useState(block.properties.summaryRowConfigs || {});
   const [isFitToPage, setIsFitToPage] = useState(block.properties.isFitToPage || false);
+  
+  const [selectMenuCell, setSelectMenuCell] = useState(null); // { row, col, x, y, width }
+  const [selectSearchQuery, setSelectSearchQuery] = useState('');
+  const [editingDateCell, setEditingDateCell] = useState(null); // { row, col }
   
   // Drag and Drop reordering states
   const [draggedItem, setDraggedItem] = useState(null); // { type: 'row' | 'col', index: number }
@@ -883,6 +899,94 @@ const isArraysEqual = (arr1, arr2) => {
     closeMenu();
   };
 
+  const convertToDatabase = async () => {
+    const colCount = cells[0]?.length || 0;
+    const schema = columnWidths.map((width, colIdx) => {
+      let headerText = '';
+      if (hasHeader && cells[0]?.[colIdx]) {
+        headerText = getPlainText(cells[0][colIdx]).trim();
+      }
+      const propId = `prop_${colIdx}_${createId()}`;
+      return {
+        id: propId,
+        name: headerText || `Column ${colIdx + 1}`,
+        type: colTypes[colIdx] || 'text',
+        width: width || 200,
+        config: colConfigs[colIdx] || {}
+      };
+    });
+
+    const startIdx = hasHeader ? 1 : 0;
+    const rows = [];
+    const cellsToInsert = [];
+    const blockId = block.id;
+
+    for (let rIdx = startIdx; rIdx < cells.length; rIdx++) {
+      const rowId = `row_${rIdx}_${createId()}`;
+      const values = {};
+
+      schema.forEach((prop, colIdx) => {
+        const cellVal = cells[rIdx][colIdx] || '';
+        values[prop.id] = cellVal;
+
+        cellsToInsert.push({
+          id: `${rowId}_${prop.id}`,
+          rowId,
+          blockId,
+          propertyId: prop.id,
+          value: cellVal,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+      });
+
+      rows.push({
+        id: rowId,
+        blockId,
+        values,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    }
+
+    const { db } = await import('../../../db/database');
+    const { useSecurityStore } = await import('../../../stores/securityStore');
+    const { SecurityService } = await import('../../../utils/securityService');
+
+    const key = useSecurityStore.getState().derivedKey;
+    const encryptedCells = await Promise.all(
+      cellsToInsert.map(async (cellObj) => {
+        const dbCell = { ...cellObj };
+        if (key && dbCell.value !== undefined) {
+          dbCell.value = await SecurityService.encrypt(JSON.stringify(dbCell.value), key);
+          dbCell._isEncrypted = true;
+        }
+        return dbCell;
+      })
+    );
+
+    const rowsForDexie = rows.map(r => {
+      const rowCopy = { ...r };
+      delete rowCopy.values;
+      return rowCopy;
+    });
+
+    await db.transaction('rw', [db.database_rows, db.database_cells], async () => {
+      await db.database_rows.bulkPut(rowsForDexie);
+      await db.database_cells.bulkPut(encryptedCells);
+    });
+
+    engine.updateBlock(block.id, {
+      type: 'database',
+      properties: {
+        schema,
+        rows
+      }
+    });
+
+    closeMenu();
+  };
+
   // --- Reordering, Keyboard Navigation & Drag-and-Drop ---
 
   const reorderArray = (arr, fromIndex, toIndex) => {
@@ -1136,6 +1240,8 @@ const isArraysEqual = (arr1, arr2) => {
   const setColumnType = (colIndex, newType) => {
     const nextColTypes = { ...colTypes, [colIndex]: newType };
     let nextColConfigs = { ...colConfigs };
+    let nextCells = [...cells];
+
     if (newType === 'formula') {
       nextColConfigs[colIndex] = {
         formula: '',
@@ -1144,12 +1250,32 @@ const isArraysEqual = (arr1, arr2) => {
         showAs: 'number',
         progressColor: 'blue'
       };
+    } else if (newType === 'select') {
+      nextColConfigs[colIndex] = {
+        options: []
+      };
+    } else if (newType === 'checkbox') {
+      nextColConfigs[colIndex] = {};
+      nextCells = cells.map((row, rIdx) => {
+        if (hasHeader && rIdx === 0) return row;
+        const newRow = [...row];
+        const val = getPlainText(newRow[colIndex]).trim().toLowerCase();
+        if (val === 'true' || val === 'checked' || val === 'yes' || val === '1') {
+          newRow[colIndex] = 'true';
+        } else {
+          newRow[colIndex] = 'false';
+        }
+        return newRow;
+      });
+      setCells(nextCells);
+    } else if (newType === 'date') {
+      nextColConfigs[colIndex] = {};
     } else {
       delete nextColConfigs[colIndex];
     }
     setColTypes(nextColTypes);
     setColConfigs(nextColConfigs);
-    save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, nextColTypes, nextColConfigs);
+    save(nextCells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, nextColTypes, nextColConfigs);
     setTypeMenuOpen(false);
   };
 
@@ -1750,6 +1876,148 @@ const isArraysEqual = (arr1, arr2) => {
                                 return renderFormulaValue(val, colIndex);
                               })()}
                             </div>
+                          ) : colTypes[colIndex] === 'checkbox' && !isHeaderRow ? (
+                            <div 
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                width: '100%',
+                                height: '100%',
+                                minHeight: '34px',
+                                cursor: 'pointer'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const isChecked = cell === 'true';
+                                const nextVal = isChecked ? 'false' : 'true';
+                                handleCellInput(rowIndex, colIndex, nextVal);
+                              }}
+                            >
+                              <div 
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  border: cell === 'true' ? '1px solid var(--accent-primary)' : '1.5px solid var(--text-tertiary)',
+                                  borderRadius: '3px',
+                                  background: cell === 'true' ? 'var(--accent-primary)' : 'transparent',
+                                  display: 'flex',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {cell === 'true' && (
+                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                          ) : colTypes[colIndex] === 'select' && !isHeaderRow ? (
+                            (() => {
+                              const optVal = getPlainText(cell).trim();
+                              const colConfig = colConfigs[colIndex] || {};
+                              const options = colConfig.options || [];
+                              const matchedOption = options.find(o => o.value === optVal);
+
+                              const tagStyle = matchedOption ? {
+                                background: matchedOption.bg || 'var(--bg-secondary)',
+                                color: matchedOption.color || 'var(--text-primary)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                fontWeight: '500'
+                              } : {
+                                color: 'var(--text-tertiary)',
+                                fontSize: '12px'
+                              };
+
+                              return (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setSelectMenuCell({
+                                      row: rowIndex,
+                                      col: colIndex,
+                                      x: rect.left + window.scrollX,
+                                      y: rect.bottom + window.scrollY + 4,
+                                      width: Math.max(rect.width, 180)
+                                    });
+                                  }}
+                                  style={{
+                                    padding: '8px',
+                                    minHeight: '34px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {optVal ? (
+                                    <span style={tagStyle}>{optVal}</span>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>Empty select</span>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : colTypes[colIndex] === 'date' && !isHeaderRow ? (
+                            (() => {
+                              const dateVal = getPlainText(cell).trim();
+                              const formattedDate = dateVal ? new Date(dateVal).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+                              const isEditing = editingDateCell?.row === rowIndex && editingDateCell?.col === colIndex;
+
+                              if (isEditing) {
+                                return (
+                                  <input 
+                                    type="date"
+                                    value={dateVal}
+                                    autoFocus
+                                    onBlur={() => setEditingDateCell(null)}
+                                    onChange={(e) => {
+                                      handleCellInput(rowIndex, colIndex, e.target.value);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      padding: '6px 8px',
+                                      background: 'transparent',
+                                      border: 'none',
+                                      outline: 'none',
+                                      color: 'var(--text-primary)',
+                                      fontSize: '13px',
+                                      fontFamily: 'inherit'
+                                    }}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingDateCell({ row: rowIndex, col: colIndex });
+                                  }}
+                                  style={{
+                                    padding: '8px',
+                                    minHeight: '34px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    cursor: 'pointer',
+                                    color: dateVal ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                    fontSize: '13px'
+                                  }}
+                                >
+                                  <Calendar size={14} style={{ marginRight: '6px', flexShrink: 0, opacity: 0.6 }} />
+                                  <span>{formattedDate || 'Empty date'}</span>
+                                </div>
+                              );
+                            })()
                           ) : (
                             <TableCell
                               key={`cell-${rowIndex}-${colIndex}`}
@@ -1911,6 +2179,30 @@ const isArraysEqual = (arr1, arr2) => {
                 </div>
                 <div 
                   className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'checkbox')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <CheckSquare size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Checkbox</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'select')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Tag size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Select</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'date')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Calendar size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Date</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
                   onClick={() => setColumnType(colMenu.index, 'formula')}
                   style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
                 >
@@ -2026,7 +2318,7 @@ const isArraysEqual = (arr1, arr2) => {
                 <Calculator size={14} style={{ marginRight: '8px' }} />
                 <span style={{ flexGrow: 1, fontSize: '13px' }}>Type</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
-                  <span style={{ fontSize: '11px' }}>{colTypes[colMenu.index] === 'formula' ? 'Formula' : 'Text'}</span>
+                  <span style={{ fontSize: '11px', textTransform: 'capitalize' }}>{colTypes[colMenu.index] || 'text'}</span>
                   <ChevronRight size={14} />
                 </div>
               </button>
@@ -2526,6 +2818,7 @@ const isArraysEqual = (arr1, arr2) => {
                   { id: 'insert_above', label: 'Insert above', icon: ArrowUp, action: () => { insertRow(rowMenu.index, 'above'); closeMenu(); } },
                   { id: 'insert_below', label: 'Insert below', icon: ArrowDown, action: () => { insertRow(rowMenu.index, 'below'); closeMenu(); } },
                   { id: 'duplicate', label: 'Duplicate', icon: Copy, shortcut: 'Ctrl+D', action: () => { duplicateRow(rowMenu.index); closeMenu(); } },
+                  { id: 'convert_database', label: 'Turn into database', icon: Table, action: () => { convertToDatabase(); } },
                   { id: 'export_csv', label: 'Export as CSV', icon: Download, action: () => { exportToCSV(); } },
                   { id: 'clear', label: 'Clear contents', icon: XCircle, action: () => { clearRow(rowMenu.index); closeMenu(); } },
                   { id: 'delete', label: 'Delete', icon: Trash2, danger: true, action: () => { deleteRow(rowMenu.index); closeMenu(); } }
@@ -2560,6 +2853,183 @@ const isArraysEqual = (arr1, arr2) => {
         </div>,
         document.body
       )}
+
+      {/* Select Tags Portal Options Popover */}
+      {selectMenuCell && createPortal(
+        <>
+          <div 
+            className="table-menu-backdrop" 
+            onClick={() => {
+              setSelectMenuCell(null);
+              setSelectSearchQuery('');
+            }} 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 9998,
+              background: 'transparent'
+            }}
+          />
+          <div 
+            className="table-handle-menu"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              top: selectMenuCell.y,
+              left: selectMenuCell.x,
+              width: selectMenuCell.width,
+              zIndex: 9999,
+              padding: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-default)',
+              borderRadius: '6px',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            {/* Search/Create Input */}
+            <input 
+              type="text" 
+              className="menu-search-input" 
+              placeholder="Search or create option..." 
+              autoFocus
+              onChange={(e) => setSelectSearchQuery(e.target.value)}
+              value={selectSearchQuery}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '4px',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+                outline: 'none'
+              }}
+            />
+
+            {/* Options List */}
+            <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {/* Clear Option */}
+              <div
+                onClick={() => {
+                  handleCellInput(selectMenuCell.row, selectMenuCell.col, '');
+                  setSelectMenuCell(null);
+                  setSelectSearchQuery('');
+                }}
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  color: 'var(--text-tertiary)'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Clear selection
+              </div>
+
+              {/* Existing Options */}
+              {(() => {
+                const selectColConfig = colConfigs[selectMenuCell.col] || {};
+                const options = selectColConfig.options || [];
+                const filtered = options.filter(o => 
+                  o.value.toLowerCase().includes(selectSearchQuery.toLowerCase())
+                );
+
+                return (
+                  <>
+                    {filtered.map(opt => (
+                      <div
+                        key={opt.value}
+                        onClick={() => {
+                          handleCellInput(selectMenuCell.row, selectMenuCell.col, opt.value);
+                          setSelectMenuCell(null);
+                          setSelectSearchQuery('');
+                        }}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: 'transparent',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <span style={{
+                          background: opt.bg,
+                          color: opt.color,
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>{opt.value}</span>
+                      </div>
+                    ))}
+
+                    {/* Create New Option */}
+                    {selectSearchQuery.trim() && !options.some(o => o.value.toLowerCase() === selectSearchQuery.trim().toLowerCase()) && (
+                      <div
+                        onClick={() => {
+                          const newVal = selectSearchQuery.trim();
+                          const randomColor = SELECT_TAG_COLORS[Math.floor(Math.random() * SELECT_TAG_COLORS.length)];
+                          const newOpt = {
+                            value: newVal,
+                            bg: randomColor.bg,
+                            color: randomColor.text
+                          };
+                          const updatedOptions = [...options, newOpt];
+                          const nextConfigs = {
+                            ...colConfigs,
+                            [selectMenuCell.col]: {
+                              ...colConfigs[selectMenuCell.col],
+                              options: updatedOptions
+                            }
+                          };
+                          setColConfigs(nextConfigs);
+                          handleCellInput(selectMenuCell.row, selectMenuCell.col, newVal);
+                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                          setSelectMenuCell(null);
+                          setSelectSearchQuery('');
+                        }}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          color: 'var(--accent-primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginTop: '4px',
+                          borderTop: '1px solid var(--border-subtle)'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <span>Create option</span>
+                        <strong style={{
+                          background: 'var(--accent-subtle)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '11px'
+                        }}>{selectSearchQuery.trim()}</strong>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </>
+      , document.body)}
 
     </div>
   );
