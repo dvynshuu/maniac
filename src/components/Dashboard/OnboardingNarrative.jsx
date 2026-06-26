@@ -14,21 +14,20 @@ export function OnboardingNarrative({ onComplete }) {
 
   return (
     <div className="onboarding-widget">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <div className="onboarding-header">
+        <div className="onboarding-title-section">
+          <div className="onboarding-title-row">
             <ManiacLogo size="sm" />
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
-              Mastering MANIAC
-            </h3>
+            <h3 className="onboarding-title">Mastering MANIAC</h3>
           </div>
-          <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
+          <p className="onboarding-description">
             To get the most out of your vault, it helps to know when to use each tool. Here is a quick guide to the core primitives.
           </p>
         </div>
         <button 
           onClick={handleDismiss}
-          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+          className="onboarding-dismiss-btn"
+          aria-label="Dismiss onboarding guide"
         >
           <X size={14} />
         </button>
@@ -36,31 +35,31 @@ export function OnboardingNarrative({ onComplete }) {
 
       <div className="onboarding-grid">
         <div className="onboarding-card">
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(46, 91, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <FileText size={20} color="var(--accent-primary)" />
+          <div className="onboarding-icon-wrapper val-primary">
+            <FileText size={20} />
           </div>
-          <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Pages</h4>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          <h4 className="onboarding-card-title">Pages</h4>
+          <p className="onboarding-card-text">
             Use for free-form thinking, long-form writing, and unstructured notes. Like Notion documents.
           </p>
         </div>
 
         <div className="onboarding-card">
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <Database size={20} color="var(--accent-secondary)" />
+          <div className="onboarding-icon-wrapper val-secondary">
+            <Database size={20} />
           </div>
-          <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Databases</h4>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          <h4 className="onboarding-card-title">Databases</h4>
+          <p className="onboarding-card-text">
             Use for structured collections, entity tracking, and tabular data. Like Airtable bases.
           </p>
         </div>
 
         <div className="onboarding-card">
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(74, 222, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <Activity size={20} color="var(--success)" />
+          <div className="onboarding-icon-wrapper val-success">
+            <Activity size={20} />
           </div>
-          <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Trackers</h4>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          <h4 className="onboarding-card-title">Trackers</h4>
+          <p className="onboarding-card-text">
             Use for daily habits, quantitative logging, and analyzing trends over time. Like Streak.
           </p>
         </div>
@@ -68,3 +67,4 @@ export function OnboardingNarrative({ onComplete }) {
     </div>
   );
 }
+

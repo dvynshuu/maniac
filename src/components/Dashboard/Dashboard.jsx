@@ -53,7 +53,12 @@ function Dashboard() {
   };
 
   return (
-    <div className="editor-scroll bg-primary" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
+    <div className="editor-scroll bg-primary dashboard-wrapper" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
+      {/* Ambient background lighting */}
+      <div className="bg-glow bg-glow-blue"></div>
+      <div className="bg-glow bg-glow-purple"></div>
+      <div className="bg-glow bg-glow-ember"></div>
+
       {/* Settings Modal */}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} initialTab={settingsTab} />}
 
@@ -104,7 +109,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="editor-container" style={{ maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div className="editor-container dashboard-main-content">
         {activeTab === 'Workspace' && <WorkspaceTab pages={pages} navigate={navigate} />}
         {activeTab === 'Intelligence' && <IntelligenceTab navigate={navigate} />}
         {activeTab === 'Calendar' && <CalendarTab pages={pages} navigate={navigate} />}
@@ -136,46 +141,33 @@ function IntelligenceTab({ navigate }) {
 
   if (isAnalyzing && !nextActions.length) {
     return (
-      <div style={{ padding: '64px', textAlign: 'center' }}>
-        <div className="spinner" style={{ margin: '0 auto 24px' }}></div>
-        <div style={{ fontSize: '18px', color: 'var(--text-primary)', fontWeight: 600 }}>Analyzing nodes...</div>
-        <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginTop: '8px' }}>Scanning for patterns and stale thoughts.</div>
+      <div className="intelligence-loading">
+        <div className="spinner"></div>
+        <div className="intelligence-loading-title">Analyzing nodes...</div>
+        <div className="intelligence-loading-subtitle">Scanning for patterns and stale thoughts.</div>
       </div>
     );
   }
 
   return (
     <div className="intelligence-container animate-fade-in">
-      <div style={{ marginBottom: '40px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Brain size={24} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>Decision Engine</h2>
+      <div className="intelligence-header">
+        <div className="intelligence-title-row">
+          <Brain size={28} className="intelligence-header-icon" />
+          <h2 className="intelligence-title">Decision Engine</h2>
         </div>
-        <p style={{ fontSize: '16px', color: 'var(--text-tertiary)', margin: 0 }}>Intelligence derived from your behavior and content.</p>
+        <p className="intelligence-subtitle">Intelligence derived from your behavior and content.</p>
       </div>
 
-      {/* Active Recall Spaced Repetition Card */}
-      <div 
-        className="intelligence-card" 
-        style={{ 
-          background: duePages.length > 0 ? 'rgba(46, 91, 255, 0.04)' : 'var(--bg-secondary)', 
-          border: duePages.length > 0 ? '1px solid rgba(46, 91, 255, 0.25)' : '1px solid var(--border-subtle)',
-          borderRadius: '16px', 
-          padding: '24px', 
-          marginBottom: '32px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(46, 91, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Brain size={20} color="var(--accent-primary)" />
+      <div className={`intelligence-card srs-card ${duePages.length > 0 ? 'glass active-recall-due' : ''}`}>
+        <div className="srs-header">
+          <div className="srs-info">
+            <div className="srs-icon-container">
+              <Brain size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Active Recall Queue</h3>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+              <h3 className="srs-title">Active Recall Queue</h3>
+              <p className="srs-description">
                 {srsPages.length === 0 
                   ? 'Enable Spaced Repetition on your pages to retain information.' 
                   : duePages.length === 0 
@@ -184,20 +176,18 @@ function IntelligenceTab({ navigate }) {
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#fb923c', fontWeight: 'bold', background: 'rgba(251, 146, 60, 0.08)', padding: '6px 12px', borderRadius: '20px' }}>
-            <Flame size={16} fill="#fb923c" />
+          <div className="srs-streak-badge">
+            <Flame size={16} />
             <span>Streak: {srsStreak || 0}d</span>
           </div>
         </div>
 
         {srsPages.length > 0 && (
-          <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', width: '100%', overflow: 'hidden' }}>
+          <div className="srs-progress-bar">
             <div 
+              className="srs-progress-fill"
               style={{
-                height: '100%',
-                background: 'var(--accent-primary)',
-                width: `${srsPages.length > 0 ? ((srsPages.length - duePages.length) / srsPages.length) * 100 : 0}%`,
-                transition: 'width 0.3s ease'
+                width: `${srsPages.length > 0 ? ((srsPages.length - duePages.length) / srsPages.length) * 100 : 0}%`
               }}
             />
           </div>
@@ -205,14 +195,13 @@ function IntelligenceTab({ navigate }) {
 
         {duePages.length > 0 ? (
           <button 
-            className="btn btn-primary"
+            className="btn btn-primary srs-start-btn"
             onClick={() => setSrsModalOpen(true)}
-            style={{ padding: '12px', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
           >
             <Brain size={16} /> Start Recall Checks ({duePages.length} due)
           </button>
         ) : srsPages.length === 0 ? (
-          <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+          <div className="srs-tip">
             Tip: Go to any page and toggle "Active Recall" in the page header to add it to your daily practice.
           </div>
         ) : null}
@@ -226,105 +215,125 @@ function IntelligenceTab({ navigate }) {
         />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+      <div className="intelligence-grid">
         {/* Next Actions */}
-        <div className="intelligence-card glass">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <Zap size={18} color="var(--accent-primary)" />
-            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What should I do next?</h3>
+        <div className="intelligence-card glass card-next-actions">
+          <div className="intelligence-card-header">
+            <Zap size={18} />
+            <h3>What should I do next?</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="intelligence-card-content">
             {nextActions.length > 0 ? nextActions.map(action => (
               <div
                 key={action.id}
                 className="intelligence-item"
                 onClick={() => navigate(`/page/${action.pageId}`)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="intelligence-item-inner">
                   {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
-                  <span style={{ fontSize: '14px', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
+                  <span className="intelligence-item-text">{action.content}</span>
                 </div>
               </div>
             )) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>No pending tasks detected.</div>
+              <div className="intelligence-empty-state">No pending tasks detected.</div>
             )}
           </div>
         </div>
 
         {/* Forgetting */}
-        <div className="intelligence-card glass">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <AlertCircle size={18} color="var(--warning)" />
-            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What am I forgetting?</h3>
+        <div className="intelligence-card glass card-forgetting">
+          <div className="intelligence-card-header">
+            <AlertCircle size={18} />
+            <h3>What am I forgetting?</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="intelligence-card-content">
             {forgetting.stalePages.length > 0 && (
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>STALE PAGES</div>
-                {forgetting.stalePages.slice(0, 3).map(page => (
-                  <div key={page.id} className="intelligence-item" onClick={() => navigate(`/page/${page.id}`)}>
-                    <span style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <EmojiIcon emoji={page.icon || '📄'} size="14px" />
-                      <span>{page.title}</span>
-                    </span>
-                  </div>
-                ))}
+              <div className="intelligence-sub-section">
+                <div className="intelligence-sub-title">STALE PAGES</div>
+                <div className="intelligence-sub-list">
+                  {forgetting.stalePages.slice(0, 3).map(page => (
+                    <div key={page.id} className="intelligence-item" onClick={() => navigate(`/page/${page.id}`)}>
+                      <span className="intelligence-item-text flex-align">
+                        <EmojiIcon emoji={page.icon || '📄'} size="14px" />
+                        <span>{page.title}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {forgetting.abandonedTodos.length > 0 && (
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>ABANDONED TASKS</div>
-                {forgetting.abandonedTodos.slice(0, 3).map(todo => (
-                  <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/page/${todo.pageId}`)}>
-                    <span style={{ fontSize: '13px' }}>{todo.content}</span>
-                  </div>
-                ))}
+              <div className="intelligence-sub-section">
+                <div className="intelligence-sub-title">ABANDONED TASKS</div>
+                <div className="intelligence-sub-list">
+                  {forgetting.abandonedTodos.slice(0, 3).map(todo => (
+                    <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/page/${todo.pageId}`)}>
+                      <span className="intelligence-item-text">{todo.content}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {forgetting.stalePages.length === 0 && forgetting.abandonedTodos.length === 0 && (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>Your memory is synchronized.</div>
+              <div className="intelligence-empty-state">Your memory is synchronized.</div>
             )}
           </div>
         </div>
 
         {/* Weekly Focus */}
-        <div className="intelligence-card glass">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-            <TrendingUp size={18} color="var(--success)" />
-            <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>What matters this week?</h3>
+        <div className="intelligence-card glass card-weekly-focus">
+          <div className="intelligence-card-header">
+            <TrendingUp size={18} />
+            <h3>What matters this week?</h3>
           </div>
-          {weeklyFocus ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '12px' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{weeklyFocus.activePages}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Active Nodes this week</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px' }}>TOP TRACKERS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {weeklyFocus.trackerStats.map(stat => (
-                    <div key={stat.id} style={{ background: 'var(--bg-tertiary)', padding: '4px 10px', borderRadius: '20px', fontSize: '12px' }}>
-                      {stat.name}: {stat.count}
-                    </div>
-                  ))}
+          <div className="intelligence-card-content">
+            {weeklyFocus ? (
+              <div className="weekly-focus-stats">
+                <div className="focus-stat-card">
+                  <div className="focus-stat-value">{weeklyFocus.activePages}</div>
+                  <div className="focus-stat-label">Active Nodes this week</div>
+                </div>
+                <div className="focus-trackers-section">
+                  <div className="intelligence-sub-title">TOP TRACKERS</div>
+                  <div className="focus-trackers-list">
+                    {weeklyFocus.trackerStats.map(stat => (
+                      <div key={stat.id} className="focus-tracker-tag">
+                        <span className="tracker-name">{stat.name}</span>
+                        <span className="tracker-count">{stat.count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '14px' }}>Insufficient data for this week.</div>
-          )}
+            ) : (
+              <div className="intelligence-empty-state">Insufficient data for this week.</div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Logic for Feedback Loop */}
-      <div className="intelligence-card" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Knowledge Growth Curve</h3>
-        <div style={{ height: '200px', width: '100%', background: 'var(--bg-elevated)', borderRadius: '12px', display: 'flex', alignItems: 'flex-end', padding: '20px', gap: '10px' }}>
+      <div className="intelligence-card growth-card">
+        <div className="growth-header">
+          <h3 className="growth-title">Knowledge Growth Curve</h3>
+          <span className="growth-depth-badge">Level {knowledgeVelocity?.depthLevel || 1} Depth</span>
+        </div>
+        <div className="growth-chart-container">
           {(knowledgeVelocity?.dailyActivity || [5, 5, 5, 5, 5, 5, 5]).map((h, i) => (
-            <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--accent-primary)', opacity: 0.2 + (i * 0.1), borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out' }}></div>
+            <div 
+              key={i} 
+              className="growth-chart-bar" 
+              style={{ 
+                height: `${h}%`,
+                '--bar-index': i
+              }}
+              title={`Day ${i+1}: ${h}%`}
+            />
           ))}
         </div>
-        <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-tertiary)' }}>Maniac is becoming more personalized as you add more nodes. Current personalization depth: <b>Level {knowledgeVelocity?.depthLevel || 1}</b></p>
+        <p className="growth-footer">
+          Maniac is becoming more personalized as you add more nodes. Current personalization depth is optimized.
+        </p>
       </div>
     </div>
   );
@@ -407,8 +416,7 @@ function WorkspaceTab({ pages, navigate }) {
   const onboardingStatus = useUIStore(s => s.onboardingStatus);
   const lastVisitedPage = lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId) : null;
   const key = useSecurityStore(s => s.derivedKey);
-  const sidebarOpen = useUIStore(s => s.sidebarOpen);
-  const { nextActions, analyze, knowledgeVelocity } = useIntelligenceStore();
+  const { nextActions, analyze } = useIntelligenceStore();
 
   useEffect(() => {
     analyze();
@@ -445,29 +453,23 @@ function WorkspaceTab({ pages, navigate }) {
   }, [key, pages.length]); // Re-run when new pages are created
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '24px' }}>
+    <div className="workspace-tab-container">
       {/* Hero Greeting Panel */}
       <HeroGreeting pages={pages} />
 
       {/* Smart Resurfacing */}
       {lastVisitedPage && (
-        <div
-          className="continue-card"
-          onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <RotateCcw size={18} color="var(--accent-ember)" />
-            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Continue where you left off</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <EmojiIcon emoji={lastVisitedPage.icon || '📄'} size="16px" />
-              <span>{lastVisitedPage.title || 'Untitled'}</span>
-            </span>
-            <ChevronRight size={16} color="var(--text-tertiary)" />
+        <div className="continue-pill-wrapper">
+          <div
+            className="continue-pill"
+            onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
+          >
+            <RotateCcw size={14} className="continue-icon" />
+            <span>Continue {lastVisitedPage.title || 'Untitled'}</span>
+            <ChevronRight size={14} className="continue-chevron" />
           </div>
         </div>
       )}
@@ -477,130 +479,135 @@ function WorkspaceTab({ pages, navigate }) {
         <OnboardingNarrative onComplete={() => useUIStore.getState().updateOnboarding('isComplete')} />
       )}
 
-      {/* Split-Pane Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', flex: 1 }}>
+      {/* Asymmetrical Split Pane */}
+      <div className="dashboard-split-pane">
 
         {/* LEFT PANE: Pinned & Recent */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="dashboard-pane-left">
 
-          {/* Pinned Nodes */}
-          <div className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Pin size={18} color="var(--text-primary)" />
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Pinned Nodes</h3>
-              </div>
-              <button className="text-link-btn" style={{ fontSize: '12px' }}>View All</button>
+          {/* Pinned Nodes Bento Grid */}
+          <div className="bento-container">
+            <div className="section-header">
+              <Pin size={16} />
+              <h3>Pinned Nodes</h3>
             </div>
+            
+            <div className="bento-grid">
+              {pinnedPages.length > 0 ? pinnedPages.map((page, index) => {
+                // Determine size based on index to create an interlocking bento layout
+                let sizeClass = '';
+                if (index === 0) sizeClass = 'bento-large';
+                else if (index === 1) sizeClass = 'bento-tall';
+                else if (index === 2) sizeClass = 'bento-wide';
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {pinnedPages.length > 0 ? pinnedPages.map(page => (
-                <div
-                  key={page.id}
-                  onClick={() => navigate(`/page/${page.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
-                  className="interactive-card"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '16px', display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="18px" /></div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {page.title || 'Untitled'}
+                return (
+                  <div
+                    key={page.id}
+                    className={`bento-item ${sizeClass}`}
+                    onClick={() => navigate(`/page/${page.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                  >
+                    <div className="bento-content-top">
+                      <div className="bento-icon-wrapper">
+                        <EmojiIcon emoji={page.icon || '📄'} size={sizeClass === 'bento-large' ? '28px' : '20px'} />
+                      </div>
+                      <div className="bento-title">
+                        {page.title || 'Untitled'}
+                      </div>
                     </div>
+                    {sizeClass === 'bento-large' && (
+                      <div className="bento-meta">
+                        <Clock size={12} /> <span>{new Date(page.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
                   </div>
-                  <ChevronRight size={14} color="var(--text-tertiary)" />
-                </div>
-              )) : (
-                <div className="empty-state-container" style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-subtle)' }}>
-                  <div className="empty-state-title" style={{ fontSize: '13px', marginBottom: '4px' }}>No pinned pages</div>
-                  <div className="empty-state-desc" style={{ fontSize: '12px' }}>Important nodes will appear here.</div>
+                );
+              }) : (
+                <div className="bento-item bento-wide empty-bento">
+                  <span>No pinned pages</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Recent Pages List */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '4px' }}>Recent Activity</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* Recent Pages Timeline */}
+          <div className="timeline-container-el">
+            <div className="section-header">
+              <Clock size={16} />
+              <h3>Recent Activity</h3>
+            </div>
+            
+            <div className="timeline">
               {recentPages.length > 0 ? recentPages.map(page => (
                 <div
                   key={page.id}
+                  className="timeline-item"
                   onClick={() => navigate(`/page/${page.id}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
-                  className="interactive-card"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)', border: '1px solid transparent' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '16px', opacity: 0.8, display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="16px" /></div>
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
+                  <div className="timeline-dot"></div>
+                  <div className="timeline-item-content">
+                    <div className="timeline-icon-box">
+                      <EmojiIcon emoji={page.icon || '📄'} size="16px" />
+                    </div>
+                    <div className="timeline-text-box">
+                      <span className="timeline-item-title">{page.title || 'Untitled'}</span>
+                      <span className="timeline-item-date">Modified {new Date(page.updatedAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{new Date(page.updatedAt).toLocaleDateString()}</div>
                 </div>
               )) : (
-                <div className="empty-state-container" style={{ padding: '24px' }}>
-                  <div className="empty-state-title" style={{ fontSize: '14px', marginBottom: '4px' }}>No recent activity</div>
-                </div>
+                <div className="timeline-empty">No recent activity.</div>
               )}
             </div>
           </div>
 
         </div>
 
-        {/* RIGHT PANE: Intelligence & Graph */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* RIGHT PANE: Actions & Graph */}
+        <div className="dashboard-pane-right">
 
-          {/* Decision Engine Mini */}
-          <div className="glass-card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Zap size={16} color="var(--accent-ember)" />
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Suggested Actions</h3>
+          {/* Action Chips */}
+          <div className="actions-section">
+            <div className="section-header header-ember">
+              <Zap size={16} />
+              <h3>Suggested Actions</h3>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {nextActions.slice(0, 4).map(action => (
+            <div className="action-chips-container">
+              {nextActions.slice(0, 5).map(action => (
                 <div
                   key={action.id}
-                  className="interactive-card"
+                  className="action-chip"
                   onClick={() => navigate(`/page/${action.pageId}`)}
-                  style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all var(--transition-fast)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
                 >
-                  {action.priority > 0 && <span className={`priority-tag p-${action.priority}`} style={{ width: 14, height: 14, fontSize: '9px' }}>!</span>}
-                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.content}</span>
+                  {action.priority > 0 && <span className="action-priority-marker">!</span>}
+                  <span className="action-chip-text">{action.content}</span>
                 </div>
               ))}
               {nextActions.length === 0 && (
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '12px', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-lg)' }}>
-                  No immediate actions needed.
-                </div>
+                <div className="action-empty">No immediate actions needed.</div>
               )}
             </div>
           </div>
 
-          {/* Graph View Card */}
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '300px', padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Activity size={16} color="var(--text-tertiary)" />
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Network</h3>
+          {/* Circular/Bleeding Network Graph */}
+          <div className="network-container">
+            <div className="section-header">
+              <Activity size={16} />
+              <h3>Network</h3>
             </div>
-            <div style={{ flex: 1, position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+            <div className="graph-wrapper">
               <GraphView pages={pages} />
             </div>
           </div>
 
         </div>
       </div>
-
     </div>
   );
 }
@@ -626,7 +633,6 @@ function CalendarTab({ pages, navigate }) {
   // Map pages to dates
   const activitiesByDate = {};
   pages.forEach(p => {
-    // We map by creation date or update date depending on the goal. Using creation date.
     const d = new Date(p.createdAt);
     if (d.getFullYear() === currentDate.getFullYear() && d.getMonth() === currentDate.getMonth()) {
       const day = d.getDate();
@@ -636,34 +642,34 @@ function CalendarTab({ pages, navigate }) {
   });
 
   return (
-    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: '4px 0 0 0' }}>Activity tracking and creation logs</p>
+    <div className="calendar-tab-container">
+      <div className="calendar-header">
+        <div className="calendar-title-section">
+          <h2 className="calendar-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
+          <p className="calendar-subtitle">Activity tracking and creation logs</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={prevMonth} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: '8px', padding: '8px', color: 'var(--text-primary)', cursor: 'pointer' }}>
-            <ChevronLeft size={20} />
+        <div className="calendar-controls">
+          <button onClick={prevMonth} className="calendar-ctrl-btn">
+            <ChevronLeft size={18} />
           </button>
-          <button onClick={() => setCurrentDate(new Date())} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: '8px', padding: '8px 16px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 500 }}>
+          <button onClick={() => setCurrentDate(new Date())} className="calendar-today-btn">
             Today
           </button>
-          <button onClick={nextMonth} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: '8px', padding: '8px', color: 'var(--text-primary)', cursor: 'pointer' }}>
-            <ChevronRight size={20} />
+          <button onClick={nextMonth} className="calendar-ctrl-btn">
+            <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px' }}>
+      <div className="calendar-grid-labels">
         {dayNames.map(d => (
-          <div key={d} style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px', fontWeight: 'bold', padding: '8px' }}>{d}</div>
+          <div key={d} className="calendar-grid-label">{d}</div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+      <div className="calendar-grid">
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} style={{ background: 'transparent', minHeight: '120px' }}></div>
+          <div key={`empty-${i}`} className="calendar-day empty"></div>
         ))}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
@@ -671,20 +677,12 @@ function CalendarTab({ pages, navigate }) {
           const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
 
           return (
-            <div key={day} style={{
-              background: 'var(--bg-elevated)',
-              border: isToday ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '12px',
-              minHeight: '120px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: isToday ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{day}</span>
-                {activities.length > 0 && <span style={{ fontSize: '10px', background: 'var(--accent-primary)', color: '#fff', padding: '2px 6px', borderRadius: '12px' }}>{activities.length}</span>}
+            <div key={day} className={`calendar-day ${isToday ? 'today' : ''} ${activities.length > 0 ? 'has-events' : ''}`}>
+              <div className="calendar-day-header">
+                <span className="day-number">{day}</span>
+                {activities.length > 0 && <span className="day-badge">{activities.length}</span>}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
+              <div className="calendar-events">
                 {activities.map(a => (
                   <button
                     key={a.id}
@@ -692,10 +690,8 @@ function CalendarTab({ pages, navigate }) {
                     className="calendar-event-btn"
                     title={a.title || 'Untitled'}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <EmojiIcon emoji={a.icon || '📄'} size="12px" />
-                      <span>{a.title || 'Untitled'}</span>
-                    </span>
+                    <EmojiIcon emoji={a.icon || '📄'} size="12px" />
+                    <span className="event-title">{a.title || 'Untitled'}</span>
                   </button>
                 ))}
               </div>
@@ -722,44 +718,37 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
 
   if (archivedPages.length === 0) {
     return (
-      <div className="empty-state-container" style={{ margin: '64px auto', maxWidth: '400px', background: 'transparent', border: 'none' }}>
+      <div className="empty-state-container">
         <Trash2 size={48} className="empty-state-icon" />
-        <h3 className="empty-state-title" style={{ fontSize: '20px' }}>Archives are empty</h3>
+        <h3 className="empty-state-title">Archives are empty</h3>
         <p className="empty-state-desc">Archived pages will appear here. You can permanently delete them or restore them to the workspace.</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, marginBottom: '8px' }}>Archives</h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', margin: 0 }}>Review, restore, or permanently delete nodes.</p>
-        </div>
+    <div className="archives-tab-container">
+      <div className="archives-header">
+        <h2 className="archives-title">Archives</h2>
+        <p className="archives-subtitle">Review, restore, or permanently delete nodes from your vault.</p>
       </div>
 
-      <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
-        {archivedPages.map((page, i) => (
-          <div key={page.id} style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 24px',
-            borderBottom: i < archivedPages.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-            background: 'var(--bg-secondary)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ fontSize: '20px', opacity: 0.5, display: 'flex', alignItems: 'center' }}><EmojiIcon emoji={page.icon || '📄'} size="20px" /></div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>{page.title || 'Untitled'}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Archived on {new Date(page.updatedAt).toLocaleDateString()}</div>
+      <div className="archives-list">
+        {archivedPages.map((page) => (
+          <div key={page.id} className="archive-item">
+            <div className="archive-item-info">
+              <div className="archive-item-icon">
+                <EmojiIcon emoji={page.icon || '📄'} size="20px" />
+              </div>
+              <div className="archive-item-meta">
+                <div className="archive-item-title">{page.title || 'Untitled'}</div>
+                <div className="archive-item-date">Archived on {new Date(page.updatedAt).toLocaleDateString()}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="archive-item-actions">
               <button
                 onClick={() => restore(page.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+                className="archive-btn restore"
               >
                 <RotateCcw size={14} /> Restore
               </button>
@@ -772,19 +761,7 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
                     setConfirmDeleteId(page.id);
                   }
                 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: confirmDeleteId === page.id ? 'var(--error)' : 'var(--error-subtle)',
-                  border: '1px solid transparent',
-                  color: confirmDeleteId === page.id ? 'white' : 'var(--error)',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  transition: 'all 0.2s ease'
-                }}
+                className={`archive-btn delete ${confirmDeleteId === page.id ? 'confirming' : ''}`}
               >
                 <Trash2 size={14} /> {confirmDeleteId === page.id ? 'Confirm?' : 'Delete'}
               </button>
@@ -797,3 +774,4 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
 }
 
 export default Dashboard;
+
