@@ -738,7 +738,7 @@ a:hover {
 
 .editor-container {
   max-width: var(--editor-max-width);
-  margin: 0 auto;
+  margin: 0 auto 0 64px;
   padding: var(--space-10) var(--space-16) var(--space-16);
 }
 
