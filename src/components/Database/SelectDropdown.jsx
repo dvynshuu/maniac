@@ -20,7 +20,7 @@ export default function SelectDropdown({
     return multi ? (Array.isArray(value) ? value : [value]) : [value];
   }, [value, multi]);
 
-  const options = property.config.options || [];
+  const options = (property.config || {}).options || [];
 
   const filteredOptions = useMemo(() => {
     return options.filter(opt => {
@@ -71,7 +71,7 @@ export default function SelectDropdown({
 
     const newOptions = [...options, newOption];
     await updateProperty(property.blockId, property.id, {
-      config: { ...property.config, options: newOptions }
+      config: { ...(property.config || {}), options: newOptions }
     });
 
     handleToggleOption(newOption.id);

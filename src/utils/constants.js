@@ -107,6 +107,7 @@ export const PROPERTY_TYPES = {
   RELATION: 'relation',
   ROLLUP: 'rollup',
   FORMULA: 'formula',
+  STATUS: 'status',
 };
 
 export const PROPERTY_TYPE_META = {
@@ -123,6 +124,7 @@ export const PROPERTY_TYPE_META = {
   [PROPERTY_TYPES.RELATION]:     { label: 'Relation',     icon: 'Database',   description: 'Link another database' },
   [PROPERTY_TYPES.ROLLUP]:       { label: 'Rollup',       icon: 'Sigma',      description: 'Aggregate linked values' },
   [PROPERTY_TYPES.FORMULA]:      { label: 'Formula',      icon: 'Calculator', description: 'Calculate values' },
+  [PROPERTY_TYPES.STATUS]:       { label: 'Status',       icon: 'CircleDot',  description: 'Track progress' },
 };
 
 export const PROPERTY_COLORS = [

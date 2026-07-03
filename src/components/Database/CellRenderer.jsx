@@ -444,6 +444,7 @@ export default function CellRenderer({
           </div>
         );
 
+      case PROPERTY_TYPES.STATUS:
       case PROPERTY_TYPES.SELECT:
         return (
           <SelectDropdown
