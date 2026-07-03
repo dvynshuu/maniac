@@ -275,8 +275,7 @@ export default function DatabaseBlock({ block }) {
                   onClick={handleAddRow}
                   disabled={isAddingRow}
                 >
-                  <Plus size={14} />
-                  <span>{isAddingRow ? 'Adding...' : 'New Row'}</span>
+                  <span>{isAddingRow ? 'Adding...' : '+ New page'}</span>
                 </button>
               </td>
             </tr>
@@ -294,6 +293,7 @@ export default function DatabaseBlock({ block }) {
         sorts={sorts}
         onFiltersChange={setFilters}
         onSortsChange={setSorts}
+        onAddRow={handleAddRow}
       />
 
       {renderView()}

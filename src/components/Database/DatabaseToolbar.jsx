@@ -1,9 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter, ArrowUpDown, X, Plus, ChevronDown } from 'lucide-react';
+import { Filter, ArrowUpDown, X, Plus, ChevronDown, Table, Layout, Search, MoreHorizontal, Zap, Maximize2 } from 'lucide-react';
 import { PROPERTY_TYPE_META } from '../../utils/constants';
 
-export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChange, onSortsChange }) {
+export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChange, onSortsChange, onAddRow }) {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const filterBtnRef = useRef(null);
@@ -55,25 +55,43 @@ export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChang
 
   return (
     <div className="db-toolbar">
-      <button
-        ref={filterBtnRef}
-        className={`db-toolbar-btn ${filters.length > 0 ? 'active' : ''}`}
-        onClick={openFilterMenu}
-      >
-        <Filter size={14} />
-        <span>Filter</span>
-        {filters.length > 0 && <span className="db-toolbar-badge">{filters.length}</span>}
-      </button>
+      <div className="db-toolbar-left">
+        <button className="db-toolbar-tab active">
+          <Table size={14} /> Table
+        </button>
+        <button className="db-toolbar-tab">
+          <Layout size={14} /> Board
+        </button>
+      </div>
 
-      <button
-        ref={sortBtnRef}
-        className={`db-toolbar-btn ${sorts.length > 0 ? 'active' : ''}`}
-        onClick={openSortMenu}
-      >
-        <ArrowUpDown size={14} />
-        <span>Sort</span>
-        {sorts.length > 0 && <span className="db-toolbar-badge">{sorts.length}</span>}
-      </button>
+      <div className="db-toolbar-right">
+        <button
+          ref={filterBtnRef}
+          className={`db-toolbar-btn ${filters.length > 0 ? 'active' : ''}`}
+          onClick={openFilterMenu}
+        >
+          <Filter size={14} />
+          {filters.length === 0 && <span>Filter</span>}
+          {filters.length > 0 && <span className="db-toolbar-badge">{filters.length}</span>}
+        </button>
+
+        <button
+          ref={sortBtnRef}
+          className={`db-toolbar-btn ${sorts.length > 0 ? 'active' : ''}`}
+          onClick={openSortMenu}
+        >
+          <ArrowUpDown size={14} />
+          {sorts.length === 0 && <span>Sort</span>}
+          {sorts.length > 0 && <span className="db-toolbar-badge">{sorts.length}</span>}
+        </button>
+
+        <button className="db-toolbar-btn"><Search size={14} /></button>
+        <button className="db-toolbar-btn"><MoreHorizontal size={14} /></button>
+        
+        <button className="db-toolbar-new-btn" onClick={onAddRow}>
+          New <ChevronDown size={14} style={{ marginLeft: 2 }} />
+        </button>
+      </div>
 
       {/* Filter Menu Portal */}
       {showFilterMenu && filterMenuPos && createPortal(
