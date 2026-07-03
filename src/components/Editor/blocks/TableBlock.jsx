@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag, CircleDot } from 'lucide-react';
 import { evaluateFormula } from '../../../core/formulaEngine';
 import { getPlainText, createId } from '../../../utils/helpers';
 
@@ -1250,7 +1250,7 @@ const isArraysEqual = (arr1, arr2) => {
         showAs: 'number',
         progressColor: 'blue'
       };
-    } else if (newType === 'select') {
+    } else if (newType === 'select' || newType === 'status') {
       nextColConfigs[colIndex] = {
         options: []
       };
@@ -1914,7 +1914,7 @@ const isArraysEqual = (arr1, arr2) => {
                                 )}
                               </div>
                             </div>
-                          ) : colTypes[colIndex] === 'select' && !isHeaderRow ? (
+                          ) : (colTypes[colIndex] === 'select' || colTypes[colIndex] === 'status') && !isHeaderRow ? (
                             (() => {
                               const optVal = getPlainText(cell).trim();
                               const colConfig = colConfigs[colIndex] || {};
@@ -2208,6 +2208,14 @@ const isArraysEqual = (arr1, arr2) => {
                 >
                   <Calculator size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
                   <span style={{ fontSize: '13px' }}>Formula</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'status')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <CircleDot size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>Status</span>
                 </div>
               </div>
             </div>
