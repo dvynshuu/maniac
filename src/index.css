@@ -740,6 +740,11 @@ a:hover {
   max-width: var(--editor-max-width);
   margin: 0 auto 0 64px;
   padding: var(--space-10) var(--space-16) var(--space-16);
+  transition: max-width 0.3s ease;
+}
+
+.sidebar-closed .editor-container {
+  max-width: 100%;
 }
 
 .page-title-input {

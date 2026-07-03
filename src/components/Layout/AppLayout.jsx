@@ -5,7 +5,7 @@ function AppLayout({ children }) {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
       <Sidebar />
       <main className="main-content">
         {children}
