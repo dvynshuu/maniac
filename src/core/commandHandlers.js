@@ -133,7 +133,14 @@ registerHandler('block/update', async (payload) => {
   prevPayload.updatedAt = currentBlock.updatedAt;
 
   // Optimistic update
-  const mergedBlock = { ...currentBlock, ...safeUpdates, updatedAt: now };
+  const mergedBlock = { 
+    ...currentBlock, 
+    ...safeUpdates, 
+    properties: safeUpdates.properties 
+      ? { ...(currentBlock.properties || {}), ...safeUpdates.properties }
+      : currentBlock.properties,
+    updatedAt: now 
+  };
   useBlockStore.setState(s => ({
     blockMap: { ...s.blockMap, [blockId]: mergedBlock },
   }));

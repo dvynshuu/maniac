@@ -323,22 +323,38 @@ const isArraysEqual = (arr1, arr2) => {
     };
   }, []);
 
+  // Create refs for the latest state to avoid stale closures in save()
+  const latestPropsRef = useRef({
+    cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow, summaryRowConfigs, isFitToPage
+  });
+
+  useEffect(() => {
+    latestPropsRef.current = {
+      cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow, summaryRowConfigs, isFitToPage
+    };
+  });
+
   const save = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs, newFitToPage = isFitToPage) => {
     cancelDebouncedSave();
+    
+    // Use provided arguments if they differ from the default (stale) closure,
+    // otherwise fall back to the absolute latest state from the ref.
+    const latest = latestPropsRef.current;
+    
     engine.updateBlock(block.id, { 
       properties: { 
-        cells: newCells,
-        hasHeader: newHeader,
-        hasHeaderCol: newHeaderCol,
-        columnWidths: newWidths,
-        rowHeights: newHeights,
-        rowColors: newRowColors,
-        colColors: newColColors,
-        colTypes: newColTypes,
-        colConfigs: newColConfigs,
-        hasSummaryRow: newHasSummary,
-        summaryRowConfigs: newSummaryConfigs,
-        isFitToPage: newFitToPage
+        cells: newCells !== cells ? newCells : latest.cells,
+        hasHeader: newHeader !== hasHeader ? newHeader : latest.hasHeader,
+        hasHeaderCol: newHeaderCol !== hasHeaderCol ? newHeaderCol : latest.hasHeaderCol,
+        columnWidths: newWidths !== columnWidths ? newWidths : latest.columnWidths,
+        rowHeights: newHeights !== rowHeights ? newHeights : latest.rowHeights,
+        rowColors: newRowColors !== rowColors ? newRowColors : latest.rowColors,
+        colColors: newColColors !== colColors ? newColColors : latest.colColors,
+        colTypes: newColTypes !== colTypes ? newColTypes : latest.colTypes,
+        colConfigs: newColConfigs !== colConfigs ? newColConfigs : latest.colConfigs,
+        hasSummaryRow: newHasSummary !== hasSummaryRow ? newHasSummary : latest.hasSummaryRow,
+        summaryRowConfigs: newSummaryConfigs !== summaryRowConfigs ? newSummaryConfigs : latest.summaryRowConfigs,
+        isFitToPage: newFitToPage !== isFitToPage ? newFitToPage : latest.isFitToPage
       } 
     });
   };
@@ -3001,9 +3017,11 @@ const isArraysEqual = (arr1, arr2) => {
                               options: updatedOptions
                             }
                           };
-                          setColConfigs(nextConfigs);
-                          handleCellInput(selectMenuCell.row, selectMenuCell.col, newVal);
-                          save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
+                          const nextCells = [...cells];
+                          nextCells[selectMenuCell.row] = [...nextCells[selectMenuCell.row]];
+                          nextCells[selectMenuCell.row][selectMenuCell.col] = newVal;
+                          setCells(nextCells);
+                          save(nextCells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, nextConfigs);
                           setSelectMenuCell(null);
                           setSelectSearchQuery('');
                         }}
