@@ -21,9 +21,12 @@ export default function ColumnHeader({
   const handleOpenMenu = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
+    const menuWidth = 260;
+    const targetLeft = rect.left;
+    const safeLeft = Math.max(10, Math.min(window.innerWidth - menuWidth - 10, targetLeft));
     setMenuPos({
       top: rect.bottom + 4,
-      left: rect.left
+      left: safeLeft
     });
     setMenuOpen(true);
   };

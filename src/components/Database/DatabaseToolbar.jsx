@@ -13,14 +13,24 @@ export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChang
 
   const openFilterMenu = () => {
     const rect = filterBtnRef.current?.getBoundingClientRect();
-    if (rect) setFilterMenuPos({ top: rect.bottom + 8, left: rect.left });
+    if (rect) {
+      const menuWidth = 380;
+      const targetLeft = rect.left;
+      const safeLeft = Math.max(10, Math.min(window.innerWidth - menuWidth - 10, targetLeft));
+      setFilterMenuPos({ top: rect.bottom + 8, left: safeLeft });
+    }
     setShowFilterMenu(true);
     setShowSortMenu(false);
   };
 
   const openSortMenu = () => {
     const rect = sortBtnRef.current?.getBoundingClientRect();
-    if (rect) setSortMenuPos({ top: rect.bottom + 8, left: rect.left });
+    if (rect) {
+      const menuWidth = 380;
+      const targetLeft = rect.left;
+      const safeLeft = Math.max(10, Math.min(window.innerWidth - menuWidth - 10, targetLeft));
+      setSortMenuPos({ top: rect.bottom + 8, left: safeLeft });
+    }
     setShowSortMenu(true);
     setShowFilterMenu(false);
   };

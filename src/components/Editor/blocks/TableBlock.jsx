@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag, CircleDot } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag, CircleDot, Link, ExternalLink } from 'lucide-react';
 import { evaluateFormula } from '../../../core/formulaEngine';
 import { getPlainText, createId } from '../../../utils/helpers';
 
@@ -202,7 +202,7 @@ export default function TableBlock({ block }) {
     if (isMigrated && Array.isArray(block.properties.rowHeights) && block.properties.rowHeights.length > 0) {
       return block.properties.rowHeights;
     }
-    return [40, 40];
+    return [32, 32];
   });
   const [rowColors, setRowColors] = useState(block.properties.rowColors || {});
   const [colColors, setColColors] = useState(block.properties.colColors || {});
@@ -216,6 +216,7 @@ export default function TableBlock({ block }) {
   const [selectMenuCell, setSelectMenuCell] = useState(null); // { row, col, x, y, width }
   const [selectSearchQuery, setSelectSearchQuery] = useState('');
   const [editingDateCell, setEditingDateCell] = useState(null); // { row, col }
+  const [editingUrlCell, setEditingUrlCell] = useState(null); // { row, col }
   
   // Drag and Drop reordering states
   const [draggedItem, setDraggedItem] = useState(null); // { type: 'row' | 'col', index: number }
@@ -278,7 +279,7 @@ export default function TableBlock({ block }) {
         : safeCells[0].map(() => 200);
       const safeHeights = (isMigrated && Array.isArray(block.properties.rowHeights) && block.properties.rowHeights.length > 0)
         ? block.properties.rowHeights
-        : safeCells.map(() => 40);
+        : safeCells.map(() => 32);
 
       engine.updateBlock(block.id, {
         properties: {
@@ -470,7 +471,7 @@ const isArraysEqual = (arr1, arr2) => {
     const newCells = [...cells];
     newCells.splice(index, 0, new Array(cells[0].length).fill(''));
     const newHeights = [...rowHeights];
-    newHeights.splice(index, 0, 40);
+    newHeights.splice(index, 0, 32);
     setCells(newCells);
     setRowHeights(newHeights);
     save(newCells, hasHeader, hasHeaderCol, columnWidths, newHeights);
@@ -590,7 +591,7 @@ const isArraysEqual = (arr1, arr2) => {
     const newCells = [...cells];
     newCells.splice(targetIdx, 0, new Array(cells[0].length).fill(''));
     const newHeights = [...rowHeights];
-    newHeights.splice(targetIdx, 0, 40);
+    newHeights.splice(targetIdx, 0, 32);
 
     const newRowColors = {};
     Object.entries(rowColors).forEach(([key, color]) => {
@@ -642,7 +643,7 @@ const isArraysEqual = (arr1, arr2) => {
     newCells.splice(index + 1, 0, copiedRow);
 
     const newHeights = [...rowHeights];
-    const copiedHeight = rowHeights[index] || 40;
+    const copiedHeight = rowHeights[index] || 32;
     newHeights.splice(index + 1, 0, copiedHeight);
 
     const newRowColors = {};
@@ -936,7 +937,7 @@ const isArraysEqual = (arr1, arr2) => {
         const rowsToAdd = targetRowCount - newCells.length;
         for (let i = 0; i < rowsToAdd; i++) {
           newCells.push(new Array(newCells[0].length).fill(''));
-          newHeights.push(40);
+           newHeights.push(32);
         }
       }
 
@@ -1351,7 +1352,7 @@ const isArraysEqual = (arr1, arr2) => {
         return newRow;
       });
       setCells(nextCells);
-    } else if (newType === 'date') {
+    } else if (newType === 'date' || newType === 'url') {
       nextColConfigs[colIndex] = {};
     } else {
       delete nextColConfigs[colIndex];
@@ -1712,7 +1713,7 @@ const isArraysEqual = (arr1, arr2) => {
     setResizingRow(index);
     resizerRef.current = {
       startY: e.clientY,
-      startSize: rowHeights[index] || 40
+      startSize: rowHeights[index] || 32
     };
   };
 
@@ -1892,7 +1893,10 @@ const isArraysEqual = (arr1, arr2) => {
                                   setSelectedColIndex(colIndex);
                                   setSelectedRowIndex(null);
                                   const rect = e.currentTarget.getBoundingClientRect();
-                                  setColMenu({ index: colIndex, y: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX - 110 });
+                                  const menuWidth = 240;
+                                  const targetLeft = rect.left + window.scrollX - 110;
+                                  const safeLeft = Math.max(window.scrollX + 10, Math.min(window.scrollX + window.innerWidth - menuWidth - 10, targetLeft));
+                                  setColMenu({ index: colIndex, y: rect.bottom + window.scrollY + 6, left: safeLeft });
                                 }}
                               >
                                 <svg width="8" height="12" viewBox="0 0 8 12" className="grip-icon">
@@ -1920,7 +1924,10 @@ const isArraysEqual = (arr1, arr2) => {
                                   setSelectedRowIndex(rowIndex);
                                   setSelectedColIndex(null);
                                   const rect = e.currentTarget.getBoundingClientRect();
-                                  setRowMenu({ index: rowIndex, y: rect.top + window.scrollY + 10, left: rect.left + window.scrollX - 250 });
+                                  const menuWidth = 240;
+                                  const targetLeft = rect.left + window.scrollX - 250;
+                                  const safeLeft = Math.max(window.scrollX + 10, Math.min(window.scrollX + window.innerWidth - menuWidth - 10, targetLeft));
+                                  setRowMenu({ index: rowIndex, y: rect.top + window.scrollY + 10, left: safeLeft });
                                 }}
                               >
                                 <svg width="8" height="12" viewBox="0 0 8 12" className="grip-icon">
@@ -1936,7 +1943,7 @@ const isArraysEqual = (arr1, arr2) => {
                           )}
 
                           {colTypes[colIndex] === 'formula' && !isHeaderRow ? (
-                            <div className="table-cell-readonly font-mono" style={{ padding: '8px', minHeight: '34px', display: 'flex', alignItems: 'center', width: '100%', justifyContent: isColNumeric(colIndex) ? 'flex-end' : 'flex-start' }}>
+                            <div className="table-cell-readonly font-mono" style={{ padding: '5px 8px', minHeight: '26px', display: 'flex', alignItems: 'center', width: '100%', justifyContent: isColNumeric(colIndex) ? 'flex-end' : 'flex-start', fontSize: '13px' }}>
                               {(() => {
                                 const rowObj = {
                                   id: String(rowIndex),
@@ -1987,7 +1994,7 @@ const isArraysEqual = (arr1, arr2) => {
                                 alignItems: 'center',
                                 width: '100%',
                                 height: '100%',
-                                minHeight: '34px',
+                                minHeight: '26px',
                                 cursor: 'pointer'
                               }}
                               onClick={(e) => {
@@ -2027,15 +2034,15 @@ const isArraysEqual = (arr1, arr2) => {
                               const tagStyle = matchedOption ? {
                                 background: matchedOption.bg || 'var(--bg-secondary)',
                                 color: matchedOption.color || 'var(--text-primary)',
-                                padding: '2px 8px',
+                                padding: '1px 6px',
                                 borderRadius: '12px',
-                                fontSize: '12px',
+                                fontSize: '11.5px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 fontWeight: '500'
                               } : {
                                 color: 'var(--text-tertiary)',
-                                fontSize: '12px'
+                                fontSize: '11.5px'
                               };
 
                               return (
@@ -2043,17 +2050,20 @@ const isArraysEqual = (arr1, arr2) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const rect = e.currentTarget.getBoundingClientRect();
+                                    const menuWidth = Math.max(rect.width, 180);
+                                    const targetLeft = rect.left + window.scrollX;
+                                    const safeLeft = Math.max(window.scrollX + 10, Math.min(window.scrollX + window.innerWidth - menuWidth - 10, targetLeft));
                                     setSelectMenuCell({
                                       row: rowIndex,
                                       col: colIndex,
-                                      x: rect.left + window.scrollX,
+                                      x: safeLeft,
                                       y: rect.bottom + window.scrollY + 4,
-                                      width: Math.max(rect.width, 180)
+                                      width: menuWidth
                                     });
                                   }}
                                   style={{
-                                    padding: '8px',
-                                    minHeight: '34px',
+                                    padding: '5px 8px',
+                                    minHeight: '26px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     width: '100%',
@@ -2063,7 +2073,7 @@ const isArraysEqual = (arr1, arr2) => {
                                   {optVal ? (
                                     <span style={tagStyle}>{optVal}</span>
                                   ) : (
-                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>Empty select</span>
+                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>Empty select</span>
                                   )}
                                 </div>
                               );
@@ -2087,7 +2097,7 @@ const isArraysEqual = (arr1, arr2) => {
                                     style={{
                                       width: '100%',
                                       height: '100%',
-                                      padding: '6px 8px',
+                                      padding: '4px 6px',
                                       background: 'transparent',
                                       border: 'none',
                                       outline: 'none',
@@ -2106,8 +2116,8 @@ const isArraysEqual = (arr1, arr2) => {
                                     setEditingDateCell({ row: rowIndex, col: colIndex });
                                   }}
                                   style={{
-                                    padding: '8px',
-                                    minHeight: '34px',
+                                    padding: '5px 8px',
+                                    minHeight: '26px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     width: '100%',
@@ -2118,6 +2128,87 @@ const isArraysEqual = (arr1, arr2) => {
                                 >
                                   <Calendar size={14} style={{ marginRight: '6px', flexShrink: 0, opacity: 0.6 }} />
                                   <span>{formattedDate || 'Empty date'}</span>
+                                </div>
+                              );
+                            })()
+                          ) : colTypes[colIndex] === 'url' && !isHeaderRow ? (
+                            (() => {
+                              const urlVal = getPlainText(cell).trim();
+                              const isEditing = editingUrlCell?.row === rowIndex && editingUrlCell?.col === colIndex;
+
+                              if (isEditing) {
+                                return (
+                                  <input 
+                                    type="text"
+                                    value={urlVal}
+                                    placeholder="https://..."
+                                    autoFocus
+                                    onBlur={() => setEditingUrlCell(null)}
+                                    onChange={(e) => {
+                                      handleCellInput(rowIndex, colIndex, e.target.value);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        setEditingUrlCell(null);
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      padding: '4px 6px',
+                                      background: 'transparent',
+                                      border: 'none',
+                                      outline: 'none',
+                                      color: 'var(--text-primary)',
+                                      fontSize: '13px',
+                                      fontFamily: 'inherit'
+                                    }}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingUrlCell({ row: rowIndex, col: colIndex });
+                                  }}
+                                  style={{
+                                    padding: '5px 8px',
+                                    minHeight: '26px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', gap: '6px' }}>
+                                    <Link size={14} style={{ flexShrink: 0, opacity: 0.6, color: 'var(--text-tertiary)' }} />
+                                    <span style={{ 
+                                      color: urlVal ? 'var(--accent-primary)' : 'var(--text-tertiary)',
+                                      textDecoration: urlVal ? 'underline' : 'none',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {urlVal || 'Empty URL'}
+                                    </span>
+                                  </div>
+                                  {urlVal && (
+                                    <a 
+                                      href={urlVal.startsWith('http') ? urlVal : `https://${urlVal}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="db-cell-link-icon"
+                                      style={{ flexShrink: 0, marginLeft: '6px' }}
+                                    >
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  )}
                                 </div>
                               );
                             })()
@@ -2303,6 +2394,14 @@ const isArraysEqual = (arr1, arr2) => {
                 >
                   <Calendar size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
                   <span style={{ fontSize: '13px' }}>Date</span>
+                </div>
+                <div 
+                  className="color-menu-item" 
+                  onClick={() => setColumnType(colMenu.index, 'url')}
+                  style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Link size={14} style={{ marginRight: '8px', opacity: 0.7 }} />
+                  <span style={{ fontSize: '13px' }}>URL</span>
                 </div>
                 <div 
                   className="color-menu-item" 
