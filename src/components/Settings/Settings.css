@@ -6,6 +6,10 @@
   max-width: 720px !important;
   height: 72vh;
   max-height: 640px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
 }
 
 .settings-header {
