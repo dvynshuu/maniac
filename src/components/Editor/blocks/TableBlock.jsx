@@ -171,13 +171,39 @@ const SELECT_TAG_COLORS = [
 ];
 
 export default function TableBlock({ block }) {
-  const isMigrated = !block.properties.columns; 
-  
-  const [cells, setCells] = useState(isMigrated ? (block.properties.cells || [['', ''], ['', '']]) : [['', ''], ['', '']]);
-  const [hasHeader, setHasHeader] = useState(isMigrated ? (block.properties.hasHeader || false) : false);
+  // True if block uses the new schema (no legacy `columns` field)
+  const isMigrated = !block.properties.columns;
+
+  // Guard: only initialize from props on first mount so we never overwrite
+  // live local state with a stale/partial block update from the store.
+  const hasInitialized = useRef(false);
+
+  // Ref to suppress the incoming-props sync effect while we are in the middle
+  // of a debounced save (avoids a round-trip overwrite of local state).
+  const isPendingSave = useRef(false);
+
+  const [cells, setCells] = useState(() => {
+    if (isMigrated && Array.isArray(block.properties.cells) && block.properties.cells.length > 0) {
+      return block.properties.cells;
+    }
+    return [['', ''], ['', '']];
+  });
+  const [hasHeader, setHasHeader] = useState(
+    isMigrated ? (block.properties.hasHeader || false) : false
+  );
   const [hasHeaderCol, setHasHeaderCol] = useState(block.properties.hasHeaderCol || false);
-  const [columnWidths, setColumnWidths] = useState(isMigrated ? (block.properties.columnWidths || [200, 200]) : [200, 200]);
-  const [rowHeights, setRowHeights] = useState(isMigrated ? (block.properties.rowHeights || [40, 40]) : [40, 40]);
+  const [columnWidths, setColumnWidths] = useState(() => {
+    if (isMigrated && Array.isArray(block.properties.columnWidths) && block.properties.columnWidths.length > 0) {
+      return block.properties.columnWidths;
+    }
+    return [200, 200];
+  });
+  const [rowHeights, setRowHeights] = useState(() => {
+    if (isMigrated && Array.isArray(block.properties.rowHeights) && block.properties.rowHeights.length > 0) {
+      return block.properties.rowHeights;
+    }
+    return [40, 40];
+  });
   const [rowColors, setRowColors] = useState(block.properties.rowColors || {});
   const [colColors, setColColors] = useState(block.properties.colColors || {});
   const [colTypes, setColTypes] = useState(block.properties.colTypes || {});
@@ -225,24 +251,51 @@ export default function TableBlock({ block }) {
 
   const engine = useEditorEngine();
   
-  // Clean off the bad columns/rows schema if present
+  // One-time schema migration / initialization:
+  // Only runs if this is a brand-new block (never initialized) that either
+  // uses the old `columns` schema OR has no cell data at all yet.
+  // We NEVER reset an already-initialized block to avoid data loss.
   useEffect(() => {
-    if (!isMigrated || !block.properties.cells) {
-      engine.updateBlock(block.id, { 
-        properties: { 
-          cells: [['', ''], ['', '']], 
-          hasHeader: false,
-          hasHeaderCol: false,
-          columnWidths: [200, 200],
-          rowHeights: [40, 40],
-          rowColors: {},
-          colColors: {},
-          colTypes: {},
-          colConfigs: {}
-        } 
+    if (block._isDecrypting) return;
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const needsMigration = !isMigrated; // old `columns`-based schema
+    const needsInit = isMigrated && (
+      !block.properties.cells ||
+      !Array.isArray(block.properties.cells) ||
+      block.properties.cells.length === 0
+    );
+
+    if (needsMigration || needsInit) {
+      // For a genuinely new / legacy block — write the default structure.
+      // Preserve any cells that are already there if possible.
+      const safeCells = (isMigrated && Array.isArray(block.properties.cells) && block.properties.cells.length > 0)
+        ? block.properties.cells
+        : [['', ''], ['', '']];
+      const safeWidths = (isMigrated && Array.isArray(block.properties.columnWidths) && block.properties.columnWidths.length > 0)
+        ? block.properties.columnWidths
+        : safeCells[0].map(() => 200);
+      const safeHeights = (isMigrated && Array.isArray(block.properties.rowHeights) && block.properties.rowHeights.length > 0)
+        ? block.properties.rowHeights
+        : safeCells.map(() => 40);
+
+      engine.updateBlock(block.id, {
+        properties: {
+          cells: safeCells,
+          hasHeader: block.properties.hasHeader || false,
+          hasHeaderCol: block.properties.hasHeaderCol || false,
+          columnWidths: safeWidths,
+          rowHeights: safeHeights,
+          rowColors: block.properties.rowColors || {},
+          colColors: block.properties.colColors || {},
+          colTypes: block.properties.colTypes || {},
+          colConfigs: block.properties.colConfigs || {},
+        }
       });
     }
-  }, [block.id, isMigrated]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block._isDecrypting]); // Run when decryption state changes
 
 const isCellsEqual = (arr1, arr2) => {
   if (!arr1 || !arr2) return false;
@@ -265,14 +318,22 @@ const isArraysEqual = (arr1, arr2) => {
   return true;
 };
 
+  // Sync incoming block prop changes to local state.
+  // Skip sync while we have a pending save to avoid a round-trip overwrite
+  // where our own save comes back as a store update and fights local state.
   useEffect(() => {
-    if (block.properties.cells) {
+    if (block._isDecrypting) return;
+    // If there is a pending debounced save, do not sync — our local state
+    // is already ahead of what the store will reflect after the save.
+    if (isPendingSave.current) return;
+
+    if (Array.isArray(block.properties.cells) && block.properties.cells.length > 0) {
       setCells(prev => isCellsEqual(prev, block.properties.cells) ? prev : block.properties.cells);
     }
-    if (block.properties.columnWidths) {
+    if (Array.isArray(block.properties.columnWidths) && block.properties.columnWidths.length > 0) {
       setColumnWidths(prev => isArraysEqual(prev, block.properties.columnWidths) ? prev : block.properties.columnWidths);
     }
-    if (block.properties.rowHeights) {
+    if (Array.isArray(block.properties.rowHeights) && block.properties.rowHeights.length > 0) {
       setRowHeights(prev => isArraysEqual(prev, block.properties.rowHeights) ? prev : block.properties.rowHeights);
     }
     if (block.properties.hasHeader !== undefined) setHasHeader(block.properties.hasHeader);
@@ -284,10 +345,11 @@ const isArraysEqual = (arr1, arr2) => {
     if (block.properties.hasSummaryRow !== undefined) setHasSummaryRow(block.properties.hasSummaryRow);
     if (block.properties.summaryRowConfigs) setSummaryRowConfigs(block.properties.summaryRowConfigs);
     if (block.properties.isFitToPage !== undefined) setIsFitToPage(block.properties.isFitToPage);
-  }, [block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs, block.properties.hasSummaryRow, block.properties.summaryRowConfigs, block.properties.isFitToPage]);
+  }, [block._isDecrypting, block.properties.cells, block.properties.columnWidths, block.properties.rowHeights, block.properties.hasHeader, block.properties.hasHeaderCol, block.properties.rowColors, block.properties.colColors, block.properties.colTypes, block.properties.colConfigs, block.properties.hasSummaryRow, block.properties.summaryRowConfigs, block.properties.isFitToPage]);
 
   // Handle pending focus on cell updates
   useEffect(() => {
+    if (block._isDecrypting) return;
     if (pendingFocus) {
       const { row, col } = pendingFocus;
       const timer = setTimeout(() => {
@@ -298,7 +360,7 @@ const isArraysEqual = (arr1, arr2) => {
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [cells, pendingFocus]);
+  }, [cells, pendingFocus, block._isDecrypting]);
 
   const saveTimerRef = useRef(null);
 
@@ -307,13 +369,18 @@ const isArraysEqual = (arr1, arr2) => {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    isPendingSave.current = false;
   };
 
   const debouncedSave = (newCells, newHeader = hasHeader, newHeaderCol = hasHeaderCol, newWidths = columnWidths, newHeights = rowHeights, newRowColors = rowColors, newColColors = colColors, newColTypes = colTypes, newColConfigs = colConfigs, newHasSummary = hasSummaryRow, newSummaryConfigs = summaryRowConfigs, newFitToPage = isFitToPage) => {
     cancelDebouncedSave();
+    isPendingSave.current = true;
     saveTimerRef.current = setTimeout(() => {
       const sanitizedCells = newCells.map(row => row.map(cell => sanitize(cell)));
       save(sanitizedCells, newHeader, newHeaderCol, newWidths, newHeights, newRowColors, newColColors, newColTypes, newColConfigs, newHasSummary, newSummaryConfigs, newFitToPage);
+      // Release the pending-save lock after a short delay to let the store
+      // update settle, so the sync effect can resume for external changes.
+      setTimeout(() => { isPendingSave.current = false; }, 300);
     }, 500);
   };
 
@@ -1702,6 +1769,26 @@ const isArraysEqual = (arr1, arr2) => {
   };
 
   const totalWidth = columnWidths.reduce((a, b) => a + b, 0);
+
+  if (block._isDecrypting) {
+    return (
+      <div className="table-block-loading" style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '12px',
+        color: 'var(--text-secondary)',
+        fontSize: '14px',
+        background: 'var(--bg-secondary)',
+        borderRadius: '8px',
+        border: '1px dashed var(--border-subtle)',
+        margin: '8px 0'
+      }}>
+        <div className="spinner-small" />
+        <span>Decrypting table...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="notion-table-container">
