@@ -57,6 +57,14 @@ export default function GraphView({ pages }) {
     return () => observer.disconnect();
   }, [isFullscreen]);
 
+  // Configure forces to keep nodes centered and visible, preventing orphans from flying out
+  useEffect(() => {
+    if (graphRef.current && width > 0 && height > 0) {
+      graphRef.current.d3Force('charge').strength(-40);
+      graphRef.current.d3Force('center').x(width / 2).y(height / 2);
+    }
+  }, [width, height]);
+
   // ─── Build Graph Data ────────────────────────────────────────
   const graphData = useMemo(() => {
     const activePages = pages.filter(p => !p.isArchived);
@@ -140,7 +148,7 @@ export default function GraphView({ pages }) {
     const nodes = activePages.map(p => {
       const conns = connectionCount[p.id] || 0;
       // Size nodes by connectivity: more connections = larger node
-      const baseSize = 5;
+      const baseSize = 8;
       const connBoost = Math.min(conns * 2, 12);
       const favBoost = p.isFavorite ? 4 : 0;
 
@@ -333,9 +341,9 @@ export default function GraphView({ pages }) {
     }
 
     // ── Label ──
-    const showLabel = isSearchMatch || isHovered || isHighlighted || (globalScale > 1.8 && !isDimmed);
+    const showLabel = isSearchMatch || isHovered || isHighlighted || (globalScale > 0.6 && !isDimmed);
     if (showLabel) {
-      const fontSize = Math.min(12 / globalScale, 5);
+      const fontSize = 11 / globalScale;
       ctx.font = isSearchMatch ? `600 ${fontSize}px Inter, -apple-system, sans-serif` : `500 ${fontSize}px Inter, -apple-system, sans-serif`;
       const textWidth = ctx.measureText(label).width;
       const padX = fontSize * 0.5;
@@ -744,15 +752,14 @@ export default function GraphView({ pages }) {
         ref={containerRef}
         style={{
           flex: 1,
-          background: 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.03) 0%, var(--bg-elevated) 70%)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           position: 'relative',
           overflow: 'hidden',
           minHeight: '220px',
+          width: '100%',
+          height: '100%',
         }}
       >
         {renderControls()}

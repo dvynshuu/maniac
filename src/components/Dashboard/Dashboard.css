@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 40px;
+  padding: 12px 40px;
   background: transparent;
   z-index: 50;
   position: relative;
@@ -114,8 +114,8 @@
   max-width: 1000px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
-  margin-bottom: 60px;
+  gap: 24px;
+  margin-bottom: 40px;
   position: relative;
   z-index: 10;
 }
@@ -131,8 +131,8 @@
 .dashboard-hero-section {
   display: flex;
   align-items: center;
-  gap: 36px;
-  padding: 24px 0 48px 0;
+  gap: 24px;
+  padding: 12px 0 24px 0;
   background: transparent;
   border: none;
   animation: page-enter var(--transition-slow) forwards;
@@ -250,7 +250,7 @@
 .continue-pill-wrapper {
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   animation: page-enter var(--transition-slow) forwards;
   z-index: 10;
   position: relative;
@@ -455,7 +455,7 @@
 .dashboard-split-pane {
   display: grid;
   grid-template-columns: 1.8fr 1.2fr;
-  gap: 40px;
+  gap: 24px;
   align-items: start;
 }
 
@@ -834,6 +834,10 @@
   width: 100%;
   position: relative;
   box-shadow: inset 0 0 30px rgba(0,0,0,0.6), 0 12px 36px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 /* --- Decision Engine (Intelligence Redesign) --- */

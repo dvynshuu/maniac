@@ -489,7 +489,7 @@ function Sidebar() {
         <button
           className="topbar-toggle"
           onClick={toggleSidebar}
-          style={{ position: 'fixed', top: 12, left: 12, zIndex: 30 }}
+          style={{ position: 'fixed', top: 12, left: 12, zIndex: 100 }}
           title="Open sidebar"
         >
           <PanelLeft size={18} />
