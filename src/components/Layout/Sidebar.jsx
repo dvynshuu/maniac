@@ -337,13 +337,13 @@ function Sidebar() {
           <div className="sidebar-section-label" style={{ marginTop: 8 }}>WORKSPACE</div>
 
           <div
-            className={`sidebar-page-item page-item-wrapper ${location.pathname === '/' ? 'active' : ''}`}
-            style={{ padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: location.pathname === '/' ? 'var(--text-primary)' : 'var(--text-secondary)', background: location.pathname === '/' ? 'var(--bg-active)' : 'transparent', marginBottom: 2 }}
+            className={`page-item page-item-wrapper ${location.pathname === '/' ? 'active' : ''}`}
+            style={{ paddingLeft: '32px', marginBottom: 2 }}
             onClick={() => navigate('/')}
             data-page-id="dashboard"
           >
-            <Home size={16} />
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>Dashboard</span>
+            <span className="page-item-icon"><Home size={16} /></span>
+            <span className="page-item-title">Dashboard</span>
           </div>
 
           {/* Favorites Section */}
@@ -353,17 +353,18 @@ function Sidebar() {
               {favoritePages.map(page => (
                 <div
                   key={page.id}
-                  className={`sidebar-page-item page-item-wrapper ${location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
+                  className={`page-item page-item-wrapper ${location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
                   style={{
-                    padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
-                    color: 'var(--text-secondary)', marginBottom: 2,
+                    paddingLeft: '32px', marginBottom: 2,
                     background: selectedPageIds.includes(page.id) ? 'rgba(35, 131, 226, 0.15)' : undefined
                   }}
                   onClick={() => { setCurrentPage(page.id); navigate(`/page/${page.id}`); }}
                   data-page-id={page.id}
                 >
-                  <Star size={14} style={{ color: 'var(--warning)', fill: 'var(--warning)' }} />
-                  <span style={{ fontSize: '13px', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.title || 'Untitled'}</span>
+                  <span className="page-item-icon">
+                    <Star size={14} style={{ color: 'var(--warning)', fill: 'var(--warning)' }} />
+                  </span>
+                  <span className="page-item-title">{page.title || 'Untitled'}</span>
                 </div>
               ))}
             </>
