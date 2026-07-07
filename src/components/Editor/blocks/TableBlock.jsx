@@ -806,7 +806,11 @@ const isArraysEqual = (arr1, arr2) => {
     if (!selectionStart || !selectionEnd) return;
     
     const active = document.activeElement;
-    const isEditing = active && active.getAttribute('contenteditable') === 'true';
+    const isEditing = active && (
+      active.getAttribute('contenteditable') === 'true' ||
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA'
+    );
     if (isEditing) return;
 
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -845,7 +849,11 @@ const isArraysEqual = (arr1, arr2) => {
   const handleRangeCopy = useCallback((e) => {
     if (!selectionStart || !selectionEnd) return;
     const active = document.activeElement;
-    const isEditing = active && active.getAttribute('contenteditable') === 'true';
+    const isEditing = active && (
+      active.getAttribute('contenteditable') === 'true' ||
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA'
+    );
     if (isEditing) return;
 
     e.preventDefault();
