@@ -22,7 +22,7 @@ export const sanitize = (html) => {
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'b', 'i', 'em', 'strong', 'u', 's', 'code', 'pre', 'a', 'span', 'br',
-      'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'img'
+      'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'img', 'div', 'p'
     ],
     ALLOWED_ATTR: ['href', 'target', 'src', 'alt', 'class', 'data-page-id', 'contenteditable'],
     ADD_ATTR: ['target'],
