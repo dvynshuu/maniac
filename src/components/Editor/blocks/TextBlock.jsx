@@ -28,16 +28,19 @@ function ActiveTextBlock({ block }) {
     },
   });
 
-  // Track slash and mention triggers from the editor's text
+  // Track slash and mention triggers from the editor's text near cursor
   useEffect(() => {
     if (!editor) return;
 
     const handleUpdate = () => {
-      const text = editor.getText();
+      const { selection, doc } = editor.state;
+      const pos = selection.from;
+      // Get up to 50 characters preceding the current cursor
+      const textBefore = doc.textBetween(Math.max(0, pos - 50), pos, ' ', ' ');
 
-      if (text.includes('/')) {
-        const lastSlashIndex = text.lastIndexOf('/');
-        const query = text.substring(lastSlashIndex + 1);
+      if (textBefore.includes('/')) {
+        const lastSlashIndex = textBefore.lastIndexOf('/');
+        const query = textBefore.substring(lastSlashIndex + 1);
         if (!query.includes(' ')) {
           setSlashQuery(query);
           setShowSlashMenu(true);
@@ -46,10 +49,10 @@ function ActiveTextBlock({ block }) {
         }
       }
       
-      if (text.includes('@') || text.includes('[[')) {
-        const trigger = text.includes('@') ? '@' : '[[';
-        const lastTriggerIndex = text.lastIndexOf(trigger);
-        const query = text.substring(lastTriggerIndex + trigger.length);
+      if (textBefore.includes('@') || textBefore.includes('[[')) {
+        const trigger = textBefore.includes('@') ? '@' : '[[';
+        const lastTriggerIndex = textBefore.lastIndexOf(trigger);
+        const query = textBefore.substring(lastTriggerIndex + trigger.length);
         if (!query.includes(' ')) {
           setMentionQuery(query);
           setShowMentionMenu(true);

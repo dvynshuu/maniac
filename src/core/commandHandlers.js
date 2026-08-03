@@ -68,12 +68,12 @@ registerHandler('block/create', async (payload) => {
 
   // Optimistic update
   const newBlockMap = { ...store.blockMap, [block.id]: block };
-  const allBlocks = [...store.getBlocks(), block];
-  allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+  const newBlockOrder = [...store.blockOrder, block.id];
+  newBlockOrder.sort((a, b) => String(newBlockMap[a]?.sortOrder || '').localeCompare(String(newBlockMap[b]?.sortOrder || '')));
 
   useBlockStore.setState({
     blockMap: newBlockMap,
-    blockOrder: allBlocks.map(b => b.id),
+    blockOrder: newBlockOrder,
     focusBlockId: block.id,
   });
 
@@ -89,12 +89,12 @@ registerHandler('block/create', async (payload) => {
 registerHandler('block/update', async (payload) => {
   const { blockId, updates } = payload;
 
-  // Fetch fresh record from DB (may be encrypted)
-  let dbBlock = await db.blocks.get(blockId);
+  // Check in-memory store first (already decrypted & fast)
+  let dbBlock = useBlockStore.getState().blockMap[blockId];
   
-  // Fallback: if not yet persisted to IndexedDB, use in-memory store
+  // Fallback: if not in memory, query IndexedDB
   if (!dbBlock) {
-    dbBlock = useBlockStore.getState().blockMap[blockId];
+    dbBlock = await db.blocks.get(blockId);
   }
   if (!dbBlock) return null;
 

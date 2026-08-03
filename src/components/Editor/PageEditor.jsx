@@ -26,17 +26,13 @@ import ActiveRecallPanel from './ActiveRecallPanel';
 function PageEditor({ pageId: pageIdProp } = {}) {
   const { pageId: paramPageId } = useParams();
   const pageId = pageIdProp || paramPageId;
-  const pages = usePageStore((s) => s.pages);
+  const page = usePageStore(useShallow((s) => s.pages.find((p) => p.id === pageId)));
   const updatePage = usePageStore((s) => s.updatePage);
   const rootBlockIds = useRootBlockIds();
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
   const isSaving = useUIStore((s) => s.isSaving);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
-
-  useEffect(() => {
-    console.log('[DEBUG] PageEditor rendered. pageId:', pageId, 'rootBlockIds length:', rootBlockIds.length);
-  }, [pageId, rootBlockIds.length]);
 
 
   const [title, setTitle] = useState('');
@@ -173,8 +169,6 @@ function PageEditor({ pageId: pageIdProp } = {}) {
       updatePage(id, updates);
     }, 500)
   ).current;
-  
-  const page = pages.find((p) => p.id === pageId);
 
   useEffect(() => {
     if (pageId) {
@@ -224,22 +218,6 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     }
     return () => { cancelled = true; };
   }, [page?.coverImage]);
-
-  // Undo/Redo keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        engine.undo();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
-        e.preventDefault();
-        engine.redo();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [engine]);
 
   if (!page) {
     return <div className="editor-container">Page not found.</div>;

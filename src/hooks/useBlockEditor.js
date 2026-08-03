@@ -98,19 +98,27 @@ export function useBlockEditor(block, options = {}) {
 
   const engine = useEditorEngine();
   const setSelection = useSelectionStore(s => s.setSelection);
-  const focusBlockId = useBlockStore(s => s.focusBlockId);
+  const isFocusedTarget = useBlockStore(s => s.focusBlockId === block.id);
 
   const isFirstLoad = useRef(true);
+  const lastSavedContentRef = useRef(block.content);
 
   // Build StarterKit config — disable extensions the caller doesn't want
-  const starterKitConfig = {};
-  disableExtensions.forEach(ext => { starterKitConfig[ext] = false; });
+  const starterKitConfig = useMemo(() => {
+    const config = {};
+    disableExtensions.forEach(ext => { config[ext] = false; });
+    return config;
+  }, [disableExtensions]);
 
-  const debouncedSave = useRef(
-    debounce((blockId, html) => {
-      engine.startTransaction().updateBlock(blockId, { content: html }).commit();
-    }, 800)
-  ).current;
+  const saveContent = useCallback((blockId, html) => {
+    lastSavedContentRef.current = html;
+    engine.startTransaction().updateBlock(blockId, { content: html }).commit();
+  }, [engine]);
+
+  const debouncedSaveRef = useRef(null);
+  if (!debouncedSaveRef.current) {
+    debouncedSaveRef.current = debounce(saveContent, 400);
+  }
 
   const extensions = useMemo(() => [
     StarterKit.configure({
@@ -140,7 +148,7 @@ export function useBlockEditor(block, options = {}) {
     TiptapMention,
     TiptapBacklink,
     TiptapDatabaseChip,
-  ], [placeholder, JSON.stringify(starterKitConfig), block.id, block.pageId]);
+  ], [placeholder, starterKitConfig, block.id, block.pageId]);
 
   const editor = useEditor({
     extensions,
@@ -310,8 +318,8 @@ export function useBlockEditor(block, options = {}) {
     onUpdate: ({ editor: ed }) => {
       // Yjs handles the real-time sync, but we still debounce save to CommandBus 
       // so it goes into db.blocks for full-text search and previews.
-      const html = ed.getHTML();
-      debouncedSave(block.id, sanitize(html));
+      const html = sanitize(ed.getHTML());
+      debouncedSaveRef.current(block.id, html);
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to } = ed.state.selection;
@@ -335,11 +343,11 @@ export function useBlockEditor(block, options = {}) {
     },
     onBlur: ({ editor: ed }) => {
       const html = sanitize(ed.getHTML());
-      if (html !== block.content) {
-        engine.updateBlock(block.id, { content: html });
+      if (html !== lastSavedContentRef.current && html !== block.content) {
+        saveContent(block.id, html);
       }
     },
-  }, [block.id, block.type]);
+  }, [block.id, block.type, saveContent]);
 
   // Seed the Yjs fragment on first load if it's empty but we have block.content
   useEffect(() => {
@@ -353,13 +361,13 @@ export function useBlockEditor(block, options = {}) {
 
   // Focus management
   useEffect(() => {
-    if (editor && focusBlockId === block.id && !editor.isFocused) {
+    if (editor && isFocusedTarget && !editor.isFocused) {
       const position = useBlockStore.getState().focusPosition || 'end';
       requestAnimationFrame(() => {
         editor.commands.focus(position);
       });
     }
-  }, [focusBlockId, block.id, editor]);
+  }, [isFocusedTarget, block.id, editor]);
 
   return editor;
 }

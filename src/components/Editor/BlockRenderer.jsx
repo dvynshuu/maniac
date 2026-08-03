@@ -1,4 +1,5 @@
 import React, { useState, memo, useRef, useEffect, useCallback, useContext } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useSortable } from '@dnd-kit/sortable';
 import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
@@ -31,7 +32,19 @@ import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useVirtualizerContext, useBlockVisible, getCachedHeight, setCachedHeight } from '../../hooks/useBlockVirtualizer';
 
 const BlockRenderer = memo(({ blockId, index }) => {
-  const block = useBlockStore(s => s.blockMap[blockId]);
+  const block = useBlockStore(useShallow(s => {
+    const b = s.blockMap[blockId];
+    if (!b) return null;
+    return {
+      id: b.id,
+      pageId: b.pageId,
+      parentId: b.parentId,
+      type: b.type,
+      content: b.content,
+      properties: b.properties,
+      _isDecrypting: b._isDecrypting,
+    };
+  }));
   // Performance: incremental child map instead of O(n) filter
   const childBlockIds = useChildBlockIds(blockId);
   const engine = useEditorEngine();

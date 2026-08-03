@@ -161,12 +161,21 @@ export const useBlockStore = create((set, get) => ({
    */
   getDescendants: (blockId) => {
     const { blockMap, blockOrder } = get();
+    const childMap = new Map();
+    for (const id of blockOrder) {
+      const parentId = blockMap[id]?.parentId;
+      if (parentId) {
+        if (!childMap.has(parentId)) childMap.set(parentId, []);
+        childMap.get(parentId).push(id);
+      }
+    }
     const descendants = [];
     const collect = (parentId) => {
-      for (const id of blockOrder) {
-        if (blockMap[id]?.parentId === parentId) {
-          descendants.push(id);
-          collect(id);
+      const children = childMap.get(parentId);
+      if (children) {
+        for (const childId of children) {
+          descendants.push(childId);
+          collect(childId);
         }
       }
     };

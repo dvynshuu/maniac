@@ -126,16 +126,14 @@ async function runCompaction() {
   _running = true;
 
   try {
-    // Get unique pageIds
-    const allBlocks = await db.blocks.toArray();
-    const pageIds = [...new Set(allBlocks.map(b => b.pageId))];
+    // Get unique pageIds efficiently without loading all block objects into memory
+    const pageIds = await db.blocks.orderBy('pageId').uniqueKeys();
 
     let totalCompacted = 0;
 
     for (const pageId of pageIds) {
-      const pageBlocks = allBlocks.filter(b => b.pageId === pageId);
-      if (needsCompaction(pageBlocks)) {
-        await compactPage(pageId);
+      const res = await compactPage(pageId);
+      if (res?.compacted) {
         totalCompacted++;
         // Yield to main thread between pages
         await new Promise(r => setTimeout(r, 10));

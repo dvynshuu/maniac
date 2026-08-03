@@ -80,11 +80,7 @@ export function useBlockVirtualizer(scrollElement, blockIds, pageId) {
 
   /** Notify all subscribers that visibility may have changed */
   const notify = useCallback(() => {
-    console.log('[DEBUG] notify called. Subscribers count:', subscribersRef.current.size);
-    const subscribers = [...subscribersRef.current];
-    for (const cb of subscribers) {
-      cb();
-    }
+    subscribersRef.current.forEach((cb) => cb());
   }, []);
 
   // ── Reset virtualizer state on page navigation ────────────────
@@ -100,7 +96,6 @@ export function useBlockVirtualizer(scrollElement, blockIds, pageId) {
       lastResetPageIdRef.current = pageId;
 
       if (enabled) {
-        console.log('[DEBUG] Reset virtualizer triggered for page:', pageId);
         // Clear stale state from previous page
         for (const timer of unmountTimersRef.current.values()) {
           clearTimeout(timer);

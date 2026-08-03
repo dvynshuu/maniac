@@ -8,7 +8,7 @@ let hmacKey = null;
 // Batching queue
 let pendingQueue = new Map(); // table -> Map<id, { op, payload }>
 let flushTimer = null;
-const FLUSH_INTERVAL = 100; // ms
+const FLUSH_INTERVAL = 300; // ms
 
 // Cross-tab broadcast channel
 const channel = new BroadcastChannel('maniac-sync');

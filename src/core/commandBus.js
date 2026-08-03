@@ -87,6 +87,7 @@ export function use(middlewareFn) {
 // ─── Structural Normalization Middleware ───────────────────────
 import { Normalizer } from './editor/Normalizer';
 import { useBlockStore } from '../stores/blockStore';
+import { usePageStore } from '../stores/pageStore';
 
 use(async (command, next) => {
   const { type, payload } = command;
@@ -255,7 +256,6 @@ export async function executeOp(operation) {
   const { entityType, entityId, op: opType, payload } = operation;
 
   if (entityType === EntityType.BLOCK) {
-    const { useBlockStore } = await import('../stores/blockStore');
     const store = useBlockStore.getState();
 
     switch (opType) {
@@ -339,8 +339,6 @@ export async function executeOp(operation) {
       }
     }
   } else if (entityType === EntityType.PAGE) {
-    const { usePageStore } = await import('../stores/pageStore');
-
     switch (opType) {
       case OpType.CREATE: {
         if (!payload) break;
