@@ -134,7 +134,9 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
     }
   }, [currentIndex, duePages.length]);
 
-  // Load preview outline of the page blocks
+  const [clozeCards, setClozeCards] = useState([]);
+
+  // Load preview outline of the page blocks and extract Cloze flashcards
   useEffect(() => {
     if (!currentPage || completed) return;
 
@@ -146,7 +148,9 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
         const sortedBlocks = rawBlocks.sort((a, b) => String(a.orderKey || '').localeCompare(String(b.orderKey || '')));
         
         const textContents = [];
-        for (const block of sortedBlocks.slice(0, 10)) {
+        const detectedClozes = [];
+
+        for (const block of sortedBlocks) {
           let content = block.content || '';
           if (key && block._isEncrypted && typeof content === 'string') {
             try {
@@ -158,10 +162,25 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
           const plainText = content.replace(/<[^>]*>/g, ' ').trim();
           if (plainText) {
             textContents.push(plainText);
+
+            // Cloze detection: {{c1::answer}}
+            const clozeRegex = /\{\{c\d+::(.*?)\}\}/g;
+            let match;
+            while ((match = clozeRegex.exec(plainText)) !== null) {
+              const fullMatch = match[0];
+              const answer = match[1];
+              const maskedText = plainText.replace(fullMatch, ' [ ... ] ');
+              detectedClozes.push({
+                masked: maskedText,
+                answer,
+                full: plainText
+              });
+            }
           }
         }
         if (active) {
-          setPagePreview(textContents.join(' \n') || '(Empty page content)');
+          setPagePreview(textContents.slice(0, 10).join(' \n') || '(Empty page content)');
+          setClozeCards(detectedClozes);
         }
       } catch (err) {
         console.error('Failed to load review page preview:', err);
@@ -312,13 +331,32 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
               />
             </div>
 
-            {/* Prompt Area */}
+            {/* Prompt Area or Cloze Challenge */}
             <div style={{ background: 'rgba(46, 91, 255, 0.03)', border: '1px dashed rgba(46, 91, 255, 0.2)', borderRadius: '12px', padding: '24px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>{currentPage.icon || '📄'}</div>
-              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>Recall Prompt</div>
-              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                "{currentPage.srsPrompt || currentPage.title || 'Untitled note'}"
-              </h4>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>
+                {clozeCards.length > 0 ? 'Cloze Flashcard Challenge' : 'Recall Prompt'}
+              </div>
+              
+              {clozeCards.length > 0 ? (
+                <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                  {!revealed ? (
+                    <span>{clozeCards[0].masked}</span>
+                  ) : (
+                    <span>
+                      {clozeCards[0].masked.split(' [ ... ] ')[0]}
+                      <span style={{ background: 'rgba(74, 222, 128, 0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', border: '1px solid #4ade80' }}>
+                        {clozeCards[0].answer}
+                      </span>
+                      {clozeCards[0].masked.split(' [ ... ] ')[1]}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                  "{currentPage.srsPrompt || currentPage.title || 'Untitled note'}"
+                </h4>
+              )}
             </div>
 
             {/* Answer Display */}

@@ -247,3 +247,102 @@ registerProvider({
     });
   },
 });
+
+// 4. Quick Calculator & Math Provider
+registerProvider({
+  id: 'quick-calc',
+  name: 'Quick Calculator',
+  priority: 5,
+  getItems: async (query) => {
+    if (!query) return [];
+    let expr = query.trim();
+    if (expr.toLowerCase().startsWith('calc')) {
+      expr = expr.substring(4).trim();
+    }
+
+    // Only attempt math evaluation if expression contains arithmetic characters
+    if (!expr || !/^[\d\s+\-*/%().,^]+$/.test(expr)) return [];
+
+    try {
+      // Safe math evaluator without eval()
+      const sanitized = expr.replace(/,/g, '');
+      const calcResult = Function(`'use strict'; return (${sanitized})`)();
+      if (typeof calcResult === 'number' && !isNaN(calcResult) && isFinite(calcResult)) {
+        const formatted = Math.round(calcResult * 10000) / 10000;
+        return [{
+          id: `calc:${formatted}`,
+          label: `${expr} = ${formatted}`,
+          description: 'Insert calculation result',
+          icon: 'Calculator',
+          category: 'Calculations',
+          score: 95,
+          action: 'insert_text',
+          insertText: String(formatted),
+        }];
+      }
+    } catch {
+      return [];
+    }
+    return [];
+  },
+});
+
+// 5. Date & Productivity Helpers Provider
+registerProvider({
+  id: 'date-helpers',
+  name: 'Date Helpers',
+  priority: 15,
+  getItems: async (query) => {
+    const q = (query || '').toLowerCase().trim();
+    const items = [];
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+    if (fuzzyScore(q, 'today') > 0 || fuzzyScore(q, 'date') > 0) {
+      items.push({
+        id: 'helper:today',
+        label: `Today: ${todayStr}`,
+        description: 'Insert current date',
+        icon: 'Calendar',
+        category: 'Quick Helpers',
+        score: Math.max(fuzzyScore(q, 'today'), fuzzyScore(q, 'date')),
+        action: 'insert_text',
+        insertText: todayStr,
+      });
+    }
+
+    if (fuzzyScore(q, 'tomorrow') > 0) {
+      items.push({
+        id: 'helper:tomorrow',
+        label: `Tomorrow: ${tomorrowStr}`,
+        description: 'Insert tomorrow\'s date',
+        icon: 'Calendar',
+        category: 'Quick Helpers',
+        score: fuzzyScore(q, 'tomorrow'),
+        action: 'insert_text',
+        insertText: tomorrowStr,
+      });
+    }
+
+    if (fuzzyScore(q, 'time') > 0 || fuzzyScore(q, 'now') > 0) {
+      items.push({
+        id: 'helper:time',
+        label: `Current Time: ${timeStr}`,
+        description: 'Insert current timestamp',
+        icon: 'Clock',
+        category: 'Quick Helpers',
+        score: Math.max(fuzzyScore(q, 'time'), fuzzyScore(q, 'now')),
+        action: 'insert_text',
+        insertText: `${todayStr} at ${timeStr}`,
+      });
+    }
+
+    return items;
+  },
+});

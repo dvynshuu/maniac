@@ -113,6 +113,11 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
   const handleSelect = (item) => {
     if (item.action === 'link_page' && onLinkPage) {
       onLinkPage({ id: item.pageId, title: item.label, icon: item.pageIcon });
+    } else if (item.action === 'insert_text') {
+      if (editor && item.insertText) {
+        editor.commands.insertContent(item.insertText);
+      }
+      onClose();
     } else if (item.action === 'create_block') {
       onSelect(item.type);
     } else if (item.action === 'change_type') {

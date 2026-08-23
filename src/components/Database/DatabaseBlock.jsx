@@ -7,6 +7,9 @@ import ColumnHeader from './ColumnHeader';
 import CellRenderer from './CellRenderer';
 import AddPropertyPopover from './AddPropertyPopover';
 import DatabaseToolbar from './DatabaseToolbar';
+import BoardView from './views/BoardView';
+import CalendarView from './views/CalendarView';
+import GalleryView from './views/GalleryView';
 import { useFilteredDatabaseRows } from '../../core/queryEngine';
 import { createId } from '../../utils/helpers';
 import { PROPERTY_TYPES } from '../../utils/constants';
@@ -63,6 +66,7 @@ export default function DatabaseBlock({ block }) {
   const updateProperty = useDatabaseStore(s => s.updateProperty);
   const engine = useEditorEngine();
 
+  const [activeView, setActiveView] = useState(block.properties?.view || 'table');
   const [activeCell, setActiveCell] = useState(null);
   const [editingCell, setEditingCell] = useState(null);
   const [resizingCol, setResizingCol] = useState(null);
@@ -109,16 +113,14 @@ export default function DatabaseBlock({ block }) {
     setOpenRowId(row.id);
   }, [block.id, schema]);
 
-
-
-  const handleAddRow = async () => {
+  const handleAddRow = async (overrides = {}) => {
     if (isAddingRow) return;
     setIsAddingRow(true);
     try {
-      const newRow = await addRow(block.id);
+      const newRow = await addRow(block.id, overrides);
       if (newRow) {
         setJustAddedRowId(newRow.id);
-        if (schema.length > 0) {
+        if (schema.length > 0 && activeView === 'table') {
           handleCellInteraction('edit', newRow.id, schema[0].id);
         }
         setTimeout(() => setJustAddedRowId(null), 5000); 
@@ -128,6 +130,13 @@ export default function DatabaseBlock({ block }) {
     } finally {
       setIsAddingRow(false);
     }
+  };
+
+  const handleViewChange = (newView) => {
+    setActiveView(newView);
+    engine.updateBlock(block.id, {
+      properties: { ...block.properties, view: newView }
+    });
   };
 
   // --- Auto-Migration ---
@@ -223,8 +232,51 @@ export default function DatabaseBlock({ block }) {
     return schema.reduce((sum, p) => sum + (tempWidths[p.id] || p.width || 200), 0) + 48 + 32;
   }, [schema, tempWidths]);
 
-  // ─── Render Table View ──────────────────────────────────────
+  // ─── Render Active View ─────────────────────────────────────
   const renderView = () => {
+    if (activeView === 'board') {
+      return (
+        <BoardView 
+          schema={schema}
+          rows={rows}
+          blockId={block.id}
+          onUpdateCell={updateCell}
+          onUpdateCellImmediate={updateCellImmediate}
+          onAddRow={handleAddRow}
+          onOpenRow={handleOpenRow}
+        />
+      );
+    }
+
+    if (activeView === 'calendar') {
+      return (
+        <CalendarView 
+          schema={schema}
+          rows={rows}
+          blockId={block.id}
+          onUpdateCell={updateCell}
+          onUpdateCellImmediate={updateCellImmediate}
+          onAddRow={handleAddRow}
+          onOpenRow={handleOpenRow}
+        />
+      );
+    }
+
+    if (activeView === 'gallery') {
+      return (
+        <GalleryView 
+          schema={schema}
+          rows={rows}
+          blockId={block.id}
+          onUpdateCell={updateCell}
+          onUpdateCellImmediate={updateCellImmediate}
+          onAddRow={handleAddRow}
+          onOpenRow={handleOpenRow}
+        />
+      );
+    }
+
+    // Default: Table View
     return (
       <div className="db-scroll-wrapper">
         <table className="db-table" style={{ minWidth: tableWidth, width: '100%' }}>
@@ -272,7 +324,7 @@ export default function DatabaseBlock({ block }) {
               <td colSpan={schema.length + 3} className="db-td-new">
                 <button 
                   className="db-add-row-btn"
-                  onClick={handleAddRow}
+                  onClick={() => handleAddRow()}
                   disabled={isAddingRow}
                 >
                   <span>{isAddingRow ? 'Adding...' : '+ New page'}</span>
@@ -291,9 +343,11 @@ export default function DatabaseBlock({ block }) {
         schema={schema}
         filters={filters}
         sorts={sorts}
+        activeView={activeView}
+        onViewChange={handleViewChange}
         onFiltersChange={setFilters}
         onSortsChange={setSorts}
-        onAddRow={handleAddRow}
+        onAddRow={() => handleAddRow()}
       />
 
       {renderView()}

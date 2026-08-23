@@ -243,11 +243,47 @@ function createSelector(cacheKey, inputSelectors, computeFn) {
   };
 }
 
-// Global caches to persist selector instances across hook calls
+// ─── LRU Cache Implementation to prevent selector memory leaks ───
+class LRUCache {
+  constructor(maxSize = 50) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return undefined;
+    const value = this.cache.get(key);
+    // Refresh key order for LRU
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxSize) {
+      // Evict oldest item
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, value);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+// Global LRU caches to persist selector instances across hook calls without leaking memory
 const selectorCaches = {
-  visibleBlocks: new Map(),
-  filteredRows: new Map(),
-  backlinks: new Map(),
+  visibleBlocks: new LRUCache(30),
+  filteredRows: new LRUCache(50),
+  backlinks: new LRUCache(50),
 };
 
 /**

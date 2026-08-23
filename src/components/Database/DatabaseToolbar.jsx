@@ -1,9 +1,18 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter, ArrowUpDown, X, Plus, ChevronDown, Table, Layout, Search, MoreHorizontal, Zap, Maximize2 } from 'lucide-react';
+import { Filter, ArrowUpDown, X, Plus, ChevronDown, Table, Layout, Calendar as CalendarIcon, LayoutGrid, Search, MoreHorizontal, Zap, Maximize2 } from 'lucide-react';
 import { PROPERTY_TYPE_META } from '../../utils/constants';
 
-export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChange, onSortsChange, onAddRow }) {
+export default function DatabaseToolbar({ 
+  schema, 
+  filters, 
+  sorts, 
+  activeView = 'table', 
+  onViewChange, 
+  onFiltersChange, 
+  onSortsChange, 
+  onAddRow 
+}) {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const filterBtnRef = useRef(null);
@@ -66,11 +75,29 @@ export default function DatabaseToolbar({ schema, filters, sorts, onFiltersChang
   return (
     <div className="db-toolbar">
       <div className="db-toolbar-left">
-        <button className="db-toolbar-tab active">
+        <button 
+          className={`db-toolbar-tab ${activeView === 'table' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('table')}
+        >
           <Table size={14} /> Table
         </button>
-        <button className="db-toolbar-tab">
+        <button 
+          className={`db-toolbar-tab ${activeView === 'board' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('board')}
+        >
           <Layout size={14} /> Board
+        </button>
+        <button 
+          className={`db-toolbar-tab ${activeView === 'calendar' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('calendar')}
+        >
+          <CalendarIcon size={14} /> Calendar
+        </button>
+        <button 
+          className={`db-toolbar-tab ${activeView === 'gallery' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('gallery')}
+        >
+          <LayoutGrid size={14} /> Gallery
         </button>
       </div>
 

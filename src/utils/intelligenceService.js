@@ -1,13 +1,41 @@
-import { db } from '../db/database';
-import { SecurityService } from './securityService';
-import { batchDecrypt } from './cryptoWorker';
+// In-memory cache for intelligence analytics
+let _intelligenceCache = {
+  nextActions: null,
+  nextActionsTimestamp: 0,
+  forgetting: null,
+  forgettingTimestamp: 0,
+  weeklyFocus: null,
+  weeklyFocusTimestamp: 0,
+  knowledgeVelocity: null,
+  velocityTimestamp: 0,
+};
+const CACHE_TTL = 30000; // 30s cache
 
 export class IntelligenceService {
+  static invalidateCache() {
+    _intelligenceCache = {
+      nextActions: null,
+      nextActionsTimestamp: 0,
+      forgetting: null,
+      forgettingTimestamp: 0,
+      weeklyFocus: null,
+      weeklyFocusTimestamp: 0,
+      knowledgeVelocity: null,
+      velocityTimestamp: 0,
+    };
+  }
+
   static async getNextActions(key) {
+    const now = Date.now();
+    if (_intelligenceCache.nextActions && (now - _intelligenceCache.nextActionsTimestamp < CACHE_TTL)) {
+      return _intelligenceCache.nextActions;
+    }
+
     const todos = await db.blocks
       .where('type')
       .equals('todo')
       .reverse()
+      .limit(30)
       .sortBy('updatedAt');
 
     const decryptTodo = async (todo, k) => {
@@ -25,11 +53,9 @@ export class IntelligenceService {
       return { ...todo, properties: props, content };
     };
 
-    const decrypted = await batchDecrypt(todos, key, decryptTodo, 20);
+    const decrypted = await batchDecrypt(todos, key, decryptTodo, 15);
     
-    // Prioritize: Unchecked, then by updatedAt (already sorted)
-    // We can also look for "high priority" markers like ! or tags in content
-    return decrypted
+    const result = decrypted
       .filter(t => !t.properties?.checked)
       .map(t => {
         let priority = 0;
@@ -41,10 +67,18 @@ export class IntelligenceService {
       })
       .sort((a, b) => b.priority - a.priority || b.updatedAt - a.updatedAt)
       .slice(0, 10);
+
+    _intelligenceCache.nextActions = result;
+    _intelligenceCache.nextActionsTimestamp = now;
+    return result;
   }
 
   static async getForgetting(key) {
     const now = Date.now();
+    if (_intelligenceCache.forgetting && (now - _intelligenceCache.forgettingTimestamp < CACHE_TTL)) {
+      return _intelligenceCache.forgetting;
+    }
+
     const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
 
     // Stale pages: not viewed or updated in a week
@@ -94,26 +128,35 @@ export class IntelligenceService {
     const decryptedTodos = await Promise.all(abandonedTodosRaw.map(t => decryptTodo(t, key)));
     const abandonedTodos = decryptedTodos.filter(t => !t.properties?.checked);
 
-    return {
+    const result = {
         stalePages: decryptedPages.sort((a, b) => a.updatedAt - b.updatedAt),
         abandonedTodos: abandonedTodos.sort((a, b) => a.updatedAt - b.updatedAt)
     };
+    _intelligenceCache.forgetting = result;
+    _intelligenceCache.forgettingTimestamp = now;
+    return result;
   }
 
   static async getWeeklyFocus(key) {
     const now = Date.now();
+    if (_intelligenceCache.weeklyFocus && (now - _intelligenceCache.weeklyFocusTimestamp < CACHE_TTL)) {
+      return _intelligenceCache.weeklyFocus;
+    }
+
     const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
 
     // Get pages updated this week
     const recentPages = await db.pages
         .where('updatedAt')
         .above(weekAgo)
+        .limit(20)
         .toArray();
 
     // Get tracker entries this week
     const recentEntries = await db.tracker_entries
         .where('createdAt')
         .above(weekAgo)
+        .limit(50)
         .toArray();
 
     // Simple frequency analysis on page titles (needs decryption)
@@ -138,15 +181,22 @@ export class IntelligenceService {
         return { ...t, count };
     }).filter(t => t.count > 0);
 
-    return {
+    const result = {
         activePages: decryptedPages.length,
         trackerStats,
         topPages: decryptedPages.slice(0, 5)
     };
+    _intelligenceCache.weeklyFocus = result;
+    _intelligenceCache.weeklyFocusTimestamp = now;
+    return result;
   }
 
   static async getKnowledgeVelocity() {
     const now = Date.now();
+    if (_intelligenceCache.knowledgeVelocity && (now - _intelligenceCache.velocityTimestamp < CACHE_TTL)) {
+      return _intelligenceCache.knowledgeVelocity;
+    }
+
     const dayAgo = now - (24 * 60 * 60 * 1000);
     const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
 
@@ -159,7 +209,7 @@ export class IntelligenceService {
 
     // Calculate daily block additions for the last 7 days
     const dailyActivity = [0, 0, 0, 0, 0, 0, 0];
-    const weeklyBlocks = await db.blocks.where('updatedAt').above(weekAgo).toArray();
+    const weeklyBlocks = await db.blocks.where('updatedAt').above(weekAgo).limit(100).toArray();
     
     weeklyBlocks.forEach(b => {
         const daysAgo = Math.floor((now - b.updatedAt) / (24 * 60 * 60 * 1000));
@@ -179,7 +229,7 @@ export class IntelligenceService {
 
     const velocity = Math.min(100, Math.round((dayBlocks * 5) + (weekBlocks * 0.5)));
     
-    return {
+    const result = {
         velocity,
         dayBlocks,
         weekBlocks,
@@ -188,5 +238,8 @@ export class IntelligenceService {
         dailyActivity: normalizedActivity,
         depthLevel
     };
+    _intelligenceCache.knowledgeVelocity = result;
+    _intelligenceCache.velocityTimestamp = now;
+    return result;
   }
 }

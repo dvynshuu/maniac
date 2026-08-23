@@ -6268,3 +6268,46 @@ button {
   color: var(--text-tertiary);
   font-size: 10px;
 }
+
+/* ─── Focus / Zen Mode ─────────────────────────────────────────── */
+.editor-scroll.is-focus-mode .block-wrapper {
+  opacity: 0.22;
+  filter: blur(0.2px);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
+}
+
+.editor-scroll.is-focus-mode .block-wrapper:hover,
+.editor-scroll.is-focus-mode .block-wrapper:focus-within,
+.editor-scroll.is-focus-mode .block-wrapper.has-focus,
+.editor-scroll.is-focus-mode .page-header-container:focus-within {
+  opacity: 1;
+  filter: none;
+}
+
+/* ─── Typewriter Mode ─────────────────────────────────────────── */
+.editor-scroll.is-typewriter-mode {
+  scroll-behavior: smooth;
+  padding-bottom: 50vh !important;
+}
+
+/* ─── Cloze Flashcard Highlighting ────────────────────────────── */
+.cloze-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  margin: 0 2px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 4px;
+  color: #818cf8;
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+.cloze-badge.is-hidden {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: transparent;
+  user-select: none;
+  cursor: pointer;
+}

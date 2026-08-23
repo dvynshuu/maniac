@@ -45,6 +45,154 @@ export default function DataTab({ onClose }) {
     }
   };
 
+  const handleExportEncryptedVault = async () => {
+    try {
+      const password = prompt('Enter a password to encrypt this portable vault (.maniac):');
+      if (!password) return;
+
+      const [allPages, blocks, trackers, entries, blobsRaw, databaseRows, databaseCells, relations] = await Promise.all([
+        db.pages.toArray(), 
+        db.blocks.toArray(),
+        db.trackers.toArray(), 
+        db.tracker_entries.toArray(),
+        db.blobs.toArray(),
+        db.database_rows.toArray(),
+        db.database_cells.toArray(),
+        db.relations.toArray()
+      ]);
+
+      const serializedBlobs = await Promise.all(blobsRaw.map(async (b) => {
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(b.blob);
+        });
+        return { hash: b.hash, base64, mimeType: b.mimeType, createdAt: b.createdAt };
+      }));
+
+      const payload = JSON.stringify({
+        format: 'MANIAC_ENCRYPTED_VAULT',
+        version: '2.0',
+        exportedAt: Date.now(),
+        data: {
+          pages: allPages,
+          blocks,
+          trackers,
+          entries,
+          databaseRows,
+          databaseCells,
+          relations,
+          blobs: serializedBlobs
+        }
+      });
+
+      // Encrypt with PBKDF2 + AES-GCM
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+      );
+      const derivedKey = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt']
+      );
+
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        derivedKey,
+        enc.encode(payload)
+      );
+
+      // Pack salt (16) + iv (12) + ciphertext
+      const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+      combined.set(salt, 0);
+      combined.set(iv, salt.length);
+      combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+
+      const blob = new Blob([combined], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vault-${new Date().toISOString().split('T')[0]}.maniac`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      useUIStore.getState().addToast('Encrypted vault exported (.maniac)!', 'success');
+    } catch (err) {
+      console.error(err);
+      useUIStore.getState().addToast('Vault export failed: ' + err.message, 'error');
+    }
+  };
+
+  const handleImportEncryptedVault = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const password = prompt('Enter the password to decrypt and restore this vault (.maniac):');
+      if (!password) return;
+
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+
+      if (bytes.length < 28) {
+        throw new Error('Invalid vault file size.');
+      }
+
+      const salt = bytes.slice(0, 16);
+      const iv = bytes.slice(16, 28);
+      const ciphertext = bytes.slice(28);
+
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+      );
+      const derivedKey = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+
+      const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        derivedKey,
+        ciphertext
+      );
+
+      const jsonStr = new TextDecoder().decode(decryptedBuffer);
+      const vault = JSON.parse(jsonStr);
+
+      if (vault.format !== 'MANIAC_ENCRYPTED_VAULT' || !vault.data) {
+        throw new Error('Unrecognized vault structure.');
+      }
+
+      // Restore data to IndexedDB
+      await db.transaction('rw', [db.pages, db.blocks, db.trackers, db.tracker_entries, db.database_rows, db.database_cells, db.relations], async () => {
+        if (vault.data.pages?.length) await db.pages.bulkPut(vault.data.pages);
+        if (vault.data.blocks?.length) await db.blocks.bulkPut(vault.data.blocks);
+        if (vault.data.trackers?.length) await db.trackers.bulkPut(vault.data.trackers);
+        if (vault.data.entries?.length) await db.tracker_entries.bulkPut(vault.data.entries);
+        if (vault.data.databaseRows?.length) await db.database_rows.bulkPut(vault.data.databaseRows);
+        if (vault.data.databaseCells?.length) await db.database_cells.bulkPut(vault.data.databaseCells);
+        if (vault.data.relations?.length) await db.relations.bulkPut(vault.data.relations);
+      });
+
+      useUIStore.getState().addToast('Vault restored successfully! Reloading...', 'success');
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      console.error(err);
+      useUIStore.getState().addToast('Vault restore failed (incorrect password or corrupt file).', 'error');
+    }
+  };
+
   const handleGarbageCollect = async () => {
     setGcStatus('running');
     try {
@@ -92,6 +240,27 @@ export default function DataTab({ onClose }) {
 
       <SettingRow label="Export Workspace" description="Download all pages, blocks, and trackers as a JSON backup.">
         <ActionButton variant="secondary" onClick={handleExportJSON}>Export JSON</ActionButton>
+      </SettingRow>
+
+      <Divider />
+
+      <SettingRow label="Encrypted Portable Vault (.maniac)" description="Zero-knowledge password-encrypted single-file backup for complete workspace portability.">
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <ActionButton variant="primary" onClick={handleExportEncryptedVault}>
+            Export .maniac
+          </ActionButton>
+          <label style={{ display: 'inline-flex' }}>
+            <input 
+              type="file" 
+              accept=".maniac" 
+              style={{ display: 'none' }} 
+              onChange={handleImportEncryptedVault}
+            />
+            <span className="btn btn-secondary" style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border-default)', display: 'inline-flex', alignItems: 'center' }}>
+              Restore Vault
+            </span>
+          </label>
+        </div>
       </SettingRow>
 
       <Divider />

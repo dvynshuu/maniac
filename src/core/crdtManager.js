@@ -2,11 +2,39 @@ import * as Y from 'yjs';
 import { db } from '../db/database';
 import { dispatch } from './commandBus';
 
-// In-memory cache of Y.Docs per pageId
-const _docs = new Map();
+// In-memory LRU cache of Y.Docs per pageId (max 5 documents to prevent memory growth)
+const MAX_CACHED_DOCS = 5;
+const _docs = new Map(); // pageId -> { doc, lastAccessed }
 // Local update counters to trigger compaction
 const _updateCounts = new Map();
 const COMPACTION_THRESHOLD = 50;
+
+/**
+ * Evict oldest documents when cache exceeds MAX_CACHED_DOCS
+ */
+function evictOldestDocs(preservePageId) {
+  if (_docs.size <= MAX_CACHED_DOCS) return;
+
+  const entries = Array.from(_docs.entries());
+  // Sort by lastAccessed ascending (oldest first)
+  entries.sort((a, b) => (a[1].lastAccessed || 0) - (b[1].lastAccessed || 0));
+
+  for (const [pId, item] of entries) {
+    if (_docs.size <= MAX_CACHED_DOCS) break;
+    if (pId !== preservePageId) {
+      try {
+        if (item.doc && typeof item.doc.destroy === 'function') {
+          item.doc.destroy();
+        }
+      } catch (err) {
+        console.warn(`[CRDT] Error destroying Y.Doc for ${pId}:`, err);
+      }
+      _docs.delete(pId);
+      _updateCounts.delete(pId);
+      console.debug(`[CRDT] Evicted inactive Y.Doc for page "${pId}"`);
+    }
+  }
+}
 
 /**
  * Compact all historical CRDT updates for a page into a single snapshot.
@@ -51,11 +79,16 @@ export function getCrdtDoc(pageId) {
   }
 
   if (_docs.has(pageId)) {
-    return _docs.get(pageId);
+    const item = _docs.get(pageId);
+    item.lastAccessed = Date.now();
+    return item.doc;
   }
 
+  // Evict older inactive docs before creating a new one
+  evictOldestDocs(pageId);
+
   const doc = new Y.Doc();
-  _docs.set(pageId, doc);
+  _docs.set(pageId, { doc, lastAccessed: Date.now() });
   _updateCounts.set(pageId, 0);
 
   // Load existing updates from DB async

@@ -13,7 +13,7 @@ import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
 import EmojiIcon from '../Common/EmojiIcon';
 import { debounce } from '../../utils/helpers';
-import { ImageIcon, X, Cloud, Brain } from 'lucide-react';
+import { ImageIcon, X, Cloud, Brain, Focus, AlignCenter } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
@@ -34,7 +34,8 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const isSaving = useUIStore((s) => s.isSaving);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
-
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isTypewriterMode, setIsTypewriterMode] = useState(false);
   const [title, setTitle] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showCoverHover, setShowCoverHover] = useState(false);
@@ -270,11 +271,58 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const isModal = !!pageIdProp;
 
   return (
-    <div className={`editor-scroll ${isModal ? 'is-modal-editor' : ''}`} ref={setScrollElement}>
+    <div 
+      className={`editor-scroll ${isModal ? 'is-modal-editor' : ''} ${isFocusMode ? 'is-focus-mode' : ''} ${isTypewriterMode ? 'is-typewriter-mode' : ''}`} 
+      ref={setScrollElement}
+    >
       {!isModal && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
           <Breadcrumb />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
+            {/* Focus / Zen Mode Button */}
+            <button
+              onClick={() => setIsFocusMode(!isFocusMode)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                background: isFocusMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                border: isFocusMode ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: isFocusMode ? '#818cf8' : 'var(--text-secondary)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              title="Focus Mode: Dim non-active blocks"
+            >
+              <Focus size={13} />
+              <span>{isFocusMode ? 'Focus On' : 'Focus'}</span>
+            </button>
+
+            {/* Typewriter Mode Button */}
+            <button
+              onClick={() => setIsTypewriterMode(!isTypewriterMode)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                background: isTypewriterMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                border: isTypewriterMode ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: isTypewriterMode ? '#818cf8' : 'var(--text-secondary)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              title="Typewriter Mode: Keep cursor centered"
+            >
+              <AlignCenter size={13} />
+              <span>{isTypewriterMode ? 'Typewriter On' : 'Typewriter'}</span>
+            </button>
+
             <button
               onClick={() => setShowSrsPopover(!showSrsPopover)}
               style={{
@@ -307,7 +355,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
               />
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
               {isSaving ? (
                 <>
                   <Cloud size={14} className="animate-pulse" />
