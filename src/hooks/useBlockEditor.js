@@ -352,10 +352,10 @@ export function useBlockEditor(block, options = {}) {
   // Seed the Yjs fragment on first load if it's empty but we have block.content
   useEffect(() => {
     if (editor && isFirstLoad.current && !block._isDecrypting) {
+      isFirstLoad.current = false;
       if (editor.isEmpty && block.content) {
         editor.commands.setContent(block.content, false);
       }
-      isFirstLoad.current = false;
     }
   }, [editor, block.content, block._isDecrypting]);
 

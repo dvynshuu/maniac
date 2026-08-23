@@ -17,6 +17,7 @@
 
 import { OpType, EntityType } from '../db/opLog';
 import { getActorId } from '../db/actorId';
+import { getTabId } from '../db/crossTabChannel';
 import { can, Permission } from './permissions';
 import { trace, event } from './observability';
 import { nanoid } from 'nanoid';
@@ -159,8 +160,9 @@ export async function dispatch(command) {
 
     const { ops = [], inverseOps = [], returnValue } = result;
 
+    const currentTabId = getTabId();
     for (const op of ops) {
-      op.meta = { ...op.meta, transactionId };
+      op.meta = { ...op.meta, transactionId, tabId: currentTabId };
       persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op } });
     }
 
@@ -217,6 +219,20 @@ export async function transaction(fn) {
   } finally {
     _activeTransaction = null;
   }
+}
+
+/**
+ * Dispatch a batch of commands within an atomic transaction.
+ */
+export async function dispatchBatch(commands) {
+  if (!commands || commands.length === 0) return [];
+  return transaction(async () => {
+    const results = [];
+    for (const cmd of commands) {
+      results.push(await dispatch(cmd));
+    }
+    return results;
+  });
 }
 
 // ─── Undo / Redo ────────────────────────────────────────────────
@@ -330,7 +346,9 @@ export async function executeOp(operation) {
 
           // Enqueue DAG sync updates explicitly
           if (operation.meta?.source !== 'remote') {
+            const currentTabId = getTabId();
             for (const sOp of syncedOps) {
+              sOp.meta = { ...sOp.meta, tabId: currentTabId };
               persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op: sOp } });
             }
           }
@@ -368,7 +386,11 @@ export async function executeOp(operation) {
 
   // Cross-tab broadcast & persistence for local actions
   if (operation.meta?.source !== 'remote') {
-    persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op: operation } });
+    const opToEnqueue = {
+      ...operation,
+      meta: { ...operation.meta, tabId: operation.meta?.tabId || getTabId() }
+    };
+    persistenceWorker.postMessage({ type: 'ENQUEUE_OP', payload: { op: opToEnqueue } });
   }
 }
 

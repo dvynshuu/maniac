@@ -24,7 +24,7 @@ let _channel = null;
 const _listeners = new Set();
 let _tabId = null;
 
-function getTabId() {
+export function getTabId() {
   if (!_tabId) {
     _tabId = crypto.randomUUID().slice(0, 8);
   }

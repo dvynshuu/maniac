@@ -12,6 +12,8 @@
  */
 
 import { db } from '../db/database';
+import { useBlockStore } from '../stores/blockStore';
+import { usePageStore } from '../stores/pageStore';
 
 const COMPACTION_THRESHOLD = 8;  // Trigger when any key length exceeds this
 const COMPACTION_INTERVAL = 60000; // Check every 60s
@@ -19,33 +21,40 @@ const BASE = 'abcdefghijklmnopqrstuvwxyz';
 
 /**
  * Generate evenly spaced sort keys for n items.
- * Uses a simple scheme: divide the alphabet space into n+1 segments.
+ * Guarantees strictly monotonic ascending lexical order matching array index.
  */
-function generateEvenKeys(count) {
+export function generateEvenKeys(count) {
   if (count === 0) return [];
   if (count === 1) return ['m'];
 
+  if (count <= 25) {
+    const result = [];
+    let prevCode = -1;
+    const step = 26 / (count + 1);
+    for (let i = 0; i < count; i++) {
+      let code = Math.floor(step * (i + 1));
+      if (code <= prevCode) code = prevCode + 1;
+      if (code > 25) code = 25;
+      prevCode = code;
+      result.push(BASE[code]);
+    }
+    if (new Set(result).size === count) {
+      return result;
+    }
+  }
+
+  // Base-26 equal-width representation for arbitrary count to ensure lexical sort matches numerical sort
+  const width = Math.max(2, Math.ceil(Math.log(count + 1) / Math.log(26)));
   const keys = [];
-  const step = BASE.length / (count + 1);
-
-  for (let i = 1; i <= count; i++) {
-    const pos = Math.floor(step * i);
-    const safePos = Math.min(pos, BASE.length - 1);
-    let key = BASE[safePos];
-    
-    // For more than 26 items, add a second character for uniqueness
-    if (count > BASE.length - 2) {
-      const subStep = BASE.length / (count + 1);
-      const subPos = Math.floor((step * i - pos) * BASE.length);
-      key += BASE[Math.min(Math.max(subPos, 0), BASE.length - 1)];
+  for (let i = 0; i < count; i++) {
+    let num = i + 1;
+    let str = '';
+    for (let w = width - 1; w >= 0; w--) {
+      const base = Math.pow(26, w);
+      const digit = Math.floor(num / base) % 26;
+      str += BASE[digit];
     }
-
-    // Ensure uniqueness
-    while (keys.includes(key)) {
-      key += BASE[Math.floor(Math.random() * BASE.length)];
-    }
-
-    keys.push(key);
+    keys.push(str);
   }
 
   return keys;
@@ -61,55 +70,119 @@ function needsCompaction(blocks) {
 
 /**
  * Compact sort keys for a single page's blocks.
- * Re-assigns clean, evenly-spaced keys while preserving current order.
+ * Groups by parentId to preserve sibling hierarchy, and syncs Zustand blockStore.
  */
 async function compactPage(pageId) {
   const blocksRaw = await db.blocks.where('pageId').equals(pageId).toArray();
-  const blocks = blocksRaw.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+  if (!blocksRaw || blocksRaw.length === 0) return { compacted: false };
 
-  if (!needsCompaction(blocks)) return { compacted: false };
+  // Group blocks by parentId
+  const byParent = new Map();
+  for (const b of blocksRaw) {
+    const pId = b.parentId || null;
+    if (!byParent.has(pId)) byParent.set(pId, []);
+    byParent.get(pId).push(b);
+  }
 
-  const newKeys = generateEvenKeys(blocks.length);
+  const updates = [];
 
-  // Assign in a single transaction
-  await db.transaction('rw', db.blocks, async () => {
-    for (let i = 0; i < blocks.length; i++) {
-      if (blocks[i].sortOrder !== newKeys[i]) {
-        await db.blocks.update(blocks[i].id, { sortOrder: newKeys[i] });
+  for (const [parentId, siblings] of byParent) {
+    siblings.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    if (siblings.some(b => (b.sortOrder || '').length > COMPACTION_THRESHOLD)) {
+      const newKeys = generateEvenKeys(siblings.length);
+      for (let i = 0; i < siblings.length; i++) {
+        if (siblings[i].sortOrder !== newKeys[i]) {
+          updates.push({ id: siblings[i].id, sortOrder: newKeys[i] });
+        }
       }
     }
+  }
+
+  if (updates.length === 0) return { compacted: false };
+
+  // Persist to IndexedDB
+  await db.transaction('rw', db.blocks, async () => {
+    for (const u of updates) {
+      await db.blocks.update(u.id, { sortOrder: u.sortOrder });
+    }
   });
+
+  // Sync in-memory blockStore if this page is active
+  const blockStore = useBlockStore.getState();
+  const currentBlockOrder = blockStore.blockOrder;
+  if (currentBlockOrder.length > 0) {
+    const firstBlock = blockStore.blockMap[currentBlockOrder[0]];
+    if (firstBlock && firstBlock.pageId === pageId) {
+      const newBlockMap = { ...blockStore.blockMap };
+      let mapChanged = false;
+      for (const u of updates) {
+        if (newBlockMap[u.id]) {
+          newBlockMap[u.id] = { ...newBlockMap[u.id], sortOrder: u.sortOrder };
+          mapChanged = true;
+        }
+      }
+      if (mapChanged) {
+        const sortedOrder = [...currentBlockOrder].sort((a, b) => 
+          String(newBlockMap[a]?.sortOrder || '').localeCompare(String(newBlockMap[b]?.sortOrder || ''))
+        );
+        useBlockStore.setState({ blockMap: newBlockMap, blockOrder: sortedOrder });
+      }
+    }
+  }
 
   return {
     compacted: true,
     pageId,
-    blockCount: blocks.length,
-    maxOldLength: Math.max(...blocks.map(b => (b.sortOrder || '').length)),
-    maxNewLength: Math.max(...newKeys.map(k => k.length)),
+    blockCount: updates.length,
   };
 }
 
 /**
- * Compact sort keys for pages too.
+ * Compact sort keys for pages too, grouping by parentId and syncing pageStore.
  */
 async function compactPages() {
   const pages = await db.pages.toArray();
-  if (!pages.some(p => (p.sortOrder || '').length > COMPACTION_THRESHOLD)) return null;
+  if (!pages || pages.length === 0) return null;
 
-  const sorted = [...pages].sort((a, b) => 
-    String(a.sortOrder || '').localeCompare(String(b.sortOrder || ''))
-  );
-  const newKeys = generateEvenKeys(sorted.length);
+  const byParent = new Map();
+  for (const p of pages) {
+    const pId = p.parentId || null;
+    if (!byParent.has(pId)) byParent.set(pId, []);
+    byParent.get(pId).push(p);
+  }
+
+  const updates = [];
+  for (const [parentId, siblings] of byParent) {
+    siblings.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    if (siblings.some(p => (p.sortOrder || '').length > COMPACTION_THRESHOLD)) {
+      const newKeys = generateEvenKeys(siblings.length);
+      for (let i = 0; i < siblings.length; i++) {
+        if (siblings[i].sortOrder !== newKeys[i]) {
+          updates.push({ id: siblings[i].id, sortOrder: newKeys[i] });
+        }
+      }
+    }
+  }
+
+  if (updates.length === 0) return null;
 
   await db.transaction('rw', db.pages, async () => {
-    for (let i = 0; i < sorted.length; i++) {
-      if (sorted[i].sortOrder !== newKeys[i]) {
-        await db.pages.update(sorted[i].id, { sortOrder: newKeys[i] });
-      }
+    for (const u of updates) {
+      await db.pages.update(u.id, { sortOrder: u.sortOrder });
     }
   });
 
-  return { compacted: true, count: sorted.length };
+  // Sync in-memory pageStore
+  const pageStore = usePageStore.getState();
+  if (pageStore.pages && pageStore.pages.length > 0) {
+    const updateMap = new Map(updates.map(u => [u.id, u.sortOrder]));
+    const updatedPages = pageStore.pages.map(p => 
+      updateMap.has(p.id) ? { ...p, sortOrder: updateMap.get(p.id) } : p
+    );
+    usePageStore.setState({ pages: updatedPages });
+  }
+
+  return { compacted: true, count: updates.length };
 }
 
 // ─── Background Compaction Runner ───────────────────────────────

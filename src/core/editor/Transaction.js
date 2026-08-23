@@ -185,14 +185,7 @@ export class Transaction {
 
     this.normalize();
 
-    const { transaction, dispatch } = await import('../commandBus');
-    
-    return transaction(async () => {
-      const results = [];
-      for (const op of this.ops) {
-        results.push(await dispatch(op));
-      }
-      return results;
-    });
+    const { dispatchBatch } = await import('../commandBus');
+    return dispatchBatch(this.ops);
   }
 }

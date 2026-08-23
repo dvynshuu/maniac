@@ -1,10 +1,12 @@
-import React, { useState, memo, useRef, useEffect, useCallback, useContext } from 'react';
+import React, { useState, memo, useRef, useEffect, useCallback, useContext, Suspense, lazy } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSortable } from '@dnd-kit/sortable';
 import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
+
+// Fast direct imports for common text blocks
 import TextBlock from './blocks/TextBlock';
 import HeadingBlock from './blocks/HeadingBlock';
 import TodoBlock from './blocks/TodoBlock';
@@ -15,16 +17,18 @@ import CalloutBlock from './blocks/CalloutBlock';
 import CodeBlock from './blocks/CodeBlock';
 import BulletBlock from './blocks/BulletBlock';
 import NumberedBlock from './blocks/NumberedBlock';
-import TableBlock from './blocks/TableBlock';
 import ToggleBlock from './blocks/ToggleBlock';
-import EmbedBlock from './blocks/EmbedBlock';
-import SyncedBlock from './blocks/SyncedBlock';
-import DatabaseBlock from '../Database/DatabaseBlock';
-import TrackerBlock from '../Tracker/TrackerBlock';
-import MathBlock from './blocks/MathBlock';
 import ColumnListBlock from './blocks/ColumnListBlock';
 import ColumnBlock from './blocks/ColumnBlock';
 import PageBlock from './blocks/PageBlock';
+
+// Lazy load heavy blocks to keep core editor bundle ultra-fast
+const TableBlock = lazy(() => import('./blocks/TableBlock'));
+const EmbedBlock = lazy(() => import('./blocks/EmbedBlock'));
+const SyncedBlock = lazy(() => import('./blocks/SyncedBlock'));
+const DatabaseBlock = lazy(() => import('../Database/DatabaseBlock'));
+const TrackerBlock = lazy(() => import('../Tracker/TrackerBlock'));
+const MathBlock = lazy(() => import('./blocks/MathBlock'));
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
@@ -168,15 +172,31 @@ const BlockRenderer = memo(({ blockId, index }) => {
         return <ImageBlock block={block} index={index} />;
 
       case BLOCK_TYPES.MATH:
-        return <MathBlock block={block} index={index} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 32 }} />}>
+            <MathBlock block={block} index={index} />
+          </Suspense>
+        );
 
       case BLOCK_TYPES.TRACKER:
-        return <TrackerBlock block={block} index={index} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 48 }} />}>
+            <TrackerBlock block={block} index={index} />
+          </Suspense>
+        );
         
       case BLOCK_TYPES.TABLE:
-        return <TableBlock block={block} index={index} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 64 }} />}>
+            <TableBlock block={block} index={index} />
+          </Suspense>
+        );
       case 'database':
-        return <DatabaseBlock block={block} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 64 }} />}>
+            <DatabaseBlock block={block} />
+          </Suspense>
+        );
 
       case BLOCK_TYPES.TOGGLE:
         return <ToggleBlock block={block} index={index} />;
@@ -186,10 +206,18 @@ const BlockRenderer = memo(({ blockId, index }) => {
       case BLOCK_TYPES.POMODORO:
       case BLOCK_TYPES.PROGRESS_BAR:
       case BLOCK_TYPES.WIDGET:
-        return <EmbedBlock block={block} index={index} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 48 }} />}>
+            <EmbedBlock block={block} index={index} />
+          </Suspense>
+        );
 
       case BLOCK_TYPES.SYNCED_REFERENCE:
-        return <SyncedBlock block={block} index={index} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 32 }} />}>
+            <SyncedBlock block={block} index={index} />
+          </Suspense>
+        );
 
       case BLOCK_TYPES.COLUMN_LIST:
         return <ColumnListBlock block={block} index={index} />;

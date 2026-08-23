@@ -150,7 +150,7 @@ async function flushQueue() {
             if (opUpper === 'DELETE') {
               await db[table].delete(id);
               if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete' });
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete', tabId: meta?.tabId });
               }
             } else if (opUpper === 'UPDATE' || opUpper === 'REORDER' || opUpper === 'CHANGE_TYPE') {
               let dbPayload = payload;
@@ -168,13 +168,13 @@ async function flushQueue() {
                 await db[table].update(id, dbPayload);
               }
               if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'update', payload }); 
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'update', payload, tabId: meta?.tabId }); 
               }
             } else if (opUpper === 'CREATE') {
               const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
               await db[table].put(dbPayload);
               if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload });
+                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload, tabId: meta?.tabId });
               }
             } else if (opUpper === 'CRDT_UPDATE') {
               await db[table].put({
@@ -184,7 +184,7 @@ async function flushQueue() {
                 timestamp: Date.now()
               });
               if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: 'CRDT', entityId: payload.pageId, op: 'CRDT_UPDATE', payload });
+                broadcastOps.push({ entityType: 'CRDT', entityId: payload.pageId, op: 'CRDT_UPDATE', payload, tabId: meta?.tabId });
               }
             }
           } catch (dbErr) {
@@ -205,11 +205,11 @@ async function flushQueue() {
 
     // Broadcast AFTER successful commit
     for (const op of broadcastOps) {
-      // Need a random tab ID, can just use a fake one or let the channel handle it.
+      const { tabId: origTabId, ...opData } = op;
       channel.postMessage({
         type: 'OP_COMMITTED',
-        operation: { ...op, meta: { source: 'worker', timestamp: Date.now() } },
-        tabId: 'worker-tab',
+        operation: { ...opData, meta: { source: 'worker', timestamp: Date.now() } },
+        tabId: origTabId || 'worker-tab',
         timestamp: Date.now()
       });
     }
