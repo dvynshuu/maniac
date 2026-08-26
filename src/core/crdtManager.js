@@ -88,7 +88,18 @@ export function getCrdtDoc(pageId) {
   evictOldestDocs(pageId);
 
   const doc = new Y.Doc();
-  _docs.set(pageId, { doc, lastAccessed: Date.now() });
+  let resolveReady;
+  const readyPromise = new Promise((resolve) => {
+    resolveReady = resolve;
+  });
+
+  const docEntry = {
+    doc,
+    lastAccessed: Date.now(),
+    readyPromise,
+    isReady: false,
+  };
+  _docs.set(pageId, docEntry);
   _updateCounts.set(pageId, 0);
 
   // Load existing updates from DB async
@@ -109,6 +120,11 @@ export function getCrdtDoc(pageId) {
         compactCrdtUpdates(pageId, doc, updates);
       }
     }
+  }).catch(err => {
+    console.error('[CRDT] Failed to load crdt_updates from DB:', err);
+  }).finally(() => {
+    docEntry.isReady = true;
+    resolveReady();
   });
 
   // Listen for local changes to persist and broadcast
@@ -133,6 +149,29 @@ export function getCrdtDoc(pageId) {
 }
 
 /**
+ * Wait until the Y.Doc for pageId has loaded its historical updates from DB.
+ */
+export async function waitForDoc(pageId) {
+  if (!pageId || typeof pageId !== 'string') return;
+  if (!_docs.has(pageId)) {
+    getCrdtDoc(pageId);
+  }
+  const item = _docs.get(pageId);
+  if (item?.readyPromise) {
+    await item.readyPromise;
+  }
+}
+
+/**
+ * Check if the Y.Doc has finished loading initial DB updates.
+ */
+export function isDocReady(pageId) {
+  if (!pageId || typeof pageId !== 'string') return true;
+  const item = _docs.get(pageId);
+  return item ? !!item.isReady : false;
+}
+
+/**
  * Get the Y.XmlFragment for a specific block.
  */
 export function getBlockFragment(pageId, blockId) {
@@ -151,3 +190,4 @@ export function applyRemoteUpdate(pageId, update) {
   const doc = getCrdtDoc(pageId);
   Y.applyUpdate(doc, update, 'remote');
 }
+

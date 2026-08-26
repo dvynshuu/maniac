@@ -17,7 +17,7 @@ import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
 import { useEditorEngine } from './useEditorEngine';
 import { useSelectionStore } from '../core/editor/selectionStore';
-import { getBlockFragment } from '../core/crdtManager';
+import { getBlockFragment, waitForDoc } from '../core/crdtManager';
 
 const CustomHighlight = Mark.create({
   name: 'customHighlight',
@@ -351,13 +351,27 @@ export function useBlockEditor(block, options = {}) {
 
   // Seed the Yjs fragment on first load if it's empty but we have block.content
   useEffect(() => {
-    if (editor && isFirstLoad.current && !block._isDecrypting) {
-      isFirstLoad.current = false;
-      if (editor.isEmpty && block.content) {
-        editor.commands.setContent(block.content, false);
+    let isMounted = true;
+    const seedContent = async () => {
+      if (editor && isFirstLoad.current && !block._isDecrypting) {
+        if (block.pageId) {
+          await waitForDoc(block.pageId);
+        }
+        if (!isMounted) return;
+
+        // Check if Yjs fragment already has content loaded from CRDT history
+        const fragment = getBlockFragment(block.pageId, block.id);
+        const hasYjsContent = fragment && fragment.length > 0;
+
+        isFirstLoad.current = false;
+        if (editor.isEmpty && !hasYjsContent && block.content) {
+          editor.commands.setContent(block.content, false);
+        }
       }
-    }
-  }, [editor, block.content, block._isDecrypting]);
+    };
+    seedContent();
+    return () => { isMounted = false; };
+  }, [editor, block.content, block._isDecrypting, block.pageId, block.id]);
 
   // Focus management
   useEffect(() => {

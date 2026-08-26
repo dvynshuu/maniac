@@ -89,13 +89,26 @@ export const usePageStore = create((set, get) => ({
   },
 
   ensureRowPage: async (rowId, databaseBlockId, title = '', icon = '📄') => {
-    const { pages } = get();
-    let page = pages.find(p => p.id === rowId);
+    const { pages, archivedPages } = get();
+    let page = pages.find(p => p.id === rowId) || archivedPages.find(p => p.id === rowId);
     if (page) return page;
 
-    // Check Archived pages too
-    const archived = get().archivedPages.find(p => p.id === rowId);
-    if (archived) return archived;
+    // Check DB in case pages state was not yet loaded or row was created elsewhere
+    const existingDbPage = await db.pages.get(rowId);
+    if (existingDbPage) {
+      const key = useSecurityStore.getState().derivedKey;
+      let existingTitle = existingDbPage.title;
+      if (existingDbPage._isEncrypted && key && existingTitle) {
+        try {
+          existingTitle = await SecurityService.decrypt(existingTitle, key) || existingTitle;
+        } catch { /* ignore */ }
+      }
+      const hydrated = { ...existingDbPage, title: existingTitle };
+      set(s => ({
+        pages: s.pages.some(p => p.id === rowId) ? s.pages : [...s.pages, hydrated]
+      }));
+      return hydrated;
+    }
 
     // Create a new page with the specified rowId
     const now = Date.now();
@@ -113,8 +126,10 @@ export const usePageStore = create((set, get) => ({
       updatedAt: now,
     };
 
-    // Optimistic update
-    set(s => ({ pages: [...s.pages, page] }));
+    // Optimistic update without duplicates
+    set(s => ({
+      pages: s.pages.some(p => p.id === rowId) ? s.pages : [...s.pages, page]
+    }));
 
     const key = useSecurityStore.getState().derivedKey;
     const dbPage = { ...page };
@@ -123,7 +138,7 @@ export const usePageStore = create((set, get) => ({
       dbPage._isEncrypted = true;
     }
 
-    await db.pages.add(dbPage);
+    await db.pages.put(dbPage);
     return page;
   },
 

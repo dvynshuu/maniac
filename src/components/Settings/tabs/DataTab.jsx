@@ -199,8 +199,46 @@ export default function DataTab({ onClose }) {
       const pages = await db.pages.toArray();
       const pageIds = new Set(pages.map(p => p.id));
       const blocks = await db.blocks.toArray();
+
+      // 1. Identify orphaned blocks
       const orphanedBlocks = blocks.filter(b => !pageIds.has(b.pageId)).map(b => b.id);
-      if (orphanedBlocks.length > 0) await db.blocks.bulkDelete(orphanedBlocks);
+      
+      // 2. Identify duplicate blocks on the same page
+      const duplicateBlockIds = [];
+      const blocksByPage = new Map();
+      for (const b of blocks) {
+        if (!pageIds.has(b.pageId)) continue;
+        if (!blocksByPage.has(b.pageId)) blocksByPage.set(b.pageId, []);
+        blocksByPage.get(b.pageId).push(b);
+      }
+
+      const affectedPageIds = new Set();
+      for (const [pageId, pBlocks] of blocksByPage.entries()) {
+        const seenSignatures = new Set();
+        for (const b of pBlocks) {
+          // Normalize content and properties
+          const contentStr = (b.content || '').trim();
+          const propsStr = JSON.stringify(b.properties || {});
+          const sig = `${b.type}::${contentStr}::${propsStr}::${b.parentId || 'root'}`;
+          
+          if (contentStr.length > 0 && seenSignatures.has(sig)) {
+            duplicateBlockIds.push(b.id);
+            affectedPageIds.add(pageId);
+          } else {
+            seenSignatures.add(sig);
+          }
+        }
+      }
+
+      const allBlocksToDelete = [...orphanedBlocks, ...duplicateBlockIds];
+      if (allBlocksToDelete.length > 0) {
+        await db.blocks.bulkDelete(allBlocksToDelete);
+      }
+
+      // 3. Clean up crdt_updates for affected pages or deleted blocks
+      if (affectedPageIds.size > 0) {
+        await db.crdt_updates.where('pageId').anyOf(Array.from(affectedPageIds)).delete();
+      }
 
       const hasImages = blocks.some(b => b.type === 'image') || pages.some(p => p.coverImage);
       let blobsDeleted = false;
@@ -209,13 +247,30 @@ export default function DataTab({ onClose }) {
         if (blobs.length > 0) { await db.blobs.clear(); blobsDeleted = true; }
       }
 
-      const msg = `Cleaned ${orphanedBlocks.length} orphaned blocks${blobsDeleted ? ' + unused media' : ''}`;
+      // Reload current block store if needed
+      const { useBlockStore } = await import('../../../stores/blockStore');
+      const curOrder = useBlockStore.getState().blockOrder;
+      if (curOrder.length > 0) {
+        const activeBlock = useBlockStore.getState().blockMap[curOrder[0]];
+        if (activeBlock?.pageId) {
+          await useBlockStore.getState().loadBlocks(activeBlock.pageId);
+        }
+      }
+
+      const parts = [];
+      if (duplicateBlockIds.length > 0) parts.push(`Removed ${duplicateBlockIds.length} duplicate blocks`);
+      if (orphanedBlocks.length > 0) parts.push(`Cleaned ${orphanedBlocks.length} orphaned blocks`);
+      if (blobsDeleted) parts.push('Removed unused media');
+      if (parts.length === 0) parts.push('Workspace is clean. No duplicates found.');
+
+      const msg = parts.join(' • ');
       setGcResult(msg);
       setGcStatus('done');
       useUIStore.getState().addToast(msg, 'success');
-    } catch {
+    } catch (err) {
+      console.error('[DataTab] Cleanup error:', err);
       setGcStatus('error');
-      useUIStore.getState().addToast('Cleanup failed', 'error');
+      useUIStore.getState().addToast('Cleanup failed: ' + (err.message || 'Unknown error'), 'error');
     }
   };
 
@@ -265,7 +320,7 @@ export default function DataTab({ onClose }) {
 
       <Divider />
 
-      <SettingRow label="Garbage Collection" description="Clear orphaned blocks and unused binary blobs to reclaim space.">
+      <SettingRow label="Optimize & Deduplicate" description="Clear duplicate blocks, orphaned items, and unused binary blobs to reclaim space.">
         <ActionButton
           variant="secondary"
           onClick={handleGarbageCollect}
