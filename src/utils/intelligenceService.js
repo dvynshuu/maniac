@@ -1,3 +1,7 @@
+import { db } from '../db/database';
+import { SecurityService } from './securityService';
+import { batchDecrypt } from './cryptoWorker';
+
 // In-memory cache for intelligence analytics
 let _intelligenceCache = {
   nextActions: null,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDatabaseStore } from '../../stores/databaseStore';
 import { usePageStore } from '../../stores/pageStore';
 import { Plus, MoreHorizontal, X } from 'lucide-react';
@@ -103,15 +104,15 @@ export default function DatabaseBlock({ block }) {
     return processedRows;
   }, [processedRows, justAddedRowId, rawRows]);
 
-  const [openRowId, setOpenRowId] = useState(null);
+  const navigate = useNavigate();
 
   const handleOpenRow = useCallback(async (row) => {
     const pageStore = usePageStore.getState();
     const titleProp = schema?.[0];
     const rowTitle = titleProp ? (row.values[titleProp.id] || '') : '';
     await pageStore.ensureRowPage(row.id, block.id, rowTitle);
-    setOpenRowId(row.id);
-  }, [block.id, schema]);
+    navigate(`/page/${row.id}`);
+  }, [block.id, schema, navigate]);
 
   const handleAddRow = async (overrides = {}) => {
     if (isAddingRow) return;
@@ -358,22 +359,6 @@ export default function DatabaseBlock({ block }) {
           position={addPropPos}
           onClose={() => setAddPropPos(null)}
         />,
-        document.body
-      )}
-
-      {openRowId && createPortal(
-        <div className="peak-view-backdrop" onClick={() => setOpenRowId(null)}>
-          <div className="peak-view-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="peak-view-header">
-              <button className="peak-view-close" onClick={() => setOpenRowId(null)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="peak-view-content">
-              <PageEditor pageId={openRowId} />
-            </div>
-          </div>
-        </div>,
         document.body
       )}
     </div>

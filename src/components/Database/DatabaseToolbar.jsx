@@ -125,9 +125,11 @@ export default function DatabaseToolbar({
         <button className="db-toolbar-btn"><Search size={14} /></button>
         <button className="db-toolbar-btn"><MoreHorizontal size={14} /></button>
         
-        <button className="db-toolbar-new-btn" onClick={onAddRow}>
-          New <ChevronDown size={14} style={{ marginLeft: 2 }} />
-        </button>
+        <div style={{ position: 'relative', display: 'inline-flex' }}>
+          <button className="db-toolbar-new-btn" onClick={onAddRow}>
+            New
+          </button>
+        </div>
       </div>
 
       {/* Filter Menu Portal */}

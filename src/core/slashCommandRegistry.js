@@ -184,6 +184,27 @@ registerProvider({
       });
     }
 
+    // Add Board / Habit Tracker specific slash command
+    const boardScore = Math.max(
+      fuzzyScore(query, 'board'), 
+      fuzzyScore(query, 'habit'), 
+      fuzzyScore(query, 'kanban'), 
+      fuzzyScore(query, 'goals'),
+      fuzzyScore(query, 'weekly')
+    );
+    if (boardScore > 0) {
+      baseItems.push({
+        id: 'block:board_custom',
+        type: 'database',
+        label: 'Board / Habit Tracker',
+        description: 'Weekly habit tracker with anime covers, checkboxes & stats',
+        icon: 'Layout',
+        category: 'Database',
+        score: Math.max(boardScore, 85),
+        action: 'create_block',
+      });
+    }
+
     return baseItems;
   },
 });
