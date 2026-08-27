@@ -1,40 +1,27 @@
 import React from 'react';
 import { useUIStore } from '../../stores/uiStore';
-import { X, CheckCircle, AlertCircle, Info, RotateCcw } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
 function ToastContainer() {
   const toasts = useUIStore(s => s.toasts);
   const removeToast = useUIStore(s => s.removeToast);
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10000, pointerEvents: 'none' }}>
+    <div className="toast-container-wrapper">
       {toasts.map((toast) => (
         <div 
           key={toast.id}
           className={`toast-pill ${toast.type}`}
         >
-          <div style={{ color: getToastColor(toast.type), display: 'flex', alignItems: 'center' }}>
+          <div style={{ color: getToastColor(toast.type), display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {getToastIcon(toast.type)}
           </div>
-          <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>{toast.message}</span>
+          <span className="toast-pill-message">{toast.message}</span>
           
           {toast.action && (
             <button 
               onClick={() => { toast.action.onClick(); removeToast(toast.id); }}
-              style={{ 
-                background: 'rgba(255, 255, 255, 0.06)', 
-                border: '1px solid rgba(255, 255, 255, 0.08)', 
-                borderRadius: '12px', 
-                padding: '3px 10px', 
-                fontSize: '11px', 
-                fontWeight: 'bold', 
-                color: 'var(--accent-ember)',
-                cursor: 'pointer',
-                marginLeft: '8px',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-scar)'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = 'var(--accent-ember)'; }}
+              className="toast-action-btn"
             >
               {toast.action.label}
             </button>
@@ -42,12 +29,13 @@ function ToastContainer() {
 
           <button 
             onClick={() => removeToast(toast.id)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '4px', display: 'flex', marginLeft: 'auto', transition: 'color 0.2s' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+            className="toast-close-btn"
+            title="Dismiss"
           >
             <X size={14} />
           </button>
+
+          {toast.action && <div className="toast-progress-bar" />}
         </div>
       ))}
     </div>
@@ -73,3 +61,4 @@ function getToastColor(type) {
 }
 
 export default ToastContainer;
+

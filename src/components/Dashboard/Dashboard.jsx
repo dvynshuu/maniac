@@ -5,7 +5,11 @@ import { useUIStore } from '../../stores/uiStore';
 import { useSecurityStore } from '../../stores/securityStore';
 import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
-import { Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { 
+  Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, 
+  RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
+  Check, Plus, Activity, Brain, AlertCircle, TrendingUp, Search, Flame 
+} from 'lucide-react';
 import { batchDecrypt } from '../../utils/cryptoWorker';
 import './Dashboard.css';
 import { ProfilePopover } from './ProfilePopover';
@@ -13,10 +17,8 @@ import { NotificationsPopover } from './NotificationsPopover';
 import { SettingsModal } from '../Settings/SettingsModal';
 import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { OnboardingNarrative } from './OnboardingNarrative';
-import { Activity, Brain, AlertCircle, TrendingUp, Search } from 'lucide-react';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { Flame } from 'lucide-react';
+import { OnboardingNarrative } from './OnboardingNarrative';
 import RecallChallengeModal from './RecallChallengeModal';
 import GraphView from './GraphView';
 import ManiacLogo from '../Common/ManiacLogo';
@@ -525,8 +527,19 @@ function WorkspaceTab({ pages, navigate }) {
                   </div>
                 );
               }) : (
-                <div className="bento-item bento-wide empty-bento">
-                  <span>No pinned pages</span>
+                <div className="bento-item bento-wide empty-bento" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '24px' }}>
+                  <Pin size={20} style={{ opacity: 0.4 }} />
+                  <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No pinned nodes yet</span>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    onClick={async () => {
+                      const page = await usePageStore.getState().addPage();
+                      navigate(`/page/${page.id}`);
+                    }}
+                    style={{ marginTop: '4px' }}
+                  >
+                    <Plus size={13} /> Create Page
+                  </button>
                 </div>
               )}
             </div>
@@ -561,7 +574,10 @@ function WorkspaceTab({ pages, navigate }) {
                   </div>
                 </div>
               )) : (
-                <div className="timeline-empty">No recent activity.</div>
+                <div className="timeline-empty" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                  <Clock size={16} style={{ opacity: 0.5 }} />
+                  <span>No recent activity. Create or edit pages to see them here.</span>
+                </div>
               )}
             </div>
           </div>

@@ -268,34 +268,40 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     updatePage(pageId, { coverImage: null });
   };
 
+  useEffect(() => {
+    const handleShortcuts = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setIsFocusMode((prev) => !prev);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        setIsTypewriterMode((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleShortcuts);
+    return () => window.removeEventListener('keydown', handleShortcuts);
+  }, []);
+
   const isModal = !!pageIdProp;
 
   return (
     <div 
-      className={`editor-scroll ${isModal ? 'is-modal-editor' : ''} ${isFocusMode ? 'is-focus-mode' : ''} ${isTypewriterMode ? 'is-typewriter-mode' : ''}`} 
+      className={`editor-scroll page-transition-enter ${isModal ? 'is-modal-editor' : ''} ${isFocusMode ? 'is-focus-mode' : ''} ${isTypewriterMode ? 'is-typewriter-mode' : ''}`} 
       ref={setScrollElement}
     >
       {!isModal && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}>
+        <div 
+          className="editor-topbar-wrapper"
+          style={{ paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}
+        >
           <Breadcrumb />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
             {/* Focus / Zen Mode Button */}
             <button
               onClick={() => setIsFocusMode(!isFocusMode)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                background: isFocusMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                border: isFocusMode ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: isFocusMode ? '#818cf8' : 'var(--text-secondary)',
-                fontSize: '11px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              title="Focus Mode: Dim non-active blocks"
+              className={`editor-toolbar-btn ${isFocusMode ? 'active' : ''}`}
+              title="Focus Mode: Dim non-active blocks (Ctrl+Shift+F)"
             >
               <Focus size={13} />
               <span>{isFocusMode ? 'Focus On' : 'Focus'}</span>
@@ -304,20 +310,8 @@ function PageEditor({ pageId: pageIdProp } = {}) {
             {/* Typewriter Mode Button */}
             <button
               onClick={() => setIsTypewriterMode(!isTypewriterMode)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                background: isTypewriterMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                border: isTypewriterMode ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: isTypewriterMode ? '#818cf8' : 'var(--text-secondary)',
-                fontSize: '11px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              title="Typewriter Mode: Keep cursor centered"
+              className={`editor-toolbar-btn ${isTypewriterMode ? 'active' : ''}`}
+              title="Typewriter Mode: Keep cursor centered (Ctrl+Shift+T)"
             >
               <AlignCenter size={13} />
               <span>{isTypewriterMode ? 'Typewriter On' : 'Typewriter'}</span>
@@ -325,25 +319,12 @@ function PageEditor({ pageId: pageIdProp } = {}) {
 
             <button
               onClick={() => setShowSrsPopover(!showSrsPopover)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                background: page.srsEnabled ? 'rgba(46, 91, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                border: page.srsEnabled ? '1px solid rgba(46, 91, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: page.srsEnabled ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                outline: 'none'
-              }}
+              className={`editor-toolbar-btn ${page.srsEnabled ? 'active active-recall' : ''}`}
             >
               <Brain size={13} />
               <span>Active Recall</span>
               {page.srsEnabled && page.srsNextReview && page.srsNextReview <= Date.now() && (
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f87171' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f87171', flexShrink: 0 }} />
               )}
             </button>
 
@@ -355,7 +336,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
               />
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
+            <div className="editor-save-indicator">
               {isSaving ? (
                 <>
                   <Cloud size={14} className="animate-pulse" />
@@ -374,11 +355,12 @@ function PageEditor({ pageId: pageIdProp } = {}) {
 
       {page.coverImage ? (
         <div 
-          className="page-cover"
+          className="page-cover-enhanced"
           onMouseEnter={() => setShowCoverHover(true)}
           onMouseLeave={() => setShowCoverHover(false)}
         >
           {coverUrl && <img src={coverUrl} alt="Page cover" className="page-cover-img" />}
+          <div className="page-cover-gradient" />
           {showCoverHover && (
             <div className="page-cover-actions">
               <button className="page-cover-btn" onClick={() => coverInputRef.current?.click()}>

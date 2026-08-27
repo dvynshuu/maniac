@@ -143,6 +143,14 @@ const BlockRenderer = memo(({ blockId, index }) => {
   // ── Full render for visible blocks ────────────────────────────
 
   const renderBlockContent = () => {
+    if (block._isDecrypting) {
+      return (
+        <div style={{ padding: '6px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className="skeleton skeleton-text" style={{ width: '80%' }} />
+        </div>
+      );
+    }
+
     switch (block.type) {
       case BLOCK_TYPES.TEXT:
         return <TextBlock block={block} index={index} />;

@@ -380,59 +380,45 @@ function Sidebar() {
           )}
         </div>
 
-        {/* Bulk Action Bar - Short Pop */}
+        {/* Bulk Action Bar - Floating Capsule */}
         {selectedPageIds.length > 0 && (
           <div
+            className="sidebar-bulk-action-bar"
             onMouseDown={e => e.stopPropagation()}
-            style={{
-              position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-              borderRadius: '24px', padding: '6px 12px', zIndex: 200,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', gap: '8px',
-              animation: 'slide-up 0.2s ease-out', whiteSpace: 'nowrap'
-            }}
           >
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-primary)', padding: '0 4px' }}>
+            <span className="sidebar-bulk-badge">
               {selectedPageIds.length}
             </span>
-            <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
+            <div className="sidebar-bulk-sep" />
             <button
               onClick={handleBulkArchive}
               title="Archive"
-              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              className="sidebar-bulk-icon-btn"
             >
               <Archive size={14} />
             </button>
             <button
               onClick={handleBulkDelete}
               title="Delete"
-              style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+              className="sidebar-bulk-icon-btn danger"
             >
               <Trash2 size={14} />
             </button>
-            <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
+            <div className="sidebar-bulk-sep" />
             <button
               onClick={clearSelectedPages}
               title="Clear Selection"
-              style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+              className="sidebar-bulk-icon-btn"
             >
               <X size={14} />
             </button>
-            <div style={{ width: 1, height: 16, background: 'var(--border-subtle)' }} />
+            <div className="sidebar-bulk-sep" />
             <button
               onClick={() => {
                 const allPageIds = pages.filter(p => !p.isArchived).map(p => p.id);
                 selectAllPages(allPageIds);
               }}
-              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: '11px', fontWeight: 600, borderRadius: '16px' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-active)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              className="sidebar-bulk-text-btn"
             >
               Select All
             </button>
@@ -444,21 +430,12 @@ function Sidebar() {
             <button
               className="sidebar-notion-import-btn"
               onClick={() => useUIStore.getState().openNotionImport()}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
-                color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-                transition: 'all var(--transition-fast)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.1))'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
               <Upload size={14} />
               <span>Import from Notion</span>
             </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>
+          <div className="sidebar-footer-storage">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Settings size={14} />
               <span>All data stored locally</span>

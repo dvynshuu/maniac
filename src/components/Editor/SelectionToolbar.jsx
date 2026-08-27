@@ -61,9 +61,14 @@ function SelectionToolbar() {
         const top = Math.min(start.top, end.top);
         const left = (start.left + end.left) / 2;
 
+        // Clamp coordinates within viewport boundaries
+        const toolbarHalfWidth = 180;
+        const clampedTop = Math.max(12, top + window.scrollY - 48);
+        const clampedLeft = Math.max(toolbarHalfWidth + 16, Math.min(left, window.innerWidth - toolbarHalfWidth - 16));
+
         setPos({
-          top: top + window.scrollY - 48,
-          left: left
+          top: clampedTop,
+          left: clampedLeft
         });
 
         setShow(true);

@@ -30,10 +30,17 @@ const Dashboard = lazy(() => import('./components/Dashboard/Dashboard'));
 
 function LoadingFallback() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-        <ManiacLogo size="lg" animate />
-        <span style={{ fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Loading...</span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '40px 64px', maxWidth: '960px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
+        <ManiacLogo size="sm" animate />
+        <div className="skeleton" style={{ width: '120px', height: '18px' }} />
+      </div>
+      <div className="skeleton skeleton-title" style={{ width: '40%', height: '36px', marginBottom: '24px' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="skeleton skeleton-text" style={{ width: '90%' }} />
+        <div className="skeleton skeleton-text" style={{ width: '75%' }} />
+        <div className="skeleton skeleton-text" style={{ width: '85%' }} />
+        <div className="skeleton skeleton-text" style={{ width: '60%' }} />
       </div>
     </div>
   );

@@ -161,24 +161,53 @@ export default function CommandPalette({ onClose }) {
         }
     };
 
+    // Highlight matching query text safely
+    const highlightMatch = (text, q) => {
+        if (!text || !q || q.length < 1) return text;
+        const index = text.toLowerCase().indexOf(q.toLowerCase());
+        if (index === -1) return text;
+        const before = text.substring(0, index);
+        const match = text.substring(index, index + q.length);
+        const after = text.substring(index + q.length);
+        return (
+            <>
+                {before}
+                <mark className="cp-highlight">{match}</mark>
+                {after}
+            </>
+        );
+    };
+
     return (
         <div className="command-palette-overlay" onClick={onClose}>
             <div className="command-palette" onClick={e => e.stopPropagation()}>
                 <div className="command-palette-input-wrapper">
-                    <Search className="text-tertiary" size={20} />
+                    <Search className="text-tertiary" size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
                     <input
                         ref={inputRef}
                         className="command-palette-input"
-                        placeholder="Search pages, content, or type a command..."
+                        placeholder="Search pages, blocks, or type a command..."
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
                     />
+                    {query && (
+                      <button 
+                        onClick={() => setQuery('')}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      >
+                        <span style={{ fontSize: '11px', background: 'var(--bg-active)', borderRadius: '10px', padding: '2px 6px' }}>Clear</span>
+                      </button>
+                    )}
                 </div>
                 
                 <div className="command-palette-results">
                     {results.length === 0 ? (
-                        <div className="command-palette-empty">No results found</div>
+                        <div className="command-palette-empty" style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <Search size={24} style={{ opacity: 0.3 }} />
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '13.5px', fontWeight: 500 }}>No results for "{query}"</span>
+                            <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>Try searching by title, content keyword, or create a new page</span>
+                        </div>
                     ) : (
                         results.map((item, idx) => {
                             const isSelected = idx === selectedIndex;
@@ -198,7 +227,9 @@ export default function CommandPalette({ onClose }) {
                                             {item.icon === '📝' ? <FileText size={16} /> : <span>{item.icon}</span>}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                          <span className="command-palette-item-label">{item.title || 'Untitled'}</span>
+                                          <span className="command-palette-item-label">
+                                            {highlightMatch(item.title || 'Untitled', query)}
+                                          </span>
                                         </div>
                                         <span className="command-palette-item-kbd">Page</span>
                                     </div>
@@ -220,10 +251,10 @@ export default function CommandPalette({ onClose }) {
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                           <span className="command-palette-item-label" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                            {item.pageIcon} {item.pageTitle}
+                                            {item.pageIcon} {highlightMatch(item.pageTitle, query)}
                                           </span>
                                           <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {item.snippet}
+                                            {highlightMatch(item.snippet, query)}
                                           </span>
                                         </div>
                                         <span className="command-palette-item-kbd">Block</span>
@@ -239,7 +270,7 @@ export default function CommandPalette({ onClose }) {
                                         onClick={item.run}
                                     >
                                         <div className="command-palette-item-icon">
-                                            <Icon size={16} />
+                                            <Icon size={16} style={{ color: 'var(--accent-primary)' }} />
                                         </div>
                                         <span className="command-palette-item-label">{item.title}</span>
                                         <span className="command-palette-item-kbd">Action</span>
@@ -248,6 +279,22 @@ export default function CommandPalette({ onClose }) {
                             }
                         })
                     )}
+                </div>
+
+                <div className="command-palette-footer">
+                  <div className="command-palette-hint">
+                    <span className="cp-key">↑</span>
+                    <span className="cp-key">↓</span>
+                    <span>Navigate</span>
+                  </div>
+                  <div className="command-palette-hint">
+                    <span className="cp-key">↵</span>
+                    <span>Select</span>
+                  </div>
+                  <div className="command-palette-hint">
+                    <span className="cp-key">Esc</span>
+                    <span>Close</span>
+                  </div>
                 </div>
             </div>
         </div>
