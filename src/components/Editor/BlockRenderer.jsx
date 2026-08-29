@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useSortable } from '@dnd-kit/sortable';
 import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
+import { GripVertical, Plus, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
 
 // Fast direct imports for common text blocks
@@ -332,13 +332,29 @@ const BlockRenderer = memo(({ blockId, index }) => {
         <div className="block-drop-indicator top" />
       )}
       <div
-        className="block-handle"
+        className="block-gutter-controls"
         contentEditable={false}
         suppressContentEditableWarning
-        {...listeners}
-        onClick={handleMenuClick}
       >
-        <GripVertical size={14} style={{ pointerEvents: 'none' }} />
+        <button
+          className="block-add-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            engine.insertAfter(block.id, 'text');
+          }}
+          title="Add block below (+)"
+        >
+          <Plus size={13} style={{ pointerEvents: 'none' }} />
+        </button>
+        <div
+          className="block-handle"
+          {...listeners}
+          onClick={handleMenuClick}
+          title="Drag to move or click for options (⋮⋮)"
+        >
+          <GripVertical size={13} style={{ pointerEvents: 'none' }} />
+        </div>
       </div>
       
       {menuPos && (

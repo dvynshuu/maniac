@@ -1865,3 +1865,35 @@
   height: 100%;
   object-fit: cover;
 }
+
+/* --- Light Mode Adaptations for Modular Block Design --- */
+[data-theme="light"] .dashboard-tabs {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-subtle);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .dashboard-tab {
+  color: var(--text-tertiary);
+}
+
+[data-theme="light"] .dashboard-tab:hover {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .dashboard-tab[aria-selected="true"] {
+  color: var(--text-primary) !important;
+  background: var(--bg-elevated) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+[data-theme="light"] .dashboard-modal {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-xl);
+}
+
+[data-theme="light"] .bg-glow {
+  opacity: 0.03;
+}

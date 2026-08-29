@@ -9,10 +9,15 @@ import { sanitizeUrl } from '../../utils/sanitizer';
 
 const COLORS = [
   { label: 'Default', class: '', color: 'transparent' },
-  { label: 'Purple', class: 'hl-purple', color: 'rgba(139, 92, 246, 0.5)' },
-  { label: 'Cyan', class: 'hl-cyan', color: 'rgba(6, 182, 212, 0.5)' },
-  { label: 'Amber', class: 'hl-amber', color: 'rgba(245, 158, 11, 0.5)' },
-  { label: 'Rose', class: 'hl-rose', color: 'rgba(244, 63, 94, 0.5)' },
+  { label: 'Gray', class: 'hl-gray', color: 'var(--block-color-gray, #9b9a97)' },
+  { label: 'Brown', class: 'hl-brown', color: 'var(--block-color-brown, #ba856f)' },
+  { label: 'Orange', class: 'hl-orange', color: 'var(--block-color-orange, #c77d48)' },
+  { label: 'Yellow', class: 'hl-yellow', color: 'var(--block-color-yellow, #ca9849)' },
+  { label: 'Green', class: 'hl-green', color: 'var(--block-color-green, #529e72)' },
+  { label: 'Blue', class: 'hl-blue', color: 'var(--block-color-blue, #5e87c9)' },
+  { label: 'Purple', class: 'hl-purple', color: 'var(--block-color-purple, #9065b0)' },
+  { label: 'Pink', class: 'hl-pink', color: 'var(--block-color-pink, #c14c8a)' },
+  { label: 'Red', class: 'hl-red', color: 'var(--block-color-red, #d44c47)' },
 ];
 
 function SelectionToolbar() {

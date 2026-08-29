@@ -15,9 +15,14 @@ import 'prismjs/components/prism-markup';
 import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-yaml';
 
 const COMMON_LANGUAGES = [
-  'javascript', 'typescript', 'python', 'css', 'html', 'sql', 'bash', 'json', 'plain'
+  'javascript', 'typescript', 'python', 'rust', 'go', 'cpp', 'c', 'css', 'html', 'sql', 'bash', 'json', 'yaml', 'plain'
 ];
 
 const highlightCode = (code, lang) => {
@@ -126,7 +131,7 @@ export default function CodeBlock({ block }) {
         </button>
       </div>
 
-      <div style={{ position: 'relative', minHeight: '100px' }}>
+      <div style={{ position: 'relative', minHeight: '80px' }}>
         {/* Highlighted code rendering */}
         <pre
           className={`language-${language}`}
@@ -140,7 +145,7 @@ export default function CodeBlock({ block }) {
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-sm)',
             lineHeight: 'var(--leading-relaxed)',
-            minHeight: '100px',
+            minHeight: '80px',
             boxSizing: 'border-box'
           }}
           dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}

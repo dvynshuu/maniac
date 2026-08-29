@@ -123,8 +123,25 @@ export default function CommandPalette({ onClose }) {
             navigate(`/page/${p.id}`);
             onClose();
         }},
+        { id: 'cmd-dashboard', title: 'Go to Dashboard', icon: FileText, run: () => {
+            navigate('/');
+            onClose();
+        }},
         { id: 'cmd-toggle-sidebar', title: 'Toggle Sidebar', icon: Search, run: () => {
             useUIStore.getState().toggleSidebar();
+            onClose();
+        }},
+        { id: 'cmd-toggle-theme', title: 'Toggle Light/Dark Theme', icon: Star, run: async () => {
+            const { useSettingsStore } = await import('../../stores/settingsStore');
+            const currentTheme = useSettingsStore.getState().theme;
+            const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+            useSettingsStore.getState().setSetting('theme', nextTheme);
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            useUIStore.getState().addToast(`Theme switched to ${nextTheme} mode`, 'success');
+            onClose();
+        }},
+        { id: 'cmd-open-settings', title: 'Open Settings', icon: FileText, run: () => {
+            useUIStore.getState().openSettings();
             onClose();
         }}
     ].filter(c => c.title.toLowerCase().includes(lowerQuery));

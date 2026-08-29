@@ -12,8 +12,23 @@ import SelectionToolbar from './SelectionToolbar';
 import Breadcrumb from '../Layout/Breadcrumb';
 import IconPicker from '../Common/IconPicker';
 import EmojiIcon from '../Common/EmojiIcon';
+import CoverPickerModal from './CoverPickerModal';
+import PageOptionsMenu from './PageOptionsMenu';
 import { debounce } from '../../utils/helpers';
-import { ImageIcon, X, Cloud, Brain, Focus, AlignCenter } from 'lucide-react';
+import { 
+  ImageIcon, 
+  X, 
+  Cloud, 
+  Brain, 
+  Focus, 
+  AlignCenter, 
+  Star, 
+  MoreHorizontal, 
+  Sparkles, 
+  Smile, 
+  FileText, 
+  Lock 
+} from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
@@ -28,6 +43,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const pageId = pageIdProp || paramPageId;
   const page = usePageStore(useShallow((s) => s.pages.find((p) => p.id === pageId)));
   const updatePage = usePageStore((s) => s.updatePage);
+  const toggleFavorite = usePageStore((s) => s.toggleFavorite);
   const rootBlockIds = useRootBlockIds();
   const loadBlocks = useBlockStore((s) => s.loadBlocks);
   const setLastVisitedPageId = useUIStore((s) => s.setLastVisitedPageId);
@@ -37,12 +53,19 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isTypewriterMode, setIsTypewriterMode] = useState(false);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const [showPageOptions, setShowPageOptions] = useState(false);
+  const [pageOptionsPos, setPageOptionsPos] = useState({ top: 48, right: 32 });
   const [showCoverHover, setShowCoverHover] = useState(false);
   const [coverUrl, setCoverUrl] = useState(null);
   const [showSrsPopover, setShowSrsPopover] = useState(false);
   const titleInputRef = useRef(null);
+  const descInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const moreBtnRef = useRef(null);
   const [scrollElement, setScrollElement] = useState(null);
 
   const engine = useEditorEngine();
@@ -195,7 +218,9 @@ function PageEditor({ pageId: pageIdProp } = {}) {
 
   useEffect(() => {
     if (page) {
-      setTitle(page.title);
+      setTitle(page.title || '');
+      setDescription(page.description || '');
+      setShowDescriptionInput(!!page.description);
       if (titleInputRef.current) {
         titleInputRef.current.style.height = 'auto';
         titleInputRef.current.style.height = titleInputRef.current.scrollHeight + 'px';
@@ -232,9 +257,21 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     debouncedUpdatePage(pageId, { title: newTitle });
   };
 
+  const handleDescriptionChange = (e) => {
+    const newDesc = e.target.value;
+    setDescription(newDesc);
+    e.target.style.height = 'auto';
+    e.target.style.height = e.target.scrollHeight + 'px';
+    debouncedUpdatePage(pageId, { description: newDesc });
+  };
+
   const handleTitleKeyDown = async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      if (showDescriptionInput && descInputRef.current) {
+        descInputRef.current.focus();
+        return;
+      }
       if (rootBlockIds.length === 0) {
         await engine.insertAfter(null, 'text');
       } else {
@@ -257,15 +294,33 @@ function PageEditor({ pageId: pageIdProp } = {}) {
     setShowIconPicker(false);
   };
 
-  const handleCoverUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const ref = await storeBlob(file);
-    updatePage(pageId, { coverImage: ref });
+  const handleAddIcon = () => {
+    const DEFAULT_EMOJIS = ['📝', '✨', '💡', '🚀', '🎯', '🌿', '⚡', '🔥', '📚', '🎨'];
+    const randomEmoji = DEFAULT_EMOJIS[Math.floor(Math.random() * DEFAULT_EMOJIS.length)];
+    updatePage(pageId, { icon: randomEmoji });
+  };
+
+  const handleAddCover = () => {
+    setShowCoverPicker(true);
+  };
+
+  const handleAddDescription = () => {
+    setShowDescriptionInput(true);
+    setTimeout(() => {
+      descInputRef.current?.focus();
+    }, 50);
   };
 
   const removeCover = () => {
     updatePage(pageId, { coverImage: null });
+  };
+
+  const handleOpenPageOptions = () => {
+    const rect = moreBtnRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPageOptionsPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
+    setShowPageOptions(true);
   };
 
   useEffect(() => {
@@ -284,6 +339,11 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   }, []);
 
   const isModal = !!pageIdProp;
+  const isLocked = !!page?.isLocked;
+  const fontStyle = page?.fontStyle || 'sans';
+  const isFullWidth = !!page?.fullWidth;
+  const isSmallText = !!page?.smallText;
+  const isFav = !!page?.isFavorite;
 
   return (
     <div 
@@ -296,7 +356,24 @@ function PageEditor({ pageId: pageIdProp } = {}) {
           style={{ paddingLeft: sidebarOpen ? '32px' : '56px', paddingRight: '32px' }}
         >
           <Breadcrumb />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', fontSize: '12px', position: 'relative' }}>
+            {/* Favorite Star Button */}
+            <button
+              onClick={() => toggleFavorite(pageId)}
+              className={`editor-toolbar-btn ${isFav ? 'active' : ''}`}
+              title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Star size={13} style={isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {}} />
+            </button>
+
+            {/* Lock Indicator */}
+            {isLocked && (
+              <div className="editor-lock-badge" title="Page is locked (editing disabled)">
+                <Lock size={12} />
+                <span>Locked</span>
+              </div>
+            )}
+
             {/* Focus / Zen Mode Button */}
             <button
               onClick={() => setIsFocusMode(!isFocusMode)}
@@ -317,6 +394,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
               <span>{isTypewriterMode ? 'Typewriter On' : 'Typewriter'}</span>
             </button>
 
+            {/* Active Recall / SRS Button */}
             <button
               onClick={() => setShowSrsPopover(!showSrsPopover)}
               className={`editor-toolbar-btn ${page.srsEnabled ? 'active active-recall' : ''}`}
@@ -336,15 +414,26 @@ function PageEditor({ pageId: pageIdProp } = {}) {
               />
             )}
 
+            {/* More Options Menu Trigger */}
+            <button
+              ref={moreBtnRef}
+              onClick={handleOpenPageOptions}
+              className="editor-toolbar-btn"
+              title="Page style & options"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+
+            {/* Save Status Indicator */}
             <div className="editor-save-indicator">
               {isSaving ? (
                 <>
-                  <Cloud size={14} className="animate-pulse" />
+                  <Cloud size={13} className="animate-pulse" />
                   <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <Cloud size={14} style={{ color: 'var(--success)' }} />
+                  <Cloud size={13} style={{ color: 'var(--success)' }} />
                   <span>Saved</span>
                 </>
               )}
@@ -353,52 +442,83 @@ function PageEditor({ pageId: pageIdProp } = {}) {
         </div>
       )}
 
+      {/* Hero Page Cover Banner */}
       {page.coverImage ? (
         <div 
           className="page-cover-enhanced"
           onMouseEnter={() => setShowCoverHover(true)}
           onMouseLeave={() => setShowCoverHover(false)}
         >
-          {coverUrl && <img src={coverUrl} alt="Page cover" className="page-cover-img" />}
+          {coverUrl && !coverUrl.startsWith('linear-gradient') && !coverUrl.startsWith('radial-gradient') ? (
+            <img src={coverUrl} alt="Page cover" className="page-cover-img" />
+          ) : (
+            <div className="page-cover-gradient-bg" style={{ background: coverUrl || page.coverImage }} />
+          )}
           <div className="page-cover-gradient" />
           {showCoverHover && (
             <div className="page-cover-actions">
-              <button className="page-cover-btn" onClick={() => coverInputRef.current?.click()}>
-                Change cover
+              <button className="page-cover-btn" onClick={() => setShowCoverPicker(true)}>
+                <Sparkles size={13} /> Change cover
               </button>
               <button className="page-cover-btn page-cover-btn-danger" onClick={removeCover}>
-                <X size={14} /> Remove
+                <X size={13} /> Remove
               </button>
             </div>
           )}
-          <input ref={coverInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCoverUpload} />
         </div>
       ) : (
         <div className="page-cover-add-area">
-          <button className="page-cover-add-btn" onClick={() => coverInputRef.current?.click()}>
-            <ImageIcon size={14} /> Add cover
+          <button className="page-cover-add-btn" onClick={() => setShowCoverPicker(true)}>
+            <ImageIcon size={13} /> Add cover
           </button>
-          <input ref={coverInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCoverUpload} />
         </div>
       )}
 
-      <div className="editor-container">
-        <div style={{ position: 'relative' }}>
-          <button 
-            className={`page-icon-btn ${page.coverImage ? 'has-cover' : ''}`}
-            onClick={() => setShowIconPicker(!showIconPicker)}
-          >
-            <EmojiIcon emoji={page.icon || '📝'} size="36px" />
-          </button>
-          
-          {showIconPicker && (
-            <IconPicker 
-              onSelect={handleIconSelect} 
-              onClose={() => setShowIconPicker(false)} 
-            />
-          )}
-        </div>
+      {/* Main Document Content Canvas */}
+      <div className={`editor-container font-${fontStyle} ${isFullWidth ? 'is-full-width' : ''} ${isSmallText ? 'is-small-text' : ''} ${isLocked ? 'is-locked-view' : ''}`}>
+        
+        {/* Top Action Bar (Add Icon / Add Cover / Add Description) */}
+        {(!page.icon || !page.coverImage || !showDescriptionInput) && (
+          <div className="page-header-action-bar">
+            {!page.icon && (
+              <button className="page-header-action-btn" onClick={handleAddIcon}>
+                <Smile size={13} /> Add icon
+              </button>
+            )}
+            {!page.coverImage && (
+              <button className="page-header-action-btn" onClick={handleAddCover}>
+                <ImageIcon size={13} /> Add cover
+              </button>
+            )}
+            {!showDescriptionInput && (
+              <button className="page-header-action-btn" onClick={handleAddDescription}>
+                <FileText size={13} /> Add description
+              </button>
+            )}
+          </div>
+        )}
 
+        {/* Page Icon Picker Trigger */}
+        {page.icon && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              className={`page-icon-btn ${page.coverImage ? 'has-cover' : ''}`}
+              onClick={() => setShowIconPicker(!showIconPicker)}
+              title="Click to change icon"
+            >
+              <EmojiIcon emoji={page.icon} size="36px" />
+            </button>
+            
+            {showIconPicker && (
+              <IconPicker 
+                onSelect={handleIconSelect} 
+                onClose={() => setShowIconPicker(false)} 
+              />
+            )}
+          </div>
+        )}
+
+        {/* Document Title Input */}
         <textarea
           ref={titleInputRef}
           className="page-title-input"
@@ -406,17 +526,32 @@ function PageEditor({ pageId: pageIdProp } = {}) {
           value={title}
           onChange={handleTitleChange}
           onKeyDown={handleTitleKeyDown}
+          disabled={isLocked}
           rows={1}
         />
 
+        {/* Optional Page Description */}
+        {showDescriptionInput && (
+          <textarea
+            ref={descInputRef}
+            className="page-description-input"
+            placeholder="Add a page description..."
+            value={description}
+            onChange={handleDescriptionChange}
+            disabled={isLocked}
+            rows={1}
+          />
+        )}
+
+        {/* Modular Page Blocks */}
         <div className="page-blocks">
           {rootBlockIds.length === 0 ? (
             <div 
               className="block-text text-placeholder" 
-              style={{ padding: '4px 0', cursor: 'text', color: 'var(--text-placeholder)' }}
-              onClick={() => engine.insertAfter(null, 'text')}
+              style={{ padding: '6px 0', cursor: 'text', color: 'var(--text-placeholder)' }}
+              onClick={() => !isLocked && engine.insertAfter(null, 'text')}
             >
-              Click here or press Enter to add a block...
+              {isLocked ? 'Page is locked.' : 'Click here or press Enter to add a block...'}
             </div>
           ) : (
             <DragDropContext.Provider value={dragState}>
@@ -445,17 +580,35 @@ function PageEditor({ pageId: pageIdProp } = {}) {
         </div>
         
         <div 
-          style={{ height: '20vh', cursor: 'text' }} 
+          style={{ height: '20vh', cursor: isLocked ? 'default' : 'text' }} 
           onClick={(e) => {
-             if (e.target === e.currentTarget && rootBlockIds.length > 0) {
+             if (!isLocked && e.target === e.currentTarget && rootBlockIds.length > 0) {
                  const lastId = rootBlockIds[rootBlockIds.length - 1];
                  engine.insertAfter(lastId, 'text');
              }
           }}
         />
         <BacklinksPanel pageId={pageId} />
-        <SelectionToolbar />
+        {!isLocked && <SelectionToolbar />}
       </div>
+
+      {/* Cover Picker Modal */}
+      {showCoverPicker && (
+        <CoverPickerModal 
+          onSelectCover={(cover) => updatePage(pageId, { coverImage: cover })} 
+          onClose={() => setShowCoverPicker(false)} 
+        />
+      )}
+
+      {/* Page Options / More Menu Popover */}
+      {showPageOptions && (
+        <PageOptionsMenu 
+          page={page} 
+          updatePage={updatePage} 
+          onClose={() => setShowPageOptions(false)} 
+          position={pageOptionsPos} 
+        />
+      )}
     </div>
   );
 }

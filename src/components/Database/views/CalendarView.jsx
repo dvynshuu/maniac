@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../../utils/constants';
 
 export default function CalendarView({ 
@@ -89,78 +89,33 @@ export default function CalendarView({
   }, []);
 
   return (
-    <div className="calendar-view-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', paddingBottom: '16px' }}>
+    <div className="calendar-view-container">
       {/* Calendar Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div className="calendar-subtoolbar">
+        <div className="calendar-nav-group">
+          <h4 className="calendar-month-title">
             {monthNames[month]} {year}
           </h4>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
-            <button
-              onClick={prevMonth}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                color: 'var(--text-secondary)',
-                padding: '4px 6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
+          <div className="calendar-nav-btns">
+            <button onClick={prevMonth} className="calendar-nav-btn" title="Previous month">
               <ChevronLeft size={14} />
             </button>
-            <button
-              onClick={goToday}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                color: 'var(--text-secondary)',
-                padding: '4px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
+            <button onClick={goToday} className="calendar-today-btn">
               Today
             </button>
-            <button
-              onClick={nextMonth}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                color: 'var(--text-secondary)',
-                padding: '4px 6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
+            <button onClick={nextMonth} className="calendar-nav-btn" title="Next month">
               <ChevronRight size={14} />
             </button>
           </div>
         </div>
 
         {dateProperties.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div className="calendar-date-prop-select-wrap">
             <span>Date field:</span>
             <select
               value={selectedDatePropId}
               onChange={(e) => setSelectedDatePropId(e.target.value)}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                padding: '3px 8px',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
+              className="calendar-date-prop-select"
             >
               {dateProperties.map(p => (
                 <option key={p.id} value={p.id}>{p.name || 'Date'}</option>
@@ -171,38 +126,19 @@ export default function CalendarView({
       </div>
 
       {/* Day of Week Headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-subtle)', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+      <div className="calendar-week-header-grid">
         {dayHeaders.map(day => (
-          <div 
-            key={day} 
-            style={{ 
-              padding: '8px', 
-              textAlign: 'center', 
-              fontSize: '11px', 
-              fontWeight: 600, 
-              color: 'var(--text-tertiary)', 
-              background: 'var(--bg-secondary)' 
-            }}
-          >
+          <div key={day} className="calendar-week-header-cell">
             {day}
           </div>
         ))}
       </div>
 
       {/* Month Days Grid */}
-      <div 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(7, 1fr)', 
-          gap: '1px', 
-          background: 'var(--border-subtle)', 
-          borderRadius: '0 0 8px 8px', 
-          overflow: 'hidden' 
-        }}
-      >
+      <div className="calendar-days-grid">
         {/* Empty cells before month start */}
         {Array.from({ length: firstDayIndex }).map((_, i) => (
-          <div key={`empty-${i}`} style={{ background: 'rgba(255, 255, 255, 0.01)', minHeight: '90px' }} />
+          <div key={`empty-${i}`} className="calendar-day-cell empty" />
         ))}
 
         {/* Days of current month */}
@@ -217,85 +153,33 @@ export default function CalendarView({
           return (
             <div
               key={dayNum}
-              style={{
-                background: isToday ? 'rgba(99, 102, 241, 0.04)' : 'var(--bg-primary)',
-                minHeight: '90px',
-                padding: '6px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                position: 'relative'
-              }}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget.querySelector('.cal-add-btn');
-                if (btn) btn.style.opacity = '1';
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget.querySelector('.cal-add-btn');
-                if (btn) btn.style.opacity = '0';
-              }}
+              className={`calendar-day-cell ${isToday ? 'is-today' : ''}`}
             >
               {/* Day Number Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: isToday ? 700 : 500,
-                    width: '22px',
-                    height: '22px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '50%',
-                    background: isToday ? 'var(--accent-primary)' : 'transparent',
-                    color: isToday ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
+              <div className="calendar-day-header">
+                <span className={`calendar-day-number ${isToday ? 'today-pill' : ''}`}>
                   {dayNum}
                 </span>
 
                 <button
-                  className="cal-add-btn"
+                  className="calendar-day-add-btn"
                   onClick={() => handleAddOnDate(dayNum)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-tertiary)',
-                    cursor: 'pointer',
-                    padding: '2px',
-                    opacity: 0,
-                    transition: 'opacity 0.15s ease'
-                  }}
                   title="Add row on this date"
                 >
-                  <Plus size={13} />
+                  <Plus size={12} />
                 </button>
               </div>
 
               {/* Scheduled Cards for this Day */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', overflowY: 'auto', maxHeight: '90px' }}>
+              <div className="calendar-day-cards">
                 {dayRows.map(row => {
                   const title = row.values[titleProp.id] || 'Untitled';
                   return (
                     <div
                       key={row.id}
                       onClick={() => onOpenRow(row)}
-                      style={{
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        background: 'var(--bg-secondary)',
-                        border: '1px solid var(--border-subtle)',
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
-                      onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+                      className="calendar-event-card"
+                      title={title}
                     >
                       {title}
                     </div>
