@@ -27,11 +27,25 @@ import { useUIStore } from '../stores/uiStore';
 
 export const persistenceWorker = new PersistenceWorker();
 
-// Wrap postMessage to automatically set isSaving: true
+// Debounced isSaving management to eliminate UI re-render thrashing during rapid typing
+let isSavingActive = false;
+let setSavingTrueTimer = null;
+let setSavingFalseTimer = null;
+
 const originalPostMessage = persistenceWorker.postMessage.bind(persistenceWorker);
 persistenceWorker.postMessage = (msg) => {
   if (msg?.type === 'ENQUEUE_OP') {
-    useUIStore.getState().setIsSaving(true);
+    if (setSavingFalseTimer) {
+      clearTimeout(setSavingFalseTimer);
+      setSavingFalseTimer = null;
+    }
+    if (!isSavingActive && !setSavingTrueTimer) {
+      setSavingTrueTimer = setTimeout(() => {
+        setSavingTrueTimer = null;
+        isSavingActive = true;
+        useUIStore.getState().setIsSaving(true);
+      }, 350);
+    }
   }
   originalPostMessage(msg);
 };
@@ -40,23 +54,34 @@ persistenceWorker.postMessage = (msg) => {
 let lastVaultSyncedNotificationTime = 0;
 persistenceWorker.onmessage = (e) => {
   const { type } = e.data;
-  if (type === 'FLUSH_COMPLETE') {
-    useUIStore.getState().setIsSaving(false);
-    
-    // Throttle Vault Synced notification to once every 30s
-    const now = Date.now();
-    if (now - lastVaultSyncedNotificationTime > 30000) {
-      lastVaultSyncedNotificationTime = now;
-      import('../stores/notificationStore').then(({ useNotificationStore }) => {
-        useNotificationStore.getState().addNotification(
-          'Vault Synced',
-          'Latest changes securely encrypted and stored.',
-          'security'
-        );
-      });
+  if (type === 'FLUSH_COMPLETE' || type === 'FLUSH_ERROR') {
+    if (setSavingTrueTimer) {
+      clearTimeout(setSavingTrueTimer);
+      setSavingTrueTimer = null;
     }
-  } else if (type === 'FLUSH_ERROR') {
-    useUIStore.getState().setIsSaving(false);
+    if (isSavingActive) {
+      if (setSavingFalseTimer) clearTimeout(setSavingFalseTimer);
+      setSavingFalseTimer = setTimeout(() => {
+        setSavingFalseTimer = null;
+        isSavingActive = false;
+        useUIStore.getState().setIsSaving(false);
+      }, 500);
+    }
+
+    if (type === 'FLUSH_COMPLETE') {
+      // Throttle Vault Synced notification to once every 30s
+      const now = Date.now();
+      if (now - lastVaultSyncedNotificationTime > 30000) {
+        lastVaultSyncedNotificationTime = now;
+        import('../stores/notificationStore').then(({ useNotificationStore }) => {
+          useNotificationStore.getState().addNotification(
+            'Vault Synced',
+            'Latest changes securely encrypted and stored.',
+            'security'
+          );
+        });
+      }
+    }
   }
 };
 

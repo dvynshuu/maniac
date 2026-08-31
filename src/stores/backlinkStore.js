@@ -179,20 +179,61 @@ export const useBacklinkStore = create((set, get) => ({
 
   /**
    * Full re-index from all blocks in the database.
-   * Called on app startup.
+   * Called on app startup with a single atomic state update.
    */
   rebuildIndex: async () => {
     _blockTargets.clear();
     const blocks = await db.blocks.toArray();
-    const store = get();
 
-    // Reset state
-    set({ forwardLinks: {}, backwardLinks: {}, backlinkDetails: {} });
+    const forwardLinks = {};
+    const backwardLinks = {};
+    const backlinkDetails = {};
+    const mentionRegex = /data-page-id="([^"]+)"/g;
 
     for (const block of blocks) {
-      if (block.content && typeof block.content === 'string') {
-        store.indexBlock(block.id, block.pageId, block.content);
+      const content = block.content;
+      const sourcePageId = block.pageId;
+      if (!content || !sourcePageId || typeof content !== 'string') continue;
+      if (content.startsWith('menc:')) continue;
+
+      const newTargets = new Set();
+      let match;
+      mentionRegex.lastIndex = 0;
+      while ((match = mentionRegex.exec(content)) !== null) {
+        if (match[1] && match[1] !== sourcePageId) {
+          newTargets.add(match[1]);
+        }
+      }
+
+      if (newTargets.size > 0) {
+        _blockTargets.set(block.id, newTargets);
+        const snippet = content
+          .replace(/<[^>]*>/g, '')
+          .substring(0, 100)
+          .trim();
+
+        for (const targetId of newTargets) {
+          if (!forwardLinks[sourcePageId]) forwardLinks[sourcePageId] = [];
+          if (!forwardLinks[sourcePageId].includes(targetId)) {
+            forwardLinks[sourcePageId].push(targetId);
+          }
+
+          if (!backwardLinks[targetId]) backwardLinks[targetId] = [];
+          if (!backwardLinks[targetId].includes(sourcePageId)) {
+            backwardLinks[targetId].push(sourcePageId);
+          }
+
+          if (!backlinkDetails[targetId]) backlinkDetails[targetId] = [];
+          backlinkDetails[targetId].push({
+            sourcePageId,
+            blockId: block.id,
+            snippet
+          });
+        }
       }
     }
+
+    // Single atomic state update to prevent UI startup thrashing
+    set({ forwardLinks, backwardLinks, backlinkDetails });
   },
 }));

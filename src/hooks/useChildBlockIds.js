@@ -13,33 +13,49 @@ import { useShallow } from 'zustand/react/shallow';
 
 // ─── Module-level child map cache ───────────────────────────────
 let _cachedBlockOrder = null;
-let _cachedBlockMap = null;
+let _cachedParentMap = new Map(); // blockId -> parentId
 let _cachedChildMap = new Map(); // parentId|null → [childId, ...]
 
 /**
- * Rebuild the child map only when blockOrder or blockMap reference changes.
- * O(n) rebuild, but only on actual changes — not on every selector call.
+ * Rebuild the child map only when blockOrder or block parentId hierarchy actually changes.
+ * Avoids rebuilding on content/property edits during typing.
  */
 function getChildMap(blockMap, blockOrder) {
-  if (blockOrder === _cachedBlockOrder && blockMap === _cachedBlockMap) {
-    return _cachedChildMap;
+  if (!blockOrder || !blockMap) return _cachedChildMap;
+
+  // Fast path: Check if structure (order and parentIds) is unchanged
+  if (blockOrder === _cachedBlockOrder) {
+    let structureChanged = false;
+    for (const id of blockOrder) {
+      const currentParent = blockMap[id]?.parentId || null;
+      if (_cachedParentMap.get(id) !== currentParent) {
+        structureChanged = true;
+        break;
+      }
+    }
+    if (!structureChanged) {
+      return _cachedChildMap;
+    }
   }
 
-  const newMap = new Map();
+  // Rebuild only when structure actually changed (reparenting, reordering, creation, deletion)
+  const newChildMap = new Map();
+  const newParentMap = new Map();
 
   for (const id of blockOrder) {
     const block = blockMap[id];
     if (!block) continue;
     const parentKey = block.parentId || null;
-    if (!newMap.has(parentKey)) newMap.set(parentKey, []);
-    newMap.get(parentKey).push(id);
+    newParentMap.set(id, parentKey);
+    if (!newChildMap.has(parentKey)) newChildMap.set(parentKey, []);
+    newChildMap.get(parentKey).push(id);
   }
 
   _cachedBlockOrder = blockOrder;
-  _cachedBlockMap = blockMap;
-  _cachedChildMap = newMap;
+  _cachedParentMap = newParentMap;
+  _cachedChildMap = newChildMap;
 
-  return newMap;
+  return newChildMap;
 }
 
 /**

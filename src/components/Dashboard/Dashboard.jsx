@@ -23,6 +23,7 @@ import RecallChallengeModal from './RecallChallengeModal';
 import GraphView from './GraphView';
 import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
+import { getPlainText } from '../../utils/helpers';
 
 function Dashboard() {
   const pages = usePageStore((s) => s.pages);
@@ -228,7 +229,7 @@ function IntelligenceTab({ navigate }) {
               >
                 <div className="intelligence-item-inner">
                   {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
-                  <span className="intelligence-item-text">{action.content}</span>
+                  <span className="intelligence-item-text">{getPlainText(action.content)}</span>
                 </div>
               </div>
             )) : (
@@ -265,7 +266,7 @@ function IntelligenceTab({ navigate }) {
                 <div className="intelligence-sub-list">
                   {forgetting.abandonedTodos.slice(0, 3).map(todo => (
                     <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/page/${todo.pageId}`)}>
-                      <span className="intelligence-item-text">{todo.content}</span>
+                      <span className="intelligence-item-text">{getPlainText(todo.content)}</span>
                     </div>
                   ))}
                 </div>
@@ -596,7 +597,7 @@ function WorkspaceTab({ pages, navigate }) {
                   onClick={() => navigate(`/page/${action.pageId}`)}
                 >
                   {action.priority > 0 && <span className="action-priority-marker">!</span>}
-                  <span className="action-chip-text">{action.content}</span>
+                  <span className="action-chip-text">{getPlainText(action.content)}</span>
                 </div>
               ))}
               {nextActions.length === 0 && (

@@ -60,14 +60,24 @@ export class IntelligenceService {
     const decrypted = await batchDecrypt(todos, key, decryptTodo, 15);
     
     const result = decrypted
-      .filter(t => !t.properties?.checked)
+      .filter(t => {
+        if (t.properties?.checked) return false;
+        const clean = (t.content || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+        return Boolean(clean);
+      })
       .map(t => {
+        const cleanContent = (t.content || '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
         let priority = 0;
-        if (t.content.includes('!!!')) priority = 3;
-        else if (t.content.includes('!!')) priority = 2;
-        else if (t.content.includes('!')) priority = 1;
+        if (cleanContent.includes('!!!')) priority = 3;
+        else if (cleanContent.includes('!!')) priority = 2;
+        else if (cleanContent.includes('!')) priority = 1;
         
-        return { ...t, priority };
+        return { ...t, content: cleanContent, priority };
       })
       .sort((a, b) => b.priority - a.priority || b.updatedAt - a.updatedAt)
       .slice(0, 10);
@@ -130,11 +140,25 @@ export class IntelligenceService {
     };
 
     const decryptedTodos = await Promise.all(abandonedTodosRaw.map(t => decryptTodo(t, key)));
-    const abandonedTodos = decryptedTodos.filter(t => !t.properties?.checked);
+    const abandonedTodos = decryptedTodos
+      .filter(t => {
+        if (t.properties?.checked) return false;
+        const clean = (t.content || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+        return Boolean(clean);
+      })
+      .map(t => {
+        const cleanContent = (t.content || '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return { ...t, content: cleanContent };
+      })
+      .sort((a, b) => a.updatedAt - b.updatedAt);
 
     const result = {
         stalePages: decryptedPages.sort((a, b) => a.updatedAt - b.updatedAt),
-        abandonedTodos: abandonedTodos.sort((a, b) => a.updatedAt - b.updatedAt)
+        abandonedTodos: abandonedTodos
     };
     _intelligenceCache.forgetting = result;
     _intelligenceCache.forgettingTimestamp = now;

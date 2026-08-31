@@ -5,10 +5,34 @@ import { SecurityService } from '../utils/securityService';
 let derivedKey = null;
 let hmacKey = null;
 
+// Word HMAC Cache (LRU) to eliminate thousands of redundant crypto sign calls
+const HMAC_CACHE_MAX = 5000;
+const hmacWordCache = new Map();
+
+async function getOrComputeHmacWord(word, key) {
+  if (hmacWordCache.has(word)) {
+    const cached = hmacWordCache.get(word);
+    hmacWordCache.delete(word);
+    hmacWordCache.set(word, cached);
+    return cached;
+  }
+
+  const hash = await SecurityService.hmacWord(word, key);
+  if (hash) {
+    if (hmacWordCache.size >= HMAC_CACHE_MAX) {
+      const oldestKey = hmacWordCache.keys().next().value;
+      hmacWordCache.delete(oldestKey);
+    }
+    hmacWordCache.set(word, hash);
+  }
+  return hash;
+}
+
 // Batching queue
 let pendingQueue = new Map(); // table -> Map<id, { op, payload }>
 let flushTimer = null;
 const FLUSH_INTERVAL = 300; // ms
+let flushCounter = 0;
 
 // Cross-tab broadcast channel
 const channel = new BroadcastChannel('maniac-sync');
@@ -17,6 +41,9 @@ self.onmessage = async (e) => {
   const { type, payload } = e.data;
 
   if (type === 'INIT_KEYS') {
+    if (derivedKey !== payload.derivedKey || hmacKey !== payload.hmacKey) {
+      hmacWordCache.clear();
+    }
     derivedKey = payload.derivedKey;
     hmacKey = payload.hmacKey;
     return;
@@ -35,9 +62,11 @@ self.onmessage = async (e) => {
 function enqueueOperation(operation) {
   const { entityType, entityId, op, payload, meta } = operation;
   
-  // 1. Enqueue the opLog append itself
-  if (!pendingQueue.has('operations')) pendingQueue.set('operations', new Map());
-  pendingQueue.get('operations').set(operation.id || Date.now().toString() + Math.random(), { op: 'create', payload: operation });
+  // 1. Enqueue the opLog append only for domain entities (block, page), not raw CRDT keystrokes
+  if (entityType === 'block' || entityType === 'BLOCK' || entityType === 'page' || entityType === 'PAGE') {
+    if (!pendingQueue.has('operations')) pendingQueue.set('operations', new Map());
+    pendingQueue.get('operations').set(operation.id || `${Date.now()}-${Math.random()}`, { op: 'create', payload: operation });
+  }
 
   // 2. Determine target table for the actual entity
   let table = null;
@@ -95,7 +124,7 @@ async function encryptForDB(data, isBlock) {
         if (!SecurityService.isEncrypted(dbObj.content)) {
           if (hmacKey) {
             const words = extractWords(dbObj.content);
-            const hashed = await Promise.all(words.map(w => SecurityService.hmacWord(w, hmacKey)));
+            const hashed = await Promise.all(words.map(w => getOrComputeHmacWord(w, hmacKey)));
             dbObj.words = hashed.filter(Boolean);
           } else {
             dbObj.words = [];
@@ -215,6 +244,19 @@ async function flushQueue() {
     }
 
     self.postMessage({ type: 'FLUSH_COMPLETE', timestamp: Date.now() });
+
+    // Periodically prune operations table to keep last 500 records and prevent disk bloat
+    flushCounter++;
+    if (flushCounter % 20 === 0) {
+      db.operations.count().then(count => {
+        if (count > 600) {
+          const excess = count - 500;
+          return db.operations.limit(excess).primaryKeys().then(keys => {
+            if (keys.length > 0) return db.operations.bulkDelete(keys);
+          });
+        }
+      }).catch(() => {});
+    }
 
   } catch (error) {
     console.error('[PersistenceWorker] Flush failed:', error?.name, error?.message, error?.stack, error);

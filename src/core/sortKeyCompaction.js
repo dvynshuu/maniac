@@ -16,7 +16,7 @@ import { useBlockStore } from '../stores/blockStore';
 import { usePageStore } from '../stores/pageStore';
 
 const COMPACTION_THRESHOLD = 8;  // Trigger when any key length exceeds this
-const COMPACTION_INTERVAL = 60000; // Check every 60s
+const COMPACTION_INTERVAL = 300000; // Check every 5 minutes during idle
 const BASE = 'abcdefghijklmnopqrstuvwxyz';
 
 /**
@@ -233,16 +233,24 @@ async function runCompaction() {
   }
 }
 
+function scheduleIdleCompaction() {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(() => runCompaction(), { timeout: 10000 });
+  } else {
+    setTimeout(runCompaction, 100);
+  }
+}
+
 /**
  * Start background compaction on an interval.
  */
 export function startCompaction() {
   if (_compactionTimer) return;
   
-  // Run once after a delay (let the app finish loading)
-  setTimeout(runCompaction, 5000);
+  // Run once after a delay (let the app finish initial boot)
+  setTimeout(scheduleIdleCompaction, 15000);
 
-  _compactionTimer = setInterval(runCompaction, COMPACTION_INTERVAL);
+  _compactionTimer = setInterval(scheduleIdleCompaction, COMPACTION_INTERVAL);
 }
 
 /**

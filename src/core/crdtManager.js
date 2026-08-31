@@ -9,6 +9,34 @@ const _docs = new Map(); // pageId -> { doc, lastAccessed }
 const _updateCounts = new Map();
 const COMPACTION_THRESHOLD = 50;
 
+// Pending batched updates per page: pageId -> Uint8Array[]
+const _pendingBatchedUpdates = new Map();
+const _pendingBatchTimers = new Map();
+const BATCH_INTERVAL_MS = 150;
+
+export function flushPendingUpdates(pageId) {
+  const timer = _pendingBatchTimers.get(pageId);
+  if (timer) {
+    clearTimeout(timer);
+    _pendingBatchTimers.delete(pageId);
+  }
+
+  const updates = _pendingBatchedUpdates.get(pageId);
+  if (!updates || updates.length === 0) return;
+
+  _pendingBatchedUpdates.delete(pageId);
+
+  try {
+    const mergedUpdate = updates.length === 1 ? updates[0] : Y.mergeUpdates(updates);
+    dispatch({
+      type: 'crdt/update',
+      payload: { pageId, update: mergedUpdate }
+    }).catch(e => console.error('[CRDT] Failed to dispatch batched update', e));
+  } catch (e) {
+    console.error('[CRDT] Failed to merge updates', e);
+  }
+}
+
 /**
  * Evict oldest documents when cache exceeds MAX_CACHED_DOCS
  */
@@ -22,6 +50,7 @@ function evictOldestDocs(preservePageId) {
   for (const [pId, item] of entries) {
     if (_docs.size <= MAX_CACHED_DOCS) break;
     if (pId !== preservePageId) {
+      flushPendingUpdates(pId);
       try {
         if (item.doc && typeof item.doc.destroy === 'function') {
           item.doc.destroy();
@@ -134,10 +163,19 @@ export function getCrdtDoc(pageId) {
     const count = (_updateCounts.get(pageId) || 0) + 1;
     _updateCounts.set(pageId, count);
 
-    dispatch({
-      type: 'crdt/update',
-      payload: { pageId, update }
-    }).catch(e => console.error('[CRDT] Failed to dispatch update', e));
+    // Buffer update for batching
+    if (!_pendingBatchedUpdates.has(pageId)) {
+      _pendingBatchedUpdates.set(pageId, []);
+    }
+    _pendingBatchedUpdates.get(pageId).push(update);
+
+    if (!_pendingBatchTimers.has(pageId)) {
+      const timer = setTimeout(() => {
+        _pendingBatchTimers.delete(pageId);
+        flushPendingUpdates(pageId);
+      }, BATCH_INTERVAL_MS);
+      _pendingBatchTimers.set(pageId, timer);
+    }
 
     if (count >= COMPACTION_THRESHOLD) {
       // Defer compaction to not block typing
