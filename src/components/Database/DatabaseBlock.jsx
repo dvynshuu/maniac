@@ -111,7 +111,7 @@ export default function DatabaseBlock({ block }) {
     const titleProp = schema?.[0];
     const rowTitle = titleProp ? (row.values[titleProp.id] || '') : '';
     await pageStore.ensureRowPage(row.id, block.id, rowTitle);
-    navigate(`/page/${row.id}`);
+    navigate(`/app/page/${row.id}`);
   }, [block.id, schema, navigate]);
 
   const handleAddRow = async (overrides = {}) => {

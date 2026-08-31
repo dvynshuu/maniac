@@ -8,9 +8,8 @@ export default function Breadcrumb() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const pageId = location.pathname.startsWith('/page/') 
-    ? location.pathname.replace('/page/', '') 
-    : null;
+  const match = location.pathname.match(/\/page\/([^/]+)/);
+  const pageId = match ? match[1] : null;
 
   const trail = useMemo(() => {
     if (!pageId) return [];
@@ -32,7 +31,7 @@ export default function Breadcrumb() {
           {idx > 0 && <span className="breadcrumb-sep">/</span>}
           <button
             className={`breadcrumb-item ${idx === trail.length - 1 ? 'current' : ''}`}
-            onClick={() => navigate(`/page/${page.id}`)}
+            onClick={() => navigate(`/app/page/${page.id}`)}
           >
             <span className="breadcrumb-icon"><EmojiIcon emoji={page.icon || '📝'} size="14px" /></span>
             <span className="breadcrumb-label">{page.title || 'Untitled'}</span>

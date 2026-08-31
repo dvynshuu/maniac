@@ -1,0 +1,8 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /page/
+
+# Host and Sitemap
+Sitemap: https://maniacc.vercel.app/sitemap.xml

@@ -89,7 +89,7 @@ function ActiveTextBlock({ block }) {
           const newPage = results[0].returnValue;
           useUIStore.getState().setPageExpanded(block.pageId, true);
           usePageStore.getState().setCurrentPage(newPage.id);
-          navigate(`/page/${newPage.id}`);
+          navigate(`/app/page/${newPage.id}`);
         }
       });
     }
@@ -103,7 +103,7 @@ function ActiveTextBlock({ block }) {
     const lastTriggerIndex = text.lastIndexOf(trigger);
     const beforeTrigger = text.substring(0, lastTriggerIndex);
 
-    const mentionHtml = `<a class="page-mention" href="/page/${page.id}" data-page-id="${page.id}" contenteditable="false"><span class="mention-icon">${page.icon || '📄'}</span><span class="mention-label">${page.title || 'Untitled'}</span></a>`;
+    const mentionHtml = `<a class="page-mention" href="/app/page/${page.id}" data-page-id="${page.id}" contenteditable="false"><span class="mention-icon">${page.icon || '📄'}</span><span class="mention-label">${page.title || 'Untitled'}</span></a>`;
     const newHtml = `<p>${beforeTrigger}${mentionHtml}&nbsp;</p>`;
 
     editor.commands.setContent(newHtml, false);

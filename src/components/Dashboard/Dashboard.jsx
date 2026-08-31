@@ -225,7 +225,7 @@ function IntelligenceTab({ navigate }) {
               <div
                 key={action.id}
                 className="intelligence-item"
-                onClick={() => navigate(`/page/${action.pageId}`)}
+                onClick={() => navigate(`/app/page/${action.pageId}`)}
               >
                 <div className="intelligence-item-inner">
                   {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
@@ -250,7 +250,7 @@ function IntelligenceTab({ navigate }) {
                 <div className="intelligence-sub-title">STALE PAGES</div>
                 <div className="intelligence-sub-list">
                   {forgetting.stalePages.slice(0, 3).map(page => (
-                    <div key={page.id} className="intelligence-item" onClick={() => navigate(`/page/${page.id}`)}>
+                    <div key={page.id} className="intelligence-item" onClick={() => navigate(`/app/page/${page.id}`)}>
                       <span className="intelligence-item-text flex-align">
                         <EmojiIcon emoji={page.icon || '📄'} size="14px" />
                         <span>{page.title}</span>
@@ -265,7 +265,7 @@ function IntelligenceTab({ navigate }) {
                 <div className="intelligence-sub-title">ABANDONED TASKS</div>
                 <div className="intelligence-sub-list">
                   {forgetting.abandonedTodos.slice(0, 3).map(todo => (
-                    <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/page/${todo.pageId}`)}>
+                    <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/app/page/${todo.pageId}`)}>
                       <span className="intelligence-item-text">{getPlainText(todo.content)}</span>
                     </div>
                   ))}
@@ -459,10 +459,10 @@ function WorkspaceTab({ pages, navigate }) {
         <div className="continue-pill-wrapper">
           <div
             className="continue-pill"
-            onClick={() => navigate(`/page/${lastVisitedPage.id}`)}
+            onClick={() => navigate(`/app/page/${lastVisitedPage.id}`)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${lastVisitedPage.id}`); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${lastVisitedPage.id}`); } }}
           >
             <RotateCcw size={14} className="continue-icon" />
             <span>Continue {lastVisitedPage.title || 'Untitled'}</span>
@@ -501,10 +501,10 @@ function WorkspaceTab({ pages, navigate }) {
                   <div
                     key={page.id}
                     className={`bento-item ${sizeClass}`}
-                    onClick={() => navigate(`/page/${page.id}`)}
+                    onClick={() => navigate(`/app/page/${page.id}`)}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${page.id}`); } }}
                   >
                     <div className="bento-content-top">
                       <div className="bento-icon-wrapper">
@@ -529,7 +529,7 @@ function WorkspaceTab({ pages, navigate }) {
                     className="btn btn-secondary btn-sm"
                     onClick={async () => {
                       const page = await usePageStore.getState().addPage();
-                      navigate(`/page/${page.id}`);
+                      navigate(`/app/page/${page.id}`);
                     }}
                     style={{ marginTop: '4px' }}
                   >
@@ -552,10 +552,10 @@ function WorkspaceTab({ pages, navigate }) {
                 <div
                   key={page.id}
                   className="timeline-item"
-                  onClick={() => navigate(`/page/${page.id}`)}
+                  onClick={() => navigate(`/app/page/${page.id}`)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/page/${page.id}`); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${page.id}`); } }}
                 >
                   <div className="timeline-dot"></div>
                   <div className="timeline-item-content">
@@ -594,7 +594,7 @@ function WorkspaceTab({ pages, navigate }) {
                 <div
                   key={action.id}
                   className="action-chip"
-                  onClick={() => navigate(`/page/${action.pageId}`)}
+                  onClick={() => navigate(`/app/page/${action.pageId}`)}
                 >
                   {action.priority > 0 && <span className="action-priority-marker">!</span>}
                   <span className="action-chip-text">{getPlainText(action.content)}</span>
@@ -697,7 +697,7 @@ function CalendarTab({ pages, navigate }) {
                 {activities.map(a => (
                   <button
                     key={a.id}
-                    onClick={() => navigate(`/page/${a.id}`)}
+                    onClick={() => navigate(`/app/page/${a.id}`)}
                     className="calendar-event-btn"
                     title={a.title || 'Untitled'}
                   >

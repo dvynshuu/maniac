@@ -25,7 +25,7 @@ export default function PageBlock({ block }) {
     }
 
     setCurrentPage(pageId);
-    navigate(`/page/${pageId}`);
+    navigate(`/app/page/${pageId}`);
   };
 
   if (!linkedPage) {

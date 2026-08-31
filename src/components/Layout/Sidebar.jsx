@@ -75,7 +75,7 @@ function Sidebar() {
   const handleNewPage = async () => {
     const page = await addPage();
     setCurrentPage(page.id);
-    navigate(`/page/${page.id}`);
+    navigate(`/app/page/${page.id}`);
   };
 
   const handleExport = async () => {
@@ -337,9 +337,9 @@ function Sidebar() {
           <div className="sidebar-section-label" style={{ marginTop: 8 }}>WORKSPACE</div>
 
           <div
-            className={`page-item page-item-wrapper ${location.pathname === '/' ? 'active' : ''}`}
+            className={`page-item page-item-wrapper ${location.pathname === '/app' || location.pathname === '/app/' ? 'active' : ''}`}
             style={{ paddingLeft: '32px', marginBottom: 2 }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             data-page-id="dashboard"
           >
             <span className="page-item-icon"><Home size={16} /></span>
@@ -353,12 +353,12 @@ function Sidebar() {
               {favoritePages.map(page => (
                 <div
                   key={page.id}
-                  className={`page-item page-item-wrapper ${location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
+                  className={`page-item page-item-wrapper ${location.pathname === `/app/page/${page.id}` || location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
                   style={{
                     paddingLeft: '32px', marginBottom: 2,
                     background: selectedPageIds.includes(page.id) ? 'rgba(35, 131, 226, 0.15)' : undefined
                   }}
-                  onClick={() => { setCurrentPage(page.id); navigate(`/page/${page.id}`); }}
+                  onClick={() => { setCurrentPage(page.id); navigate(`/app/page/${page.id}`); }}
                   data-page-id={page.id}
                 >
                   <span className="page-item-icon">

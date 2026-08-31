@@ -40,7 +40,7 @@ export default function BacklinksPanel({ pageId }) {
               <div
                 key={sourcePageId}
                 className="backlink-entry"
-                onClick={() => navigate(`/page/${sourcePageId}`)}
+                onClick={() => navigate(`/app/page/${sourcePageId}`)}
               >
                 <div className="backlink-entry-title">
                   <span><EmojiIcon emoji={page.icon || '📝'} size="14px" /></span>

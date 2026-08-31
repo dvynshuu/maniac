@@ -120,11 +120,11 @@ export default function CommandPalette({ onClose }) {
         { id: 'cmd-new-page', title: 'Create new page', icon: Plus, run: async () => {
             const p = await addPage();
             setCurrentPage(p.id);
-            navigate(`/page/${p.id}`);
+            navigate(`/app/page/${p.id}`);
             onClose();
         }},
         { id: 'cmd-dashboard', title: 'Go to Dashboard', icon: FileText, run: () => {
-            navigate('/');
+            navigate('/app');
             onClose();
         }},
         { id: 'cmd-toggle-sidebar', title: 'Toggle Sidebar', icon: Search, run: () => {
@@ -165,11 +165,11 @@ export default function CommandPalette({ onClose }) {
                 const item = results[selectedIndex];
                 if (item.resultType === 'page') {
                     setCurrentPage(item.id);
-                    navigate(`/page/${item.id}`);
+                    navigate(`/app/page/${item.id}`);
                     onClose();
                 } else if (item.resultType === 'block') {
                     setCurrentPage(item.pageId);
-                    navigate(`/page/${item.pageId}`);
+                    navigate(`/app/page/${item.pageId}`);
                     onClose();
                 } else if (item.run) {
                     item.run();
@@ -236,7 +236,7 @@ export default function CommandPalette({ onClose }) {
                                         onMouseEnter={() => setSelectedIndex(idx)}
                                         onClick={() => {
                                             setCurrentPage(item.id);
-                                            navigate(`/page/${item.id}`);
+                                            navigate(`/app/page/${item.id}`);
                                             onClose();
                                         }}
                                     >
@@ -259,7 +259,7 @@ export default function CommandPalette({ onClose }) {
                                         onMouseEnter={() => setSelectedIndex(idx)}
                                         onClick={() => {
                                             setCurrentPage(item.pageId);
-                                            navigate(`/page/${item.pageId}`);
+                                            navigate(`/app/page/${item.pageId}`);
                                             onClose();
                                         }}
                                     >

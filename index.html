@@ -2,13 +2,100 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="MANIAC — Your Personal Operating System for productivity, tracking, and structured data." />
-    <title>MANIAC — Personal OS</title>
+
+    <!-- Primary Metadata -->
+    <title>MANIAC — Turn Chaos into a System | Local-First Workspace</title>
+    <meta name="description" content="Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing." />
+    <meta name="robots" content="index, follow" />
+    <meta name="google-site-verification" content="C7RGjFrYsUnM3ckmCj77KPP_s_VpjPo2n4zD59DUCFM" />
+    <link rel="canonical" href="https://maniacc.vercel.app/" />
+
+    <!-- Standard & High-DPI Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+
+    <!-- Apple iOS / iPadOS Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Web Application Manifest & PWA Configuration -->
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- OS & Browser Theme Accents -->
+    <meta name="theme-color" content="#050508" />
+    <meta name="apple-mobile-web-app-title" content="MANIAC" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="msapplication-TileColor" content="#050508" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MANIAC — Turn Chaos into a System | Local-First Workspace" />
+    <meta property="og:description" content="Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing." />
+    <meta property="og:url" content="https://maniacc.vercel.app/" />
+    <meta property="og:site_name" content="MANIAC" />
+    <meta property="og:image" content="https://maniacc.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="MANIAC — Turn Chaos into a System" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MANIAC — Turn Chaos into a System | Local-First Workspace" />
+    <meta name="twitter:description" content="Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing." />
+    <meta name="twitter:image" content="https://maniacc.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="MANIAC — Turn Chaos into a System" />
+
+    <!-- Fonts (Non-blocking & display: swap) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- JSON-LD Structured Data for Crawlers -->
+    <script type="application/ld+json" id="maniac-json-ld">
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "@id": "https://maniacc.vercel.app/#website",
+          "name": "MANIAC",
+          "alternateName": "MANIAC Workspace",
+          "url": "https://maniacc.vercel.app/",
+          "description": "Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing.",
+          "inLanguage": "en-US"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "@id": "https://maniacc.vercel.app/#software",
+          "name": "MANIAC",
+          "applicationCategory": "ProductivityApplication",
+          "operatingSystem": "Web, Chrome, Edge, Safari, Firefox",
+          "url": "https://maniacc.vercel.app/",
+          "description": "Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Local-first architecture with IndexedDB storage",
+            "Client-side AES-256-GCM encryption",
+            "Block-based modular rich text editor",
+            "Relational databases with Table, Board, and Calendar views",
+            "Knowledge graph visualization and bidirectional backlinks",
+            "Active recall and spaced repetition practice engine",
+            "Habit and quantitative metric tracking",
+            "Notion ZIP package import parser",
+            "Offline-first zero-latency operation",
+            "Cross-tab synchronization via CRDT"
+          ]
+        }
+      ]
+    </script>
   </head>
   <body>
     <div id="root"></div>

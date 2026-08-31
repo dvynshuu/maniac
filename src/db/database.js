@@ -168,7 +168,7 @@ export async function seedDefaultData() {
         id: nanoid(),
         pageId: welcomePageId,
         type: 'text',
-        content: 'Your personal operating system for thoughts, tasks, and tracking.',
+        content: 'Turn chaos into a system. Your local-first workspace for thoughts, tasks, and tracking.',
         properties: {},
         sortOrder: 'b',
         createdAt: now,

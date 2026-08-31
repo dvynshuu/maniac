@@ -39,7 +39,7 @@ function SidebarPageItem({ page, depth }) {
       return;
     }
     setCurrentPage(page.id);
-    navigate(`/page/${page.id}`);
+    navigate(`/app/page/${page.id}`);
   };
 
   const handleExpand = (e) => {
@@ -52,7 +52,7 @@ function SidebarPageItem({ page, depth }) {
     const child = await addPage(page.id);
     setPageExpanded(page.id, true);
     setCurrentPage(child.id);
-    navigate(`/page/${child.id}`);
+    navigate(`/app/page/${child.id}`);
   };
 
   const handleDelete = async (e) => {
@@ -60,7 +60,7 @@ function SidebarPageItem({ page, depth }) {
     setMenuPos(null);
     
     if (isActive) {
-      navigate('/');
+      navigate('/app');
       setCurrentPage(null);
     }
 
@@ -74,7 +74,7 @@ function SidebarPageItem({ page, depth }) {
         undo();
         if (isActive) {
            setCurrentPage(page.id);
-           navigate(`/page/${page.id}`);
+           navigate(`/app/page/${page.id}`);
         }
       }
     });
@@ -88,7 +88,7 @@ function SidebarPageItem({ page, depth }) {
     if (e) e.stopPropagation();
     setMenuPos(null);
     if (isActive) {
-      navigate('/');
+      navigate('/app');
     }
     await archivePage(page.id);
   };
@@ -99,7 +99,7 @@ function SidebarPageItem({ page, depth }) {
     const newPage = await duplicatePage(page.id);
     if (newPage) {
       setCurrentPage(newPage.id);
-      navigate(`/page/${newPage.id}`);
+      navigate(`/app/page/${newPage.id}`);
     }
   };
 

@@ -495,7 +495,7 @@ export default function GraphView({ pages }) {
 
   // ─── Event handlers ─────────────────────────────────────────
   const handleNodeClick = useCallback((node) => {
-    navigate(`/page/${node.id}`);
+    navigate(`/app/page/${node.id}`);
     if (isFullscreen) setIsFullscreen(false);
   }, [navigate, isFullscreen]);
 

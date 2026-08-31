@@ -1,6 +1,8 @@
-# Maniac OS
+# MANIAC
 
-Maniac is a premium, high-performance **Personal Operating System** designed for individuals who demand absolute control over their knowledge, tasks, and data algorithms. It is built as a local-first platform, meaning your data stays strictly on your device for unmatched privacy and millisecond-level responsiveness.
+**Turn chaos into a system.**
+
+Maniac is a premium, high-performance **Local-First Workspace** designed for individuals who demand absolute control over their knowledge, tasks, and data. Built entirely client-side, your data stays strictly on your device for unmatched privacy, zero cloud lock-in, and millisecond-level responsiveness.
 
 Featuring the **Curator System V1.0**, Maniac combines a robust block-based text editor with dynamic dashboard abstractions to give you a true command center for your digital life.
 
