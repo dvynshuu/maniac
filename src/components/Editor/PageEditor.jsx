@@ -27,7 +27,8 @@ import {
   Sparkles, 
   Smile, 
   FileText, 
-  Lock 
+  Lock,
+  Maximize2
 } from 'lucide-react';
 import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import BacklinksPanel from './BacklinksPanel';
@@ -341,7 +342,7 @@ function PageEditor({ pageId: pageIdProp } = {}) {
   const isModal = !!pageIdProp;
   const isLocked = !!page?.isLocked;
   const fontStyle = page?.fontStyle || 'sans';
-  const isFullWidth = !!page?.fullWidth;
+  const isFullWidth = page?.fullWidth !== false;
   const isSmallText = !!page?.smallText;
   const isFav = !!page?.isFavorite;
 
@@ -413,6 +414,16 @@ function PageEditor({ pageId: pageIdProp } = {}) {
                 onClose={() => setShowSrsPopover(false)} 
               />
             )}
+
+            {/* Full Width / Standard Width Toggle */}
+            <button
+              onClick={() => updatePage(pageId, { fullWidth: !isFullWidth })}
+              className={`editor-toolbar-btn ${isFullWidth ? 'active' : ''}`}
+              title={isFullWidth ? 'Switch to centered width' : 'Switch to full width (expand across screen)'}
+            >
+              <Maximize2 size={13} />
+              <span>{isFullWidth ? 'Full width' : 'Centered'}</span>
+            </button>
 
             {/* More Options Menu Trigger */}
             <button

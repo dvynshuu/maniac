@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { sanitize } from '../../../utils/sanitizer';
-import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag, CircleDot, Link, ExternalLink } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, Trash2, XCircle, Palette, Table, Columns, ChevronRight, ArrowLeft as BackIcon, Calculator, Download, Calendar, CheckSquare, Tag, CircleDot, Link, ExternalLink, Maximize2, MoreHorizontal } from 'lucide-react';
 import { evaluateFormula } from '../../../core/formulaEngine';
 import { getPlainText, createId } from '../../../utils/helpers';
 
@@ -211,7 +211,7 @@ export default function TableBlock({ block }) {
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   const [hasSummaryRow, setHasSummaryRow] = useState(block.properties.hasSummaryRow || false);
   const [summaryRowConfigs, setSummaryRowConfigs] = useState(block.properties.summaryRowConfigs || {});
-  const [isFitToPage, setIsFitToPage] = useState(block.properties.isFitToPage || false);
+  const [isFitToPage, setIsFitToPage] = useState(block.properties?.isFitToPage !== undefined ? block.properties.isFitToPage : true);
   
   const [selectMenuCell, setSelectMenuCell] = useState(null); // { row, col, x, y, width }
   const [selectSearchQuery, setSelectSearchQuery] = useState('');
@@ -292,6 +292,7 @@ export default function TableBlock({ block }) {
           colColors: block.properties.colColors || {},
           colTypes: block.properties.colTypes || {},
           colConfigs: block.properties.colConfigs || {},
+          isFitToPage: block.properties?.isFitToPage !== undefined ? block.properties.isFitToPage : true,
         }
       });
     }
@@ -1807,6 +1808,37 @@ const isArraysEqual = (arr1, arr2) => {
       )}
 
       <div className="notion-simple-table-wrapper">
+        {/* Top-right floating table action bar */}
+        <div className="table-top-actions-bar">
+          <button 
+            className={`table-top-action-btn ${isFitToPage ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = !isFitToPage;
+              setIsFitToPage(next);
+              save(cells, hasHeader, hasHeaderCol, columnWidths, rowHeights, rowColors, colColors, colTypes, colConfigs, hasSummaryRow, summaryRowConfigs, next);
+            }}
+            title={isFitToPage ? 'Fit to page width is ON (Click to switch to fixed column widths)' : 'Fit table to page width'}
+          >
+            <Maximize2 size={12} />
+            <span>{isFitToPage ? 'Full width' : 'Fit page'}</span>
+          </button>
+          <button 
+            className="table-top-action-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const menuWidth = 240;
+              const targetLeft = rect.left + window.scrollX - 180;
+              const safeLeft = Math.max(window.scrollX + 10, Math.min(window.scrollX + window.innerWidth - menuWidth - 10, targetLeft));
+              setRowMenu({ index: 0, y: rect.bottom + window.scrollY + 6, left: safeLeft });
+            }}
+            title="Table options"
+          >
+            <MoreHorizontal size={13} />
+          </button>
+        </div>
+
         <div className="notion-table-scroll">
           <div style={{ display: 'flex', position: 'relative' }}>
             
@@ -2320,7 +2352,7 @@ const isArraysEqual = (arr1, arr2) => {
           <div 
             className="notion-table-bottom-bar" 
             onClick={() => addRow(cells.length)}
-            style={{ width: totalWidth || '100%' }}
+            style={{ width: isFitToPage ? '100%' : (totalWidth || '100%') }}
           >
             <Plus size={14} />
             <div className="table-tooltip bottom-bar-tooltip">

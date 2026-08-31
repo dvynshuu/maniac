@@ -12,6 +12,7 @@ export function createPage(overrides = {}) {
     title: '',
     icon: '📝',
     coverImage: null,
+    fullWidth: true,
     sortOrder: 'm',
     isArchived: false,
     createdAt: now,

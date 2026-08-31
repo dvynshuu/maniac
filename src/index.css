@@ -818,8 +818,19 @@ a:hover {
 
 .editor-container.is-full-width {
   max-width: 100%;
-  padding-left: 64px;
-  padding-right: 64px;
+  margin: 0;
+  padding-left: 56px;
+  padding-right: 56px;
+}
+
+@media (max-width: 768px) {
+  .editor-container {
+    padding: 24px 16px 60px;
+  }
+  .editor-container.is-full-width {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
 
 .editor-container.is-small-text {
@@ -6347,8 +6358,59 @@ button {
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
-  padding: 16px 20px 24px 20px;
+  padding: 14px 16px 24px 14px;
   box-sizing: border-box;
+}
+
+/* Floating Table Top Action Bar */
+.table-top-actions-bar {
+  position: absolute;
+  top: -8px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.notion-simple-table-wrapper:hover .table-top-actions-bar {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.table-top-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.table-top-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.table-top-action-btn.active {
+  background: rgba(35, 131, 226, 0.15);
+  color: #3b82f6;
+  border-color: rgba(35, 131, 226, 0.4);
 }
 
 /* Table */

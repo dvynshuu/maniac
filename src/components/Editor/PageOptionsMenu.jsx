@@ -41,7 +41,7 @@ export default function PageOptionsMenu({ page, updatePage, onClose, position })
   }, [page, blockMap, blockOrder]);
 
   const fontStyle = page?.fontStyle || 'sans';
-  const isFullWidth = !!page?.fullWidth;
+  const isFullWidth = page?.fullWidth !== false;
   const isSmallText = !!page?.smallText;
   const isLocked = !!page?.isLocked;
   const isFav = !!page?.isFavorite;

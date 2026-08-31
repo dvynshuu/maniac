@@ -219,7 +219,8 @@ export const BLOCK_PROPERTY_DEFAULTS = {
     hasHeader: false,
     hasHeaderCol: false,
     columnWidths: [200, 200],
-    rowHeights: [40, 40]
+    rowHeights: [40, 40],
+    isFitToPage: true,
   },
   tracker: {},
   column_list: {},
