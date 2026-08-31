@@ -3,16 +3,22 @@ import { useBlockStore } from '../../../stores/blockStore';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { debounce } from '../../../utils/helpers';
 import { Copy, Check } from 'lucide-react';
-import Prism from '../../../utils/prismLanguages';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
 
 const COMMON_LANGUAGES = [
   'javascript', 'typescript', 'python', 'rust', 'go', 'cpp', 'c', 'css', 'html', 'sql', 'bash', 'json', 'yaml', 'plain'
 ];
 
 const highlightCode = (code, lang) => {
-  const grammar = Prism.languages[lang];
-  if (grammar) {
-    return Prism.highlight(code, grammar, lang);
+  if (!code) return '';
+  try {
+    const grammar = Prism?.languages?.[lang] || Prism?.languages?.javascript;
+    if (grammar && Prism?.highlight) {
+      return Prism.highlight(code, grammar, lang);
+    }
+  } catch (err) {
+    // Fallback safely to escaped code
   }
   return code
     .replace(/&/g, '&amp;')

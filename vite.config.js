@@ -6,7 +6,18 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('@tiptap') || id.includes('yjs')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor';
+            }
+            if (
+              id.includes('@tiptap') ||
+              id.includes('yjs') ||
+              id.includes('prismjs') ||
+              id.includes('katex') ||
+              id.includes('dompurify') ||
+              id.includes('jszip') ||
+              id.includes('@dnd-kit')
+            ) {
               return 'editor-vendor';
             }
             if (id.includes('react-force-graph-2d') || id.includes('d3')) {
