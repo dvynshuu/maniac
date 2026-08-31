@@ -56,11 +56,6 @@ function Dashboard() {
 
   return (
     <div className="editor-scroll bg-primary dashboard-wrapper" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
-      {/* Ambient background lighting */}
-      <div className="bg-glow bg-glow-blue"></div>
-      <div className="bg-glow bg-glow-purple"></div>
-      <div className="bg-glow bg-glow-ember"></div>
-
       {/* Settings Modal */}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} initialTab={settingsTab} />}
 
@@ -68,12 +63,12 @@ function Dashboard() {
       <div className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
         <div className="dashboard-brand-container">
           <div className="dashboard-tabs" role="tablist">
-            {['Workspace', 'Intelligence', 'Calendar', 'Archives'].map(tab => (
+            {['Workspace', 'Review', 'Calendar', 'Archives'].map(tab => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => setActiveTab(tab === 'Review' ? 'Intelligence' : tab)}
                 role="tab"
-                aria-selected={activeTab === tab}
+                aria-selected={(tab === 'Review' ? 'Intelligence' : tab) === activeTab}
                 className="dashboard-tab"
               >
                 {tab}
@@ -90,7 +85,7 @@ function Dashboard() {
             <button aria-label="Notifications" className="icon-btn" onClick={() => togglePopover('notifications')}>
               <Bell size={18} />
               {unreadCount > 0 && (
-                <span className="notification-badge pulsing" />
+                <span className="notification-badge" />
               )}
             </button>
             {activePopover === 'notifications' && <NotificationsPopover onClose={() => setActivePopover(null)} />}
@@ -122,7 +117,7 @@ function Dashboard() {
 }
 
 // ==========================================
-// Intelligence Tab (Decision Engine)
+// Intelligence Tab (Workspace Review & Insights)
 // ==========================================
 function IntelligenceTab({ navigate }) {
   const { nextActions, forgetting, weeklyFocus, knowledgeVelocity, analyze, isAnalyzing } = useIntelligenceStore();
@@ -145,8 +140,8 @@ function IntelligenceTab({ navigate }) {
     return (
       <div className="intelligence-loading">
         <div className="spinner"></div>
-        <div className="intelligence-loading-title">Analyzing nodes...</div>
-        <div className="intelligence-loading-subtitle">Scanning for patterns and stale thoughts.</div>
+        <div className="intelligence-loading-title">Gathering workspace insights...</div>
+        <div className="intelligence-loading-subtitle">Reviewing action items, spaced repetition queue, and active pages.</div>
       </div>
     );
   }
@@ -155,10 +150,10 @@ function IntelligenceTab({ navigate }) {
     <div className="intelligence-container animate-fade-in">
       <div className="intelligence-header">
         <div className="intelligence-title-row">
-          <Brain size={28} className="intelligence-header-icon" />
-          <h2 className="intelligence-title">Decision Engine</h2>
+          <Brain size={24} className="intelligence-header-icon" />
+          <h2 className="intelligence-title">Workspace Review</h2>
         </div>
-        <p className="intelligence-subtitle">Intelligence derived from your behavior and content.</p>
+        <p className="intelligence-subtitle">Spaced repetition queue, pending tasks, and weekly activity.</p>
       </div>
 
       <div className={`intelligence-card srs-card ${duePages.length > 0 ? 'glass active-recall-due' : ''}`}>
@@ -350,16 +345,15 @@ function HeroGreeting({ pages }) {
 
   useEffect(() => {
     const hrs = new Date().getHours();
-    let text = 'Good evening, Commander';
-    if (hrs < 12) text = 'Good morning, Commander';
-    else if (hrs < 18) text = 'Good afternoon, Commander';
+    let text = 'Good evening';
+    if (hrs < 12) text = 'Good morning';
+    else if (hrs < 18) text = 'Good afternoon';
     setGreeting(text);
 
     const taglines = [
-      'Your thoughts. Encrypted. Alive.',
-      'A second brain, forged in obsidian.',
-      'Decisions driven by local-first intelligence.',
-      'Fractured monolith. Unified intelligence.'
+      'Your private, local-first workspace.',
+      'Organize thoughts, notes, and relational data.',
+      'Fast, encrypted, distraction-free productivity.'
     ];
     let currentIndex = 0;
     setTagline(taglines[0]);
@@ -367,7 +361,7 @@ function HeroGreeting({ pages }) {
     const interval = setInterval(() => {
       currentIndex = (currentIndex + 1) % taglines.length;
       setTagline(taglines[currentIndex]);
-    }, 8000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -381,7 +375,7 @@ function HeroGreeting({ pages }) {
   return (
     <div className="dashboard-hero-section">
       <div className="dashboard-hero-logo">
-        <ManiacLogo size="xl" animate={true} />
+        <ManiacLogo size="lg" />
       </div>
       <div className="dashboard-hero-content">
         <h1 className="dashboard-hero-title">{greeting}</h1>
@@ -389,18 +383,18 @@ function HeroGreeting({ pages }) {
 
         <div className="dashboard-status-strip">
           <div className="status-item">
-            <span className="status-dot pulsing" />
-            <span className="status-label">Decision Engine Active</span>
+            <span className="status-dot" />
+            <span className="status-label">Local Encrypted</span>
           </div>
           <div className="status-divider" />
           <div className="status-item">
             <span className="status-value">{totalNodes}</span>
-            <span className="status-label">Nodes</span>
+            <span className="status-label">Pages</span>
           </div>
           <div className="status-divider" />
           <div className="status-item">
-            <span className="status-value">+{activeWeekNodes}</span>
-            <span className="status-label">Velocity (7d)</span>
+            <span className="status-value">{activeWeekNodes}</span>
+            <span className="status-label">Active This Week</span>
           </div>
         </div>
       </div>

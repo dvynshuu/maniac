@@ -105,22 +105,9 @@ export default function UnlockScreen() {
 
   return (
     <div className="unlock-screen">
-      {/* Cinematic ambient background */}
-      <div className="unlock-bg-spotlight" />
-      <div className="unlock-bg-particles">
-        <div className="unlock-particle p1" />
-        <div className="unlock-particle p2" />
-        <div className="unlock-particle p3" />
-        <div className="unlock-particle p4" />
-        <div className="unlock-particle p5" />
-        <div className="unlock-particle p6" />
-        <div className="unlock-particle p7" />
-        <div className="unlock-particle p8" />
-      </div>
-
       <div className="unlock-card">
         <div className="unlock-icon-wrapper">
-          <ManiacLogo size="xl" animate />
+          <ManiacLogo size="lg" />
         </div>
 
         <h1>{isSettingUp ? 'Initialize Monolith' : 'System Locked'}</h1>
