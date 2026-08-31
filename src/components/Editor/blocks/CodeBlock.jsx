@@ -3,23 +3,7 @@ import { useBlockStore } from '../../../stores/blockStore';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { debounce } from '../../../utils/helpers';
 import { Copy, Check } from 'lucide-react';
-import Prism from 'prismjs';
-
-import 'prismjs/themes/prism-tomorrow.css';
-import 'prismjs/components/prism-clike';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-c';
-import 'prismjs/components/prism-cpp';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-yaml';
+import Prism from '../../../utils/prismLanguages';
 
 const COMMON_LANGUAGES = [
   'javascript', 'typescript', 'python', 'rust', 'go', 'cpp', 'c', 'css', 'html', 'sql', 'bash', 'json', 'yaml', 'plain'
