@@ -11,11 +11,13 @@ import {
   FileText,
   Check,
   AlignLeft,
-  Copy
+  Copy,
+  Share2
 } from 'lucide-react';
 import { usePageStore } from '../../stores/pageStore';
 import { useBlockStore } from '../../stores/blockStore';
 import { useUIStore } from '../../stores/uiStore';
+import { compressSnapshot } from '../../utils/shareUtils';
 
 export default function PageOptionsMenu({ page, updatePage, onClose, position }) {
   const deletePage = usePageStore((s) => s.deletePage);
@@ -101,6 +103,39 @@ export default function PageOptionsMenu({ page, updatePage, onClose, position })
     onClose();
   };
 
+  const handleShareSnapshot = async () => {
+    try {
+      const pageBlocks = blockOrder
+        .map(id => blockMap[id])
+        .filter(b => b && b.pageId === page?.id);
+
+      const snapshot = {
+        title: page?.title || 'Untitled',
+        icon: page?.icon || '📄',
+        coverImage: page?.coverImage || null,
+        fullWidth: page?.fullWidth !== false,
+        blocks: pageBlocks.map(b => ({
+          id: b.id,
+          type: b.type,
+          content: b.content || '',
+          properties: b.properties || {},
+          sortOrder: b.sortOrder
+        }))
+      };
+
+      const compressed = await compressSnapshot(snapshot);
+      const shareUrl = `${window.location.origin}/share#data=${compressed}`;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      addToast('Copied shareable link to clipboard! Anyone can preview & clone.', 'success');
+      onClose();
+    } catch (err) {
+      console.error('Failed to generate share link:', err);
+      addToast('Failed to generate share link', 'error');
+    }
+  };
+
   return (
     <>
       <div className="page-options-overlay" onClick={onClose} />
@@ -179,6 +214,15 @@ export default function PageOptionsMenu({ page, updatePage, onClose, position })
 
         {/* Actions & Export */}
         <div className="page-options-section">
+          <button 
+            className="page-options-btn"
+            onClick={handleShareSnapshot}
+            style={{ color: 'var(--accent-scar, #ef4444)' }}
+          >
+            <Share2 size={15} />
+            <span>Share Web Link / Template</span>
+          </button>
+
           <button 
             className="page-options-btn"
             onClick={() => {

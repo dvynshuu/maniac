@@ -1,9 +1,14 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, useParams, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import ManiacLogo from './components/Common/ManiacLogo';
 
 // Code-split routes
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const NotionAlternative = lazy(() => import('./pages/NotionAlternative'));
+const TemplateGallery = lazy(() => import('./pages/TemplateGallery'));
+const SharedPagePreview = lazy(() => import('./pages/SharedPagePreview'));
 const WorkspaceApp = lazy(() => import('./components/Layout/WorkspaceApp'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -39,20 +44,31 @@ function LegacyPageRedirect() {
 
 export default function App() {
   return (
-    <Suspense fallback={<RouteLoadingFallback />}>
-      <Routes>
-        {/* Public SEO Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+    <>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          {/* Public SEO Landing Page */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Private Workspace Application */}
-        <Route path="/app/*" element={<WorkspaceApp />} />
+          {/* Dedicated Programmatic SEO Pages */}
+          <Route path="/notion-alternative" element={<NotionAlternative />} />
+          <Route path="/templates" element={<TemplateGallery />} />
 
-        {/* Backwards-compatibility for legacy /page/:pageId URLs */}
-        <Route path="/page/:pageId" element={<LegacyPageRedirect />} />
+          {/* Viral Snapshot / Share Preview */}
+          <Route path="/share" element={<SharedPagePreview />} />
 
-        {/* 404 Catch-All */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+          {/* Private Workspace Application */}
+          <Route path="/app/*" element={<WorkspaceApp />} />
+
+          {/* Backwards-compatibility for legacy /page/:pageId URLs */}
+          <Route path="/page/:pageId" element={<LegacyPageRedirect />} />
+
+          {/* 404 Catch-All */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+      <Analytics />
+      <SpeedInsights />
+    </>
   );
 }

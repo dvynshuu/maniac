@@ -102,6 +102,12 @@ export default function LandingPage() {
             </Link>
 
             <div className="landing-nav-links">
+              <Link to="/notion-alternative" className="landing-nav-link-btn" style={{ textDecoration: 'none' }}>
+                Notion Alternative
+              </Link>
+              <Link to="/templates" className="landing-nav-link-btn" style={{ textDecoration: 'none' }}>
+                Templates
+              </Link>
               <button type="button" onClick={() => scrollToSection('features')} className="landing-nav-link-btn">
                 Features
               </button>
@@ -133,11 +139,11 @@ export default function LandingPage() {
             </div>
 
             <h1 id="hero-title" className="hero-title">
-              The Local-First Workspace for Your <span className="hero-title-accent">Knowledge, Work &amp; Life</span>
+              The Local-First, Zero-Latency <span className="hero-title-accent">Alternative to Notion</span>
             </h1>
 
             <p className="hero-subtitle">
-              Consolidate fragmented notes, scattered tasks, disconnected databases, and forgotten insights into a single sovereign workspace—stored completely on your device with zero server latency.
+              Consolidate fragmented notes, relational databases, active recall flashcards, and knowledge graphs into a single sovereign workspace—stored completely on your device with AES-256 encryption and zero cloud latency.
             </p>
 
             <div className="hero-cta-group">
@@ -1037,9 +1043,10 @@ export default function LandingPage() {
             <div>
               <div className="footer-col-title">Architecture</div>
               <ul className="footer-links-list">
+                <li><Link to="/notion-alternative" className="footer-link">Notion Alternative</Link></li>
+                <li><Link to="/templates" className="footer-link">Template Gallery</Link></li>
                 <li><button type="button" onClick={() => scrollToSection('local-first')} className="footer-link-btn">Local-First Storage</button></li>
                 <li><button type="button" onClick={() => scrollToSection('comparison')} className="footer-link-btn">Comparison Matrix</button></li>
-                <li><button type="button" onClick={() => scrollToSection('local-first')} className="footer-link-btn">AES-256 Security</button></li>
                 <li><button type="button" onClick={() => scrollToSection('faq')} className="footer-link-btn">Frequently Asked Questions</button></li>
               </ul>
             </div>

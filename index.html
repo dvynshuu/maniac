@@ -102,7 +102,50 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Semantic Crawler & Pre-render Fallback (Hydrated by React on load) -->
+      <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 20px; color: #f1f5f9; background: #050508;">
+        <header style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+          <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.03em;">MANIAC</div>
+          <nav style="display: flex; gap: 16px;">
+            <a href="/notion-alternative" style="color: #94a3b8; text-decoration: none;">Notion Alternative</a>
+            <a href="/templates" style="color: #94a3b8; text-decoration: none;">Templates</a>
+            <a href="/app" style="color: #f97316; text-decoration: none; font-weight: 600;">Open App</a>
+          </nav>
+        </header>
+
+        <main style="padding: 40px 0;">
+          <h1 style="font-size: 38px; font-weight: 900; line-height: 1.2; letter-spacing: -0.03em; margin-bottom: 16px;">
+            The Local-First, Zero-Latency Alternative to Notion
+          </h1>
+          <p style="font-size: 18px; line-height: 1.6; color: #94a3b8; margin-bottom: 28px;">
+            Turn chaos into a system. MANIAC is an offline-first workspace for notes, knowledge, relational databases, tasks, and active recall. All data is stored directly in your browser's IndexedDB with client-side AES-256-GCM encryption and zero server roundtrips.
+          </p>
+
+          <div style="display: flex; gap: 16px; margin-bottom: 48px;">
+            <a href="/app" style="background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Open MANIAC Workspace</a>
+            <a href="/notion-alternative" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Compare with Notion</a>
+            <a href="/templates" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Browse Templates</a>
+          </div>
+
+          <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 16px;">Key Architectural Capabilities</h2>
+          <ul style="line-height: 2; color: #cbd5e1; font-size: 16px;">
+            <li><strong>Local-First Storage:</strong> High-performance IndexedDB persistent storage with zero cloud latency.</li>
+            <li><strong>AES-256-GCM Encryption:</strong> Client-side vault encryption with PBKDF2 derived keys for confidential notes.</li>
+            <li><strong>Modular Block Canvas:</strong> TipTap and Yjs CRDT-powered editor with drag-and-drop headings, callouts, and code blocks.</li>
+            <li><strong>Relational Databases:</strong> Notion-like Table, Kanban Board, and Calendar views with custom properties.</li>
+            <li><strong>Active Recall &amp; Spaced Repetition:</strong> Built-in Leitner/SM-2 practice engine to transform notes into long-term retention.</li>
+            <li><strong>Client-Side Notion ZIP Importer:</strong> Instant browser-based extraction of Notion markdown and CSV archives.</li>
+            <li><strong>Interactive 2D Knowledge Graph:</strong> Real-time bi-directional backlink visualization of connected thoughts.</li>
+          </ul>
+        </main>
+      </div>
+    </div>
+    <noscript>
+      <div style="padding: 20px; background: #ef4444; color: #fff; text-align: center;">
+        MANIAC is a rich client-side application. Please enable JavaScript to unlock the full interactive workspace.
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
