@@ -95,6 +95,46 @@ db.version(11).stores({
   notifications: 'id, type, title, desc, isRead, createdAt'
 });
 
+// ─── Version 12: Canonical Architecture Consolidation ──────────
+// Restores database_rows and database_cells, ensures blocks are indexed
+// on sortOrder and [pageId+sortOrder], and syncs all canonical fields.
+db.version(12).stores({
+  pages: 'id, workspaceId, parentId, title, sortOrder, orderKey, isArchived, createdBy, createdAt, updatedAt, tombstonedAt, lastViewedAt',
+  blocks: 'id, pageId, parentId, type, sortOrder, orderKey, [pageId+sortOrder], version, actorId, updatedAt, updatedLogical, *words',
+  
+  // Inline Relational Databases
+  database_rows: 'id, blockId, createdAt, updatedAt',
+  database_cells: 'id, rowId, propertyId, blockId, createdAt, updatedAt',
+  
+  // Relations and Knowledge Graph
+  relations: 'edgeId, fromId, toId, relationType, [fromEntity+fromId], [toEntity+toId]',
+  
+  // Operations & Replication
+  ops: 'opId, actorId, lamport, entityType, entityId, opType, createdAt, [entityType+entityId], [actorId+lamport]',
+  operations: '++seq, id, actorId, entityType, entityId, timestamp, [entityType+entityId]',
+  sync_state: 'peerId, health',
+  crdt_updates: '++id, pageId, timestamp',
+  
+  // Assets & System
+  blobs: 'hash, createdAt',
+  trackers: 'id, name, createdAt, updatedAt',
+  tracker_entries: 'id, trackerId, createdAt, updatedAt',
+  permissions: '++id, entityType, entityId, actorId, [entityType+entityId+actorId]',
+  notifications: 'id, type, title, desc, isRead, createdAt'
+}).upgrade(tx => {
+  const now = Date.now();
+  return tx.table('blocks').toCollection().modify(b => {
+    if (!b.sortOrder && b.orderKey) b.sortOrder = b.orderKey;
+    if (!b.orderKey && b.sortOrder) b.orderKey = b.sortOrder;
+    if (!b.sortOrder) b.sortOrder = 'm';
+    if (!b.orderKey) b.orderKey = b.sortOrder;
+    if (b.version === undefined) b.version = 1;
+    if (!b.actorId) b.actorId = 'local-actor';
+    if (b.updatedLogical === undefined) b.updatedLogical = b.updatedAt || now;
+    if (!b.updatedAt) b.updatedAt = now;
+  });
+});
+
 export const extractWords = (content) => {
   if (!content) return [];
   const text = typeof content === 'string' ? content.replace(/<[^>]*>/g, ' ').toLowerCase() : '';
@@ -131,29 +171,39 @@ export async function seedDefaultData() {
     await db.pages.bulkAdd([
       {
         id: welcomePageId,
+        workspaceId: 'local',
         parentId: null,
         title: 'Welcome to Maniac',
         icon: '🧠',
         coverImage: null,
+        fullWidth: true,
         sortOrder: 'a',
+        orderKey: 'a',
         isArchived: false,
+        createdBy: 'local-actor',
         createdAt: now,
         updatedAt: now,
+        lastViewedAt: now,
       },
       {
         id: gettingStartedId,
+        workspaceId: 'local',
         parentId: welcomePageId,
         title: 'Getting Started',
         icon: '🚀',
         coverImage: null,
+        fullWidth: true,
         sortOrder: 'a',
+        orderKey: 'a',
         isArchived: false,
+        createdBy: 'local-actor',
         createdAt: now,
         updatedAt: now,
+        lastViewedAt: now,
       },
     ]);
 
-    await db.blocks.bulkAdd([
+    const seedBlocks = [
       {
         id: nanoid(),
         pageId: welcomePageId,
@@ -161,8 +211,6 @@ export async function seedDefaultData() {
         content: 'Welcome to Maniac 🧠',
         properties: {},
         sortOrder: 'a',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -171,8 +219,6 @@ export async function seedDefaultData() {
         content: 'Turn chaos into a system. Your local-first workspace for thoughts, tasks, and tracking.',
         properties: {},
         sortOrder: 'b',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -181,8 +227,6 @@ export async function seedDefaultData() {
         content: 'Type / to insert different block types. Use the sidebar to create pages.',
         properties: { emoji: '💡' },
         sortOrder: 'c',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -191,8 +235,6 @@ export async function seedDefaultData() {
         content: 'Features',
         properties: {},
         sortOrder: 'd',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -201,8 +243,6 @@ export async function seedDefaultData() {
         content: 'Create nested pages for organizing your thoughts',
         properties: { checked: false },
         sortOrder: 'e',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -211,8 +251,6 @@ export async function seedDefaultData() {
         content: 'Use custom trackers to build mini-databases',
         properties: { checked: false },
         sortOrder: 'f',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -221,8 +259,6 @@ export async function seedDefaultData() {
         content: 'Press Cmd+K to open the command palette',
         properties: { checked: false },
         sortOrder: 'g',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -231,8 +267,6 @@ export async function seedDefaultData() {
         content: 'Getting Started 🚀',
         properties: {},
         sortOrder: 'a',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -241,8 +275,6 @@ export async function seedDefaultData() {
         content: 'Start by creating a new page from the sidebar, then add blocks using the / command.',
         properties: {},
         sortOrder: 'b',
-        createdAt: now,
-        updatedAt: now,
       },
       {
         id: nanoid(),
@@ -251,9 +283,18 @@ export async function seedDefaultData() {
         content: 'The best way to predict the future is to create it.',
         properties: {},
         sortOrder: 'c',
-        createdAt: now,
-        updatedAt: now,
       },
-    ]);
+    ].map(b => ({
+      ...b,
+      parentId: null,
+      orderKey: b.sortOrder,
+      version: 1,
+      actorId: 'local-actor',
+      updatedLogical: now,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    await db.blocks.bulkAdd(seedBlocks);
   }
 }

@@ -132,6 +132,9 @@ registerHandler('block/update', async (payload) => {
   }
   prevPayload.updatedAt = currentBlock.updatedAt;
 
+  const nextVersion = (currentBlock.version || 0) + 1;
+  const sortOrder = safeUpdates.sortOrder || currentBlock.sortOrder;
+
   // Optimistic update
   const mergedBlock = { 
     ...currentBlock, 
@@ -139,6 +142,10 @@ registerHandler('block/update', async (payload) => {
     properties: safeUpdates.properties 
       ? { ...(currentBlock.properties || {}), ...safeUpdates.properties }
       : currentBlock.properties,
+    sortOrder,
+    orderKey: sortOrder,
+    version: nextVersion,
+    updatedLogical: now,
     updatedAt: now 
   };
   useBlockStore.setState(s => ({
@@ -148,8 +155,9 @@ registerHandler('block/update', async (payload) => {
   // Removed direct DB write and encryption to defer to persistenceWorker
 
   // Operation log
-  const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { ...safeUpdates, updatedAt: now }, prevPayload);
-  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, prevPayload, safeUpdates);
+  const opPayload = { ...safeUpdates, sortOrder, orderKey: sortOrder, version: nextVersion, updatedLogical: now, updatedAt: now };
+  const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, opPayload, prevPayload);
+  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, prevPayload, opPayload);
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
@@ -204,8 +212,16 @@ registerHandler('block/reorder', async (payload) => {
 
   const now = Date.now();
   const prevSortOrder = current.sortOrder;
+  const nextVersion = (current.version || 0) + 1;
 
-  const updatedBlock = { ...current, sortOrder: newSortOrder, updatedAt: now };
+  const updatedBlock = { 
+    ...current, 
+    sortOrder: newSortOrder, 
+    orderKey: newSortOrder,
+    version: nextVersion,
+    updatedLogical: now,
+    updatedAt: now 
+  };
   const newBlockMap = { ...blockMap, [blockId]: updatedBlock };
   const allBlocks = blockOrder.map(id => id === blockId ? updatedBlock : blockMap[id]);
   allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
@@ -214,8 +230,9 @@ registerHandler('block/reorder', async (payload) => {
 
   // DB update deferred to persistenceWorker
 
-  const op = createOp(EntityType.BLOCK, blockId, OpType.REORDER, { sortOrder: newSortOrder }, { sortOrder: prevSortOrder });
-  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.REORDER, { sortOrder: prevSortOrder }, { sortOrder: newSortOrder });
+  const opPayload = { sortOrder: newSortOrder, orderKey: newSortOrder, version: nextVersion, updatedLogical: now, updatedAt: now };
+  const op = createOp(EntityType.BLOCK, blockId, OpType.REORDER, opPayload, { sortOrder: prevSortOrder, orderKey: prevSortOrder });
+  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.REORDER, { sortOrder: prevSortOrder, orderKey: prevSortOrder }, opPayload);
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
@@ -231,21 +248,27 @@ registerHandler('block/changeType', async (payload) => {
 
   const properties = ensureDefaults(newType, { ...block.properties, ...extraProperties });
   const now = Date.now();
+  const nextVersion = (block.version || 0) + 1;
+
+  const updatedBlock = { 
+    ...block, 
+    type: newType, 
+    properties, 
+    version: nextVersion,
+    updatedLogical: now,
+    updatedAt: now 
+  };
 
   useBlockStore.setState(s => ({
-    blockMap: { ...s.blockMap, [blockId]: { ...block, type: newType, properties, updatedAt: now } },
+    blockMap: { ...s.blockMap, [blockId]: updatedBlock },
   }));
 
   // DB update deferred to persistenceWorker
 
-  const op = createOp(EntityType.BLOCK, blockId, OpType.CHANGE_TYPE,
-    { type: newType, properties },
-    { type: prevType, properties: prevProperties }
-  );
-  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.CHANGE_TYPE,
-    { type: prevType, properties: prevProperties },
-    { type: newType, properties }
-  );
+  const opPayload = { type: newType, properties, version: nextVersion, updatedLogical: now, updatedAt: now };
+  const prevOpPayload = { type: prevType, properties: prevProperties };
+  const op = createOp(EntityType.BLOCK, blockId, OpType.CHANGE_TYPE, opPayload, prevOpPayload);
+  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.CHANGE_TYPE, prevOpPayload, opPayload);
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
@@ -279,7 +302,15 @@ registerHandler('block/move', async (payload) => {
   }
 
   const now = Date.now();
-  const updates = { parentId: targetParentId || null, sortOrder, updatedAt: now };
+  const nextVersion = (block.version || 0) + 1;
+  const updates = { 
+    parentId: targetParentId || null, 
+    sortOrder, 
+    orderKey: sortOrder,
+    version: nextVersion,
+    updatedLogical: now,
+    updatedAt: now 
+  };
 
   // Optimistic update
   useBlockStore.setState(s => {
@@ -296,8 +327,9 @@ registerHandler('block/move', async (payload) => {
 
   // DB update deferred to persistenceWorker
 
-  const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, updates, { parentId: prevParentId, sortOrder: prevSortOrder });
-  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, { parentId: prevParentId, sortOrder: prevSortOrder }, updates);
+  const prevUpdates = { parentId: prevParentId, sortOrder: prevSortOrder, orderKey: prevSortOrder };
+  const op = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, updates, prevUpdates);
+  const inverseOp = createOp(EntityType.BLOCK, blockId, OpType.UPDATE, prevUpdates, updates);
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
@@ -307,14 +339,14 @@ registerHandler('block/move', async (payload) => {
 // ═══════════════════════════════════════════════════════════════
 
 registerHandler('page/create', async (payload) => {
-  const { id, parentId = null } = payload;
+  const { id, parentId = null, title = '', icon = '📝', coverImage = null } = payload;
   const store = usePageStore.getState();
   const siblings = store.pages.filter(p => p.parentId === parentId)
     .sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
   const lastSibling = siblings[siblings.length - 1];
   const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
 
-  const page = createPage({ id, parentId, sortOrder });
+  const page = createPage({ id, parentId, title, icon, coverImage, sortOrder });
 
   usePageStore.setState(s => ({ pages: [...s.pages, page] }));
 
@@ -327,9 +359,10 @@ registerHandler('page/create', async (payload) => {
 });
 
 registerHandler('page/update', async (payload) => {
-  const { pageId, updates } = payload;
+  const pageId = payload.pageId || payload.id;
+  const updates = payload.updates || {};
   const store = usePageStore.getState();
-  const page = store.pages.find(p => p.id === pageId);
+  const page = store.pages.find(p => p.id === pageId) || store.archivedPages.find(p => p.id === pageId);
   if (!page) return null;
 
   const now = Date.now();
@@ -337,22 +370,141 @@ registerHandler('page/update', async (payload) => {
   for (const key of Object.keys(updates)) {
     prevPayload[key] = page[key];
   }
+  prevPayload.updatedAt = page.updatedAt;
+  prevPayload.version = page.version;
+  prevPayload.updatedLogical = page.updatedLogical;
+
+  const orderKey = updates.sortOrder !== undefined ? updates.sortOrder : (updates.orderKey !== undefined ? updates.orderKey : undefined);
+  const nextVersion = (page.version || 0) + 1;
+  const safeUpdates = { ...updates, version: nextVersion, updatedLogical: now, updatedAt: now };
+  if (orderKey !== undefined) {
+    safeUpdates.sortOrder = orderKey;
+    safeUpdates.orderKey = orderKey;
+  }
+
+  // Handle archive state toggle in page/update
+  if (updates.isArchived === true) {
+    usePageStore.setState(s => ({
+      pages: s.pages.filter(p => p.id !== pageId),
+      archivedPages: [...s.archivedPages.filter(p => p.id !== pageId), { ...page, ...safeUpdates }],
+      currentPageId: s.currentPageId === pageId ? null : s.currentPageId,
+    }));
+  } else if (updates.isArchived === false) {
+    usePageStore.setState(s => ({
+      archivedPages: s.archivedPages.filter(p => p.id !== pageId),
+      pages: [...s.pages.filter(p => p.id !== pageId), { ...page, ...safeUpdates }],
+    }));
+  } else {
+    usePageStore.setState(s => ({
+      pages: s.pages.map(p => p.id === pageId ? { ...p, ...safeUpdates } : p),
+      archivedPages: s.archivedPages.map(p => p.id === pageId ? { ...p, ...safeUpdates } : p),
+    }));
+  }
+
+  // If it's a database row page, sync the title update back to the database row's primary cell
+  if (page.isDatabaseRow && page.databaseBlockId && updates.title !== undefined) {
+    try {
+      const { useDatabaseStore } = await import('../stores/databaseStore');
+      const dbStore = useDatabaseStore.getState();
+      const dbData = dbStore.getDatabaseData(page.databaseBlockId);
+      const titleProp = dbData?.schema?.[0];
+      if (titleProp) {
+        dbStore.updateCellImmediate(page.databaseBlockId, pageId, titleProp.id, updates.title);
+      }
+    } catch (err) {
+      console.error('Failed to sync row title to database cell:', err);
+    }
+  }
+
+  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, safeUpdates, prevPayload);
+  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, prevPayload, safeUpdates);
+
+  return { ops: [op], inverseOps: [inverseOp], returnValue: { ...page, ...safeUpdates } };
+});
+
+registerHandler('page/archive', async (payload) => {
+  const pageId = payload.pageId || payload.id;
+  const store = usePageStore.getState();
+  const page = store.pages.find(p => p.id === pageId);
+  if (!page) return null;
+
+  const now = Date.now();
+  const archivedPage = { ...page, isArchived: true, updatedAt: now };
 
   usePageStore.setState(s => ({
-    pages: s.pages.map(p => p.id === pageId ? { ...p, ...updates, updatedAt: now } : p),
-    archivedPages: s.archivedPages.map(p => p.id === pageId ? { ...p, ...updates, updatedAt: now } : p),
+    pages: s.pages.filter(p => p.id !== pageId),
+    archivedPages: [...s.archivedPages, archivedPage],
+    currentPageId: s.currentPageId === pageId ? null : s.currentPageId,
   }));
 
-  // DB update deferred to persistenceWorker
+  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { isArchived: true, updatedAt: now }, { isArchived: false, updatedAt: page.updatedAt });
+  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { isArchived: false, updatedAt: page.updatedAt }, { isArchived: true, updatedAt: now });
 
-  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { ...updates, updatedAt: now }, prevPayload);
-  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, prevPayload, updates);
+  return { ops: [op], inverseOps: [inverseOp], returnValue: archivedPage };
+});
+
+registerHandler('page/restore', async (payload) => {
+  const pageId = payload.pageId || payload.id;
+  const store = usePageStore.getState();
+  const page = store.archivedPages.find(p => p.id === pageId);
+  if (!page) return null;
+
+  const now = Date.now();
+  const restoredPage = { ...page, isArchived: false, updatedAt: now };
+
+  usePageStore.setState(s => ({
+    archivedPages: s.archivedPages.filter(p => p.id !== pageId),
+    pages: [...s.pages, restoredPage],
+  }));
+
+  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { isArchived: false, updatedAt: now }, { isArchived: true, updatedAt: page.updatedAt });
+  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { isArchived: true, updatedAt: page.updatedAt }, { isArchived: false, updatedAt: now });
+
+  return { ops: [op], inverseOps: [inverseOp], returnValue: restoredPage };
+});
+
+registerHandler('page/move', async (payload) => {
+  const pageId = payload.pageId || payload.id;
+  const { newParentId } = payload;
+  const store = usePageStore.getState();
+  const page = store.pages.find(p => p.id === pageId);
+  if (!page || pageId === newParentId) return null;
+
+  const prevParentId = page.parentId;
+  const now = Date.now();
+
+  usePageStore.setState(s => ({
+    pages: s.pages.map(p => p.id === pageId ? { ...p, parentId: newParentId, updatedAt: now } : p),
+  }));
+
+  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { parentId: newParentId, updatedAt: now }, { parentId: prevParentId, updatedAt: page.updatedAt });
+  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { parentId: prevParentId, updatedAt: page.updatedAt }, { parentId: newParentId, updatedAt: now });
+
+  return { ops: [op], inverseOps: [inverseOp] };
+});
+
+registerHandler('page/reorder', async (payload) => {
+  const pageId = payload.pageId || payload.id;
+  const { newSortOrder } = payload;
+  const store = usePageStore.getState();
+  const page = store.pages.find(p => p.id === pageId);
+  if (!page) return null;
+
+  const prevSortOrder = page.sortOrder;
+  const now = Date.now();
+
+  usePageStore.setState(s => ({
+    pages: s.pages.map(p => p.id === pageId ? { ...p, sortOrder: newSortOrder, orderKey: newSortOrder, updatedAt: now } : p),
+  }));
+
+  const op = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { sortOrder: newSortOrder, orderKey: newSortOrder, updatedAt: now }, { sortOrder: prevSortOrder, orderKey: prevSortOrder, updatedAt: page.updatedAt });
+  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.UPDATE, { sortOrder: prevSortOrder, orderKey: prevSortOrder, updatedAt: page.updatedAt }, { sortOrder: newSortOrder, orderKey: newSortOrder, updatedAt: now });
 
   return { ops: [op], inverseOps: [inverseOp] };
 });
 
 registerHandler('page/delete', async (payload) => {
-  const { pageId } = payload;
+  const pageId = payload.pageId || payload.id;
   const store = usePageStore.getState();
   const page = store.pages.find(p => p.id === pageId) || store.archivedPages.find(p => p.id === pageId);
   if (!page) return null;

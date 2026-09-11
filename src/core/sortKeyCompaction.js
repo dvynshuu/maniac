@@ -101,9 +101,10 @@ async function compactPage(pageId) {
   if (updates.length === 0) return { compacted: false };
 
   // Persist to IndexedDB
+  const now = Date.now();
   await db.transaction('rw', db.blocks, async () => {
     for (const u of updates) {
-      await db.blocks.update(u.id, { sortOrder: u.sortOrder });
+      await db.blocks.update(u.id, { sortOrder: u.sortOrder, orderKey: u.sortOrder, updatedAt: now, updatedLogical: now });
     }
   });
 

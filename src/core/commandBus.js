@@ -385,20 +385,47 @@ export async function executeOp(operation) {
     switch (opType) {
       case OpType.CREATE: {
         if (!payload) break;
-        usePageStore.setState(s => ({ pages: [...s.pages, payload] }));
+        if (payload.isArchived) {
+          usePageStore.setState(s => ({ archivedPages: [...s.archivedPages.filter(p => p.id !== entityId), payload] }));
+        } else {
+          usePageStore.setState(s => ({ pages: [...s.pages.filter(p => p.id !== entityId), payload] }));
+        }
         break;
       }
 
       case OpType.DELETE: {
-        usePageStore.setState(s => ({ pages: s.pages.filter(p => p.id !== entityId) }));
+        usePageStore.setState(s => ({
+          pages: s.pages.filter(p => p.id !== entityId),
+          archivedPages: s.archivedPages.filter(p => p.id !== entityId)
+        }));
         break;
       }
 
       case OpType.UPDATE: {
         if (!payload) break;
-        usePageStore.setState(s => ({
-          pages: s.pages.map(p => p.id === entityId ? { ...p, ...payload } : p),
-        }));
+        usePageStore.setState(s => {
+          const currentPage = s.pages.find(p => p.id === entityId) || s.archivedPages.find(p => p.id === entityId);
+          if (!currentPage) return s;
+          const merged = { ...currentPage, ...payload };
+
+          if (payload.isArchived === true) {
+            return {
+              pages: s.pages.filter(p => p.id !== entityId),
+              archivedPages: [...s.archivedPages.filter(p => p.id !== entityId), merged],
+              currentPageId: s.currentPageId === entityId ? null : s.currentPageId,
+            };
+          } else if (payload.isArchived === false) {
+            return {
+              archivedPages: s.archivedPages.filter(p => p.id !== entityId),
+              pages: [...s.pages.filter(p => p.id !== entityId), merged],
+            };
+          } else {
+            return {
+              pages: s.pages.map(p => p.id === entityId ? merged : p),
+              archivedPages: s.archivedPages.map(p => p.id === entityId ? merged : p),
+            };
+          }
+        });
         break;
       }
     }
@@ -437,3 +464,18 @@ export async function replayRemoteOp(operation) {
 export function getUndoStack() { return [..._undoStack]; }
 export function getRedoStack() { return [..._redoStack]; }
 export function clearHistory() { _undoStack = []; _redoStack = []; }
+
+export const commandBus = {
+  dispatch,
+  dispatchBatch,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  getUndoStack,
+  getRedoStack,
+  clearHistory,
+  registerHandler,
+  use,
+};
+

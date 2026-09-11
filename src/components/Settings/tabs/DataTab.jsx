@@ -16,10 +16,12 @@ export default function DataTab({ onClose }) {
 
   const handleExportJSON = async () => {
     try {
-      const [allPages, blocks, trackers, entries, blobsRaw] = await Promise.all([
+      const [allPages, blocks, trackers, entries, blobsRaw, databaseRows, databaseCells, relations] = await Promise.all([
         db.pages.toArray(), db.blocks.toArray(),
         db.trackers.toArray(), db.tracker_entries.toArray(),
         db.blobs.toArray(),
+        db.database_rows.toArray(), db.database_cells.toArray(),
+        db.relations.toArray(),
       ]);
       const serializedBlobs = await Promise.all(blobsRaw.map(async (b) => {
         const base64 = await new Promise((resolve) => {
@@ -29,7 +31,18 @@ export default function DataTab({ onClose }) {
         });
         return { hash: b.hash, base64, mimeType: b.mimeType, createdAt: b.createdAt };
       }));
-      const data = { pages: allPages, blocks, trackers, entries, blobs: serializedBlobs, exportedAt: new Date().toISOString(), version: '1.0' };
+      const data = { 
+        pages: allPages, 
+        blocks, 
+        trackers, 
+        entries, 
+        databaseRows,
+        databaseCells,
+        relations,
+        blobs: serializedBlobs, 
+        exportedAt: new Date().toISOString(), 
+        version: '2.0' 
+      };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -42,6 +55,36 @@ export default function DataTab({ onClose }) {
       useUIStore.getState().addToast('Workspace exported successfully.', 'success');
     } catch (err) {
       useUIStore.getState().addToast('Export failed: ' + err.message, 'error');
+    }
+  };
+
+  const handleImportJSON = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+
+      if (!backup || (!backup.pages && !backup.blocks)) {
+        throw new Error('Invalid workspace backup format.');
+      }
+
+      await db.transaction('rw', [db.pages, db.blocks, db.trackers, db.tracker_entries, db.database_rows, db.database_cells, db.relations], async () => {
+        if (backup.pages?.length) await db.pages.bulkPut(backup.pages);
+        if (backup.blocks?.length) await db.blocks.bulkPut(backup.blocks);
+        if (backup.trackers?.length) await db.trackers.bulkPut(backup.trackers);
+        if (backup.entries?.length) await db.tracker_entries.bulkPut(backup.entries);
+        if (backup.databaseRows?.length) await db.database_rows.bulkPut(backup.databaseRows);
+        if (backup.databaseCells?.length) await db.database_cells.bulkPut(backup.databaseCells);
+        if (backup.relations?.length) await db.relations.bulkPut(backup.relations);
+      });
+
+      useUIStore.getState().addToast('Workspace restored successfully! Reloading...', 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      console.error(err);
+      useUIStore.getState().addToast('Restore failed: ' + err.message, 'error');
     }
   };
 
@@ -293,8 +336,21 @@ export default function DataTab({ onClose }) {
 
       <Divider />
 
-      <SettingRow label="Export Workspace" description="Download all pages, blocks, and trackers as a JSON backup.">
-        <ActionButton variant="secondary" onClick={handleExportJSON}>Export JSON</ActionButton>
+      <SettingRow label="Export & Restore Workspace" description="Download all pages, blocks, databases, and trackers as a JSON backup or restore a previous backup.">
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <ActionButton variant="secondary" onClick={handleExportJSON}>Export JSON</ActionButton>
+          <label style={{ display: 'inline-flex' }}>
+            <input 
+              type="file" 
+              accept=".json" 
+              style={{ display: 'none' }} 
+              onChange={handleImportJSON}
+            />
+            <span className="btn btn-secondary" style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--border-default)', display: 'inline-flex', alignItems: 'center' }}>
+              Restore JSON
+            </span>
+          </label>
+        </div>
       </SettingRow>
 
       <Divider />

@@ -4,6 +4,7 @@ import { createPage, createId, debounce, generateLexicalOrder } from '../utils/h
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { useUIStore } from './uiStore';
+import { dispatch } from '../core/commandBus';
 
 export const usePageStore = create((set, get) => ({
   pages: [],
@@ -64,28 +65,10 @@ export const usePageStore = create((set, get) => ({
   },
 
   addPage: async (parentId = null) => {
-    const { pages } = get();
-    const siblings = pages.filter((p) => p.parentId === parentId).sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
-    const lastSibling = siblings[siblings.length - 1];
-    const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
-
-    const page = createPage({
-      parentId,
-      sortOrder,
+    return dispatch({
+      type: 'page/create',
+      payload: { parentId }
     });
-    // Optimistic update
-    set(s => ({ pages: [...s.pages, page] }));
-
-    const key = useSecurityStore.getState().derivedKey;
-    const dbPage = { ...page };
-    if (key && dbPage.title) {
-      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
-      dbPage._isEncrypted = true;
-    }
-
-    await db.pages.add(dbPage);
-    useUIStore.getState().updateOnboarding('pagesCreated');
-    return page;
   },
 
   ensureRowPage: async (rowId, databaseBlockId, title = '', icon = '📄') => {
@@ -110,254 +93,132 @@ export const usePageStore = create((set, get) => ({
       return hydrated;
     }
 
-    // Create a new page with the specified rowId
-    const now = Date.now();
-    page = {
-      id: rowId,
-      parentId: databaseBlockId,
-      databaseBlockId,
-      title: title || 'Untitled Row',
-      icon: icon || '📄',
-      coverImage: null,
-      sortOrder: 'm',
-      isArchived: false,
-      isDatabaseRow: true,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Optimistic update without duplicates
-    set(s => ({
-      pages: s.pages.some(p => p.id === rowId) ? s.pages : [...s.pages, page]
-    }));
-
-    const key = useSecurityStore.getState().derivedKey;
-    const dbPage = { ...page };
-    if (key && dbPage.title) {
-      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
-      dbPage._isEncrypted = true;
-    }
-
-    await db.pages.put(dbPage);
-    return page;
+    return dispatch({
+      type: 'page/create',
+      payload: {
+        id: rowId,
+        parentId: databaseBlockId,
+        title: title || 'Untitled Row',
+        icon: icon || '📄',
+        isDatabaseRow: true,
+        databaseBlockId,
+      }
+    });
   },
 
   updatePage: async (id, updates) => {
-    const now = Date.now();
-    // Find page to check if it's a database row
-    const targetPage = get().pages.find(p => p.id === id) || get().archivedPages.find(p => p.id === id);
-
-    // Optimistic update
-    set(s => ({
-      pages: s.pages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
-      archivedPages: s.archivedPages.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p),
-    }));
-
-    // If it's a database row page, sync the title update back to the database row's primary cell
-    if (targetPage && targetPage.isDatabaseRow && targetPage.databaseBlockId && updates.title !== undefined) {
-      try {
-        const { useDatabaseStore } = await import('./databaseStore');
-        const dbStore = useDatabaseStore.getState();
-        const dbData = dbStore.getDatabaseData(targetPage.databaseBlockId);
-        const titleProp = dbData?.schema?.[0];
-        if (titleProp) {
-          dbStore.updateCellImmediate(targetPage.databaseBlockId, id, titleProp.id, updates.title);
-        }
-      } catch (err) {
-        console.error('Failed to sync row title to database cell:', err);
-      }
-    }
-
-    const key = useSecurityStore.getState().derivedKey;
-    const dbUpdates = { ...updates, updatedAt: now };
-    if (key && dbUpdates.title !== undefined) {
-      dbUpdates.title = await SecurityService.encrypt(dbUpdates.title, key);
-      dbUpdates._isEncrypted = true;
-    }
-
-    await db.pages.update(id, dbUpdates);
+    return dispatch({
+      type: 'page/update',
+      payload: { pageId: id, updates }
+    });
   },
 
   deletePage: async (id) => {
-    // Collect all IDs to delete (recursive)
-    const collectIds = (parentId) => {
-      const children = get().pages.filter(p => p.parentId === parentId);
-      let ids = [parentId];
-      for (const child of children) {
-        ids = [...ids, ...collectIds(child.id)];
-      }
-      return ids;
-    };
-    const idsToDelete = collectIds(id);
-    const pagesBackup = get().pages.filter(p => idsToDelete.includes(p.id));
-    
-    // Optimistic UI update
-    set(s => ({
-      pages: s.pages.filter(p => !idsToDelete.includes(p.id)),
-      archivedPages: s.archivedPages.filter(p => !idsToDelete.includes(p.id)),
-    }));
-
-    // Actual deletion (could be delayed by caller for Undo)
-    await db.transaction('rw', [db.pages, db.blocks], async () => {
-      await db.blocks.where('pageId').anyOf(idsToDelete).delete();
-      await db.pages.bulkDelete(idsToDelete);
+    return dispatch({
+      type: 'page/delete',
+      payload: { pageId: id }
     });
   },
 
   bulkDeletePages: async (ids) => {
-    const { pages, archivedPages } = get();
-    
-    // Collect all descendants for all target IDs
-    const allIdsToDelete = new Set();
-    const collectIds = (parentId) => {
-      allIdsToDelete.add(parentId);
-      pages.filter(p => p.parentId === parentId).forEach(child => collectIds(child.id));
-    };
-    ids.forEach(id => collectIds(id));
-    const idsArray = Array.from(allIdsToDelete);
-    
-    // Backup for undo
-    const backupPages = pages.filter(p => allIdsToDelete.has(p.id));
-    const backupArchived = archivedPages.filter(p => allIdsToDelete.has(p.id));
-
-    // Optimistic UI update
-    set(s => ({
-      pages: s.pages.filter(p => !allIdsToDelete.has(p.id)),
-      archivedPages: s.archivedPages.filter(p => !allIdsToDelete.has(p.id)),
-    }));
-
-    return {
-      ids: idsArray,
-      undo: () => {
-        set(s => ({
-          pages: [...s.pages, ...backupPages],
-          archivedPages: [...s.archivedPages, ...backupArchived]
-        }));
-      },
-      commit: async () => {
-        await db.transaction('rw', [db.pages, db.blocks], async () => {
-          await db.blocks.where('pageId').anyOf(idsArray).delete();
-          await db.pages.bulkDelete(idsArray);
-        });
-      }
-    };
+    for (const id of ids) {
+      await dispatch({
+        type: 'page/delete',
+        payload: { pageId: id }
+      });
+    }
   },
 
   archivePage: async (id) => {
-    const now = Date.now();
     const page = get().pages.find(p => p.id === id);
-    if (!page) return;
-
-    const archivedPage = { ...page, isArchived: true, updatedAt: now };
-
-    set(s => ({
-      pages: s.pages.filter(p => p.id !== id),
-      archivedPages: [...s.archivedPages, archivedPage],
-      currentPageId: s.currentPageId === id ? null : s.currentPageId,
-    }));
-
-    await db.pages.update(id, { isArchived: true, updatedAt: now });
-
-    import('./notificationStore').then(({ useNotificationStore }) => {
-      useNotificationStore.getState().addNotification(
-        'Page Archived',
-        `"${page.title || 'Untitled'}" was moved to the archives.`,
-        'info'
-      );
+    const result = await dispatch({
+      type: 'page/archive',
+      payload: { pageId: id }
     });
+
+    if (page) {
+      import('./notificationStore').then(({ useNotificationStore }) => {
+        useNotificationStore.getState().addNotification(
+          'Page Archived',
+          `"${page.title || 'Untitled'}" was moved to the archives.`,
+          'info'
+        );
+      });
+    }
+    return result;
   },
 
   restorePage: async (id) => {
-    const now = Date.now();
     const page = get().archivedPages.find(p => p.id === id);
-    if (!page) return;
-
-    const restoredPage = { ...page, isArchived: false, updatedAt: now };
-
-    set(s => ({
-      archivedPages: s.archivedPages.filter(p => p.id !== id),
-      pages: [...s.pages, restoredPage],
-    }));
-
-    await db.pages.update(id, { isArchived: false, updatedAt: now });
-
-    import('./notificationStore').then(({ useNotificationStore }) => {
-      useNotificationStore.getState().addNotification(
-        'Page Restored',
-        `"${page.title || 'Untitled'}" was restored to your workspace.`,
-        'info'
-      );
+    const result = await dispatch({
+      type: 'page/restore',
+      payload: { pageId: id }
     });
+
+    if (page) {
+      import('./notificationStore').then(({ useNotificationStore }) => {
+        useNotificationStore.getState().addNotification(
+          'Page Restored',
+          `"${page.title || 'Untitled'}" was restored to your workspace.`,
+          'info'
+        );
+      });
+    }
+    return result;
   },
 
   movePage: async (pageId, newParentId) => {
-    if (pageId === newParentId) return;
-    const now = Date.now();
-    set(s => ({
-      pages: s.pages.map(p => p.id === pageId ? { ...p, parentId: newParentId, updatedAt: now } : p),
-    }));
-    await db.pages.update(pageId, { parentId: newParentId, updatedAt: now });
+    return dispatch({
+      type: 'page/move',
+      payload: { pageId, newParentId }
+    });
   },
 
   reorderPage: async (pageId, newSortOrder) => {
-    const now = Date.now();
-    set(s => ({
-      pages: s.pages.map(p => p.id === pageId ? { ...p, sortOrder: newSortOrder, updatedAt: now } : p),
-    }));
-    await db.pages.update(pageId, { sortOrder: newSortOrder, updatedAt: now });
+    return dispatch({
+      type: 'page/reorder',
+      payload: { pageId, newSortOrder }
+    });
   },
-
-  // ---- New Features ----
 
   toggleFavorite: async (id) => {
     const page = get().pages.find(p => p.id === id);
     if (!page) return;
-    const now = Date.now();
-    const newFav = !page.isFavorite;
-    set(s => ({
-      pages: s.pages.map(p => p.id === id ? { ...p, isFavorite: newFav, updatedAt: now } : p),
-    }));
-    await db.pages.update(id, { isFavorite: newFav, updatedAt: now });
+    return dispatch({
+      type: 'page/update',
+      payload: { pageId: id, updates: { isFavorite: !page.isFavorite } }
+    });
   },
 
   duplicatePage: async (id) => {
     const page = get().pages.find(p => p.id === id);
     if (!page) return null;
 
-    const newPageId = createId();
-    const now = Date.now();
-    const newPage = {
-      ...page,
-      id: newPageId,
-      title: `${page.title || 'Untitled'} (copy)`,
-      createdAt: now,
-      updatedAt: now,
-      isFavorite: false,
-    };
+    const newPage = await dispatch({
+      type: 'page/create',
+      payload: {
+        parentId: page.parentId,
+        title: `${page.title || 'Untitled'} (copy)`,
+        icon: page.icon,
+        coverImage: page.coverImage,
+      }
+    });
 
-    // Copy all blocks
-    const blocks = await db.blocks.where('pageId').equals(id).toArray();
-    const newBlocks = blocks.map(b => ({
-      ...b,
-      id: createId(),
-      pageId: newPageId,
-      createdAt: now,
-      updatedAt: now,
-    }));
-
-    // Optimistic update
-    set(s => ({ pages: [...s.pages, newPage] }));
-
-    const key = useSecurityStore.getState().derivedKey;
-    const dbPage = { ...newPage };
-    if (key && dbPage.title) {
-      dbPage.title = await SecurityService.encrypt(dbPage.title, key);
-      dbPage._isEncrypted = true;
-    }
-
-    await db.pages.add(dbPage);
-    if (newBlocks.length > 0) {
-      await db.blocks.bulkAdd(newBlocks);
+    if (newPage) {
+      const blocks = await db.blocks.where('pageId').equals(id).toArray();
+      blocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+      for (const b of blocks) {
+        await dispatch({
+          type: 'block/create',
+          payload: {
+            pageId: newPage.id,
+            type: b.type,
+            content: b.content,
+            properties: { ...(b.properties || {}) },
+            parentId: b.parentId,
+          }
+        });
+      }
     }
 
     return newPage;

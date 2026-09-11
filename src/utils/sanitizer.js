@@ -1,15 +1,22 @@
 import DOMPurify from 'dompurify';
 
+let purify = DOMPurify;
+if (typeof DOMPurify === 'function' && typeof window !== 'undefined') {
+  purify = DOMPurify(window);
+}
+
 // Defense-in-depth: Block data URIs in src attributes to mitigate SVG XSS vectors.
 // We strictly use Blob URIs or standard HTTP/HTTPS URIs for images.
-DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
-  if (data.attrName === 'src') {
-    const url = data.attrValue.trim().toLowerCase();
-    if (url.startsWith('data:')) {
-      data.keepAttr = false;
+if (purify && typeof purify.addHook === 'function') {
+  purify.addHook('uponSanitizeAttribute', function (node, data) {
+    if (data.attrName === 'src') {
+      const url = data.attrValue.trim().toLowerCase();
+      if (url.startsWith('data:')) {
+        data.keepAttr = false;
+      }
     }
-  }
-});
+  });
+}
 
 /**
  * Sanitizes HTML content to prevent XSS attacks.
@@ -18,8 +25,9 @@ DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
  */
 export const sanitize = (html) => {
   if (typeof html !== 'string') return html;
+  if (!purify || typeof purify.sanitize !== 'function') return html;
   
-  return DOMPurify.sanitize(html, {
+  return purify.sanitize(html, {
     ALLOWED_TAGS: [
       'b', 'i', 'em', 'strong', 'u', 's', 'code', 'pre', 'a', 'span', 'br',
       'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'img', 'div', 'p'

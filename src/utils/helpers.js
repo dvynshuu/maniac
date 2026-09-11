@@ -6,34 +6,49 @@ export function createId() {
 
 export function createPage(overrides = {}) {
   const now = Date.now();
+  const sortOrder = overrides.sortOrder || overrides.orderKey || 'm';
   return {
-    id: createId(),
-    parentId: null,
-    title: '',
-    icon: '📝',
-    coverImage: null,
-    fullWidth: true,
-    sortOrder: 'm',
-    isArchived: false,
-    createdAt: now,
-    updatedAt: now,
+    id: overrides.id || createId(),
+    parentId: overrides.parentId !== undefined ? overrides.parentId : null,
+    title: overrides.title || '',
+    icon: overrides.icon || '📝',
+    coverImage: overrides.coverImage !== undefined ? overrides.coverImage : null,
+    fullWidth: overrides.fullWidth !== undefined ? overrides.fullWidth : true,
+    sortOrder,
+    orderKey: sortOrder,
+    version: overrides.version !== undefined ? overrides.version : 1,
+    actorId: overrides.actorId || 'local-actor',
+    updatedLogical: overrides.updatedLogical !== undefined ? overrides.updatedLogical : now,
+    isArchived: !!overrides.isArchived,
+    createdAt: overrides.createdAt || now,
+    updatedAt: overrides.updatedAt || now,
     ...overrides,
+    sortOrder,
+    orderKey: sortOrder,
   };
 }
 
 export function createBlock(pageId, type = 'text', overrides = {}) {
   const now = Date.now();
+  const sortOrder = overrides.sortOrder || overrides.orderKey || 'm';
   return {
-    id: createId(),
+    id: overrides.id || createId(),
     pageId,
-    parentId: null,
+    parentId: overrides.parentId !== undefined ? overrides.parentId : null,
     type,
-    content: '',
-    properties: {},
-    sortOrder: 'm',
-    createdAt: now,
-    updatedAt: now,
+    content: overrides.content || '',
+    properties: overrides.properties || {},
+    richText: overrides.richText || [],
+    sortOrder,
+    orderKey: sortOrder,
+    version: overrides.version !== undefined ? overrides.version : 1,
+    actorId: overrides.actorId || 'local-actor',
+    updatedLogical: overrides.updatedLogical !== undefined ? overrides.updatedLogical : now,
+    createdAt: overrides.createdAt || now,
+    updatedAt: overrides.updatedAt || now,
     ...overrides,
+    sortOrder,
+    orderKey: sortOrder,
   };
 }
 
