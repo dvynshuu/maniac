@@ -2,7 +2,7 @@
 // Defines the canonical block structure, rich text span model,
 // and per-type property schemas for pixel-perfect Notion rendering.
 
-import { createId, generateLexicalOrder } from './helpers';
+import { createId, generateLexicalOrder } from './helpers.js';
 
 // ─── Notion Color Palette ────────────────────────────────────────
 // These match Notion's exact color names from the API.

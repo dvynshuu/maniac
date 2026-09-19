@@ -3,8 +3,8 @@
 // with Notion-accurate metadata, structure, and annotations.
 // Runs AFTER parseHtmlToBlocks / parseMarkdownToBlocks.
 
-import { parseHtmlToRichText } from './richTextParser';
-import { inferCalloutColor, BLOCK_PROPERTY_DEFAULTS } from './blockSchema';
+import { parseHtmlToRichText } from './richTextParser.js';
+import { inferCalloutColor, BLOCK_PROPERTY_DEFAULTS } from './blockSchema.js';
 
 /**
  * Main entry: run the full fidelity pipeline on parsed blocks.

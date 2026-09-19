@@ -1,8 +1,14 @@
+/**
+ * @deprecated Legacy Notion parser.
+ * Use the production-grade, deterministic, hierarchy-preserving Notion importer pipeline instead:
+ * import { runNotionImportPipeline } from '../features/notion-import/pipeline.js';
+ */
+
 import JSZip from 'jszip';
 import { createId, generateLexicalOrder } from './helpers';
 import { applyFidelityLayer } from './notionFidelityLayer';
 
-// ─── Notion Export Parser ───────────────────────────────────────
+// ─── Notion Export Parser (LEGACY - DEPRECATED) ─────────────────
 // Accepts a Notion export ZIP (HTML or Markdown+CSV) and converts
 // it into Maniac-compatible pages, blocks, database rows/cells, and blobs.
 
@@ -11,6 +17,7 @@ const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 /**
  * Main entry: parse a Notion ZIP file into Maniac data
+ * @deprecated Use runNotionImportPipeline from '../features/notion-import/pipeline.js' instead.
  * @param {File} file - The ZIP file from user input
  * @param {(progress: {phase: string, percent: number, detail: string}) => void} onProgress
  * @returns {Promise<{pages, blocks, databaseRows, databaseCells, blobs}>}

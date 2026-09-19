@@ -49,7 +49,7 @@ export const useNotificationStore = create((set, get) => ({
           }
         ];
         
-        await db.notifications.bulkAdd(seedData);
+        await db.notifications.bulkPut(seedData);
         items = seedData;
       }
       

@@ -3,7 +3,7 @@
 // This is the critical bridge between Notion export HTML and our
 // annotation-based data model.
 
-import { createAnnotations, createRichTextSpan } from './blockSchema';
+import { createAnnotations, createRichTextSpan } from './blockSchema.js';
 
 // ─── HTML → RichTextSpan[] ───────────────────────────────────────
 
@@ -20,6 +20,11 @@ export function parseHtmlToRichText(html) {
   // Strip wrapping <p> tags for single-paragraph content
   const trimmed = html.trim();
   if (!trimmed) return [];
+
+  // In Node/test environments without DOMParser, return plain span directly
+  if (typeof DOMParser === 'undefined') {
+    return [{ text: trimmed.replace(/<[^>]+>/g, ''), annotations: createAnnotations(), href: null }];
+  }
 
   // Use DOMParser for correct HTML interpretation
   const doc = new DOMParser().parseFromString(

@@ -16,10 +16,36 @@ export const usePageStore = create((set, get) => ({
     const key = useSecurityStore.getState().derivedKey;
     const allPagesRaw = await db.pages.toArray();
 
+    const unescapeTitle = (title) => {
+      if (!title || typeof title !== 'string') return title;
+      if (!title.includes('&')) return title;
+      return title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&apos;/g, "'");
+    };
+
+    // Auto-heal any persisted titles that had unescaped HTML entities
+    allPagesRaw.forEach(p => {
+      if (p.title && p.title.includes('&amp;')) {
+        const cleaned = unescapeTitle(p.title);
+        db.pages.update(p.id, { title: cleaned }).catch(() => {});
+      }
+    });
+
     // Optimistic initial load (encrypted titles will show raw or placeholders)
     set({
-      pages: allPagesRaw.filter(p => !p.isArchived).map(p => ({ ...p, title: p._isEncrypted && key ? 'Decrypting...' : p.title })),
-      archivedPages: allPagesRaw.filter(p => p.isArchived).map(p => ({ ...p, title: p._isEncrypted && key ? 'Decrypting...' : p.title }))
+      pages: allPagesRaw.filter(p => !p.isArchived).map(p => ({
+        ...p,
+        title: unescapeTitle(p._isEncrypted && key ? 'Decrypting...' : p.title)
+      })),
+      archivedPages: allPagesRaw.filter(p => p.isArchived).map(p => ({
+        ...p,
+        title: unescapeTitle(p._isEncrypted && key ? 'Decrypting...' : p.title)
+      }))
     });
 
     if (key) {
@@ -45,8 +71,8 @@ export const usePageStore = create((set, get) => ({
       const allPages = await batchDecrypt(allPagesRaw, key, decryptFn, 50, onProgress);
       
       set({
-        pages: allPages.filter(p => !p.isArchived),
-        archivedPages: allPages.filter(p => p.isArchived)
+        pages: allPages.filter(p => !p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) })),
+        archivedPages: allPages.filter(p => p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) }))
       });
     }
   },
