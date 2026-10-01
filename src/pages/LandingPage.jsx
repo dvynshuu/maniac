@@ -102,10 +102,13 @@ export default function LandingPage() {
             </Link>
 
             <div className="landing-nav-links">
-              <Link to="/notion-alternative" className="landing-nav-link-btn" style={{ textDecoration: 'none' }}>
+              <Link to="/notion-alternative" className="landing-nav-link-btn">
                 Notion Alternative
               </Link>
-              <Link to="/templates" className="landing-nav-link-btn" style={{ textDecoration: 'none' }}>
+              <Link to="/obsidian-alternative" className="landing-nav-link-btn">
+                Obsidian Alternative
+              </Link>
+              <Link to="/templates" className="landing-nav-link-btn">
                 Templates
               </Link>
               <button type="button" onClick={() => scrollToSection('features')} className="landing-nav-link-btn">
@@ -221,7 +224,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="mockup-system-status">
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                  <span className="mockup-status-dot" />
                   <span>Vault Ready</span>
                 </div>
               </div>
@@ -339,7 +342,7 @@ export default function LandingPage() {
                           <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Engineering Roadmap &amp; Deliverables</div>
                           <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Multi-view relational database inside page</div>
                         </div>
-                        <span style={{ fontSize: '11px', background: 'var(--block-bg-tint-blue)', color: 'var(--info)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
+                        <span className="demo-count-badge">
                           4 Active Tasks
                         </span>
                       </div>
@@ -393,7 +396,7 @@ export default function LandingPage() {
                           <Brain size={18} style={{ color: 'var(--accent-ember)' }} />
                           <span>Spaced Repetition Practice</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--accent-ember)', background: 'var(--block-bg-tint-orange)', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontWeight: 700 }}>
+                        <div className="demo-streak-badge">
                           <Flame size={14} />
                           <span>Streak: {demoSrsStreak}d</span>
                         </div>
@@ -948,34 +951,34 @@ export default function LandingPage() {
         {/* ====================================================================
             Ecosystem Network Strip
             ==================================================================== */}
-        <section className="landing-section" style={{ padding: '48px 0 0 0' }} aria-label="Ecosystem Partners">
+        <section className="landing-section ecosystem-strip-section" aria-label="Ecosystem Partners">
           <div className="landing-container">
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Sparkles size={20} style={{ color: 'var(--accent-ember)', flexShrink: 0 }} />
+            <div className="ecosystem-strip-card">
+              <div className="ecosystem-strip-left">
+                <Sparkles size={20} className="ecosystem-sparkle" />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>Part of a Sovereign Productivity Ecosystem</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Explore complementary tools designed for high-performance cognitive workflows.</div>
+                  <div className="ecosystem-title">Part of a Sovereign Productivity Ecosystem</div>
+                  <div className="ecosystem-desc">Explore complementary tools designed for high-performance cognitive workflows.</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div className="ecosystem-links">
                 <a
                   href="https://getrealign.in/"
                   target="_blank"
                   rel="noopener"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--bg-hover)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none', transition: 'border-color var(--transition-fast)' }}
+                  className="ecosystem-link-btn"
                 >
                   <span>ReAlign</span>
-                  <ArrowUpRight size={13} style={{ color: 'var(--accent-ember)' }} />
+                  <ArrowUpRight size={13} className="ecosystem-icon-ember" />
                 </a>
                 <a
                   href="https://convercell.netlify.app/"
                   target="_blank"
                   rel="noopener"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--bg-hover)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none', transition: 'border-color var(--transition-fast)' }}
+                  className="ecosystem-link-btn"
                 >
                   <span>Convercell</span>
-                  <ArrowUpRight size={13} style={{ color: 'var(--info)' }} />
+                  <ArrowUpRight size={13} className="ecosystem-icon-blue" />
                 </a>
               </div>
             </div>
@@ -1041,9 +1044,11 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <div className="footer-col-title">Architecture</div>
+              <div className="footer-col-title">Architecture &amp; Compare</div>
               <ul className="footer-links-list">
                 <li><Link to="/notion-alternative" className="footer-link">Notion Alternative</Link></li>
+                <li><Link to="/obsidian-alternative" className="footer-link">Obsidian Alternative</Link></li>
+                <li><Link to="/active-recall-notes" className="footer-link">Active Recall Notes</Link></li>
                 <li><Link to="/templates" className="footer-link">Template Gallery</Link></li>
                 <li><button type="button" onClick={() => scrollToSection('local-first')} className="footer-link-btn">Local-First Storage</button></li>
                 <li><button type="button" onClick={() => scrollToSection('comparison')} className="footer-link-btn">Comparison Matrix</button></li>

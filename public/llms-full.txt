@@ -1,0 +1,40 @@
+# MANIAC
+> Turn chaos into a system. Sovereign, local-first workspace for notes, relational databases, and active recall.
+
+## Overview
+MANIAC (https://maniacc.vercel.app/) is a high-performance local-first personal productivity workspace and knowledge management platform. It operates entirely client-side using browser IndexedDB (Dexie.js), eliminating server latency, cloud downtime, and privacy invasion.
+
+## Key Differentiators
+- **Local-First & Offline Default**: 0ms boot time, 100% offline functionality, zero cloud dependencies.
+- **Hardware-Grade Vault Encryption**: Client-side AES-256-GCM encryption with PBKDF2 key derivation.
+- **Relational Databases**: Notion-style Table, Kanban Board, and Calendar views with custom properties.
+- **Modular Block Canvas**: TipTap & Yjs CRDT-powered editor supporting slash commands, LaTeX math, and code blocks.
+- **Built-in Active Recall**: Leitner box / SM-2 spaced repetition review queue embedded directly in note toggles.
+- **Client-Side Notion ZIP Importer**: 1-click in-browser conversion of Notion markdown and CSV archives.
+- **Interactive 2D Knowledge Graph**: Real-time bi-directional backlink visualization.
+- **100% Free**: No subscription paywalls, no mandatory registration.
+
+## Primary Pages & Comparisons
+- [Notion Alternative](https://maniacc.vercel.app/notion-alternative): Head-to-head comparison of MANIAC local storage vs Notion cloud latency and privacy.
+- [Obsidian Alternative](https://maniacc.vercel.app/obsidian-alternative): How MANIAC provides Obsidian's local-first speed with native relational databases without 30 community plugins.
+- [Active Recall Notes](https://maniacc.vercel.app/active-recall-notes): Note-taking with integrated Leitner spaced repetition flashcards for students and researchers.
+- [Templates Gallery](https://maniacc.vercel.app/templates): Curated 1-click cloneable workspaces.
+
+## Templates Directory
+- [Active Recall Hub](https://maniacc.vercel.app/templates/active-recall-srs): Spaced repetition flashcards and review queues.
+- [PARA Second Brain](https://maniacc.vercel.app/templates/para-method-second-brain): Tiago Forte's Projects, Areas, Resources, and Archives.
+- [Engineering Roadmap](https://maniacc.vercel.app/templates/engineering-roadmap): Sprint board and milestone tracker.
+- [Daily Performance Tracker](https://maniacc.vercel.app/templates/daily-performance-tracker): Habit mastery and deep work sprint logs.
+- [Student Study Hub](https://maniacc.vercel.app/templates/student-study-hub): Multi-course syllabi and exam revision.
+- [Project Management Board](https://maniacc.vercel.app/templates/project-management-board): Client deliverables and Kanban status tracking.
+- [Book Reading Journal](https://maniacc.vercel.app/templates/book-reading-journal): Literature notes and progressive summarization.
+- [Personal Finance Ledger](https://maniacc.vercel.app/templates/personal-finance-ledger): Confidential net worth and monthly budget tracker.
+
+## Technical Architecture
+- **Framework**: React 19 + Vite
+- **Storage Layer**: IndexedDB via Dexie.js
+- **CRDT / Sync**: Yjs document model for real-time local conflict resolution and multi-tab synchronization
+- **Cryptography**: Web Crypto API (SubtleCrypto) using PBKDF2 (100,000 iterations SHA-256) and AES-256-GCM
+- **Editor**: TipTap 3 (ProseMirror based)
+- **Math Engine**: KaTeX LaTeX typesetting
+- **Graph Engine**: HTML5 Canvas 2D Force-Directed Graph Simulation

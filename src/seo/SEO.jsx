@@ -4,7 +4,8 @@ import {
   SITE_NAME,
   DEFAULT_TITLE,
   DEFAULT_DESCRIPTION,
-  DEFAULT_OG_IMAGE
+  DEFAULT_OG_IMAGE,
+  TWITTER_HANDLE
 } from './constants';
 
 function setMetaTag(attributeName, attributeValue, content) {
@@ -51,7 +52,7 @@ export default function SEO({
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
   canonical = SITE_URL,
-  robots = 'index, follow',
+  robots = 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
   ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
   structuredData = null
@@ -77,6 +78,7 @@ export default function SEO({
     setMetaTag('property', 'og:description', description);
     setMetaTag('property', 'og:url', canonical || SITE_URL);
     setMetaTag('property', 'og:site_name', SITE_NAME);
+    setMetaTag('property', 'og:locale', 'en_US');
     setMetaTag('property', 'og:image', ogImage);
     setMetaTag('property', 'og:image:width', '1200');
     setMetaTag('property', 'og:image:height', '630');
@@ -84,6 +86,8 @@ export default function SEO({
 
     // 6. Twitter / X Card
     setMetaTag('name', 'twitter:card', 'summary_large_image');
+    setMetaTag('name', 'twitter:site', TWITTER_HANDLE);
+    setMetaTag('name', 'twitter:creator', TWITTER_HANDLE);
     setMetaTag('name', 'twitter:title', title);
     setMetaTag('name', 'twitter:description', description);
     setMetaTag('name', 'twitter:image', ogImage);

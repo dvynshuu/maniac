@@ -49,12 +49,13 @@
 .shared-badge {
   font-size: 11px;
   font-weight: 600;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   padding: 3px 8px;
-  border-radius: 9999px;
+  border-radius: var(--radius-sm, 6px);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
-  letter-spacing: 0.02em;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.65));
+  letter-spacing: 0.04em;
 }
 
 .shared-banner-actions {
@@ -76,13 +77,17 @@
   border: none;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.3);
-  transition: all var(--transition-fast, 150ms ease);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
 }
 
 .btn-share-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.45);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.btn-share-primary:active {
+  transform: translateY(1px);
 }
 
 .btn-share-secondary {
@@ -98,12 +103,18 @@
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   cursor: pointer;
   text-decoration: none;
-  transition: all var(--transition-fast, 150ms ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform var(--transition-fast, 150ms ease), background var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
 }
 
 .btn-share-secondary:hover {
+  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-share-secondary:active {
+  transform: translateY(1px);
 }
 
 /* Main Canvas */
@@ -363,11 +374,24 @@
 }
 
 @media (max-width: 768px) {
+  .shared-banner-content {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .shared-badge {
+    display: none;
+  }
+  .btn-share-primary,
+  .btn-share-secondary {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
   .shared-doc-inner {
     padding: 24px 20px;
   }
   .shared-bottom-pitch {
     flex-direction: column;
     text-align: center;
+    padding: 24px 20px;
   }
 }

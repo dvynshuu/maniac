@@ -7,7 +7,10 @@ import ManiacLogo from './components/Common/ManiacLogo';
 // Code-split routes
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const NotionAlternative = lazy(() => import('./pages/NotionAlternative'));
+const ObsidianAlternative = lazy(() => import('./pages/ObsidianAlternative'));
+const ActiveRecallNotes = lazy(() => import('./pages/ActiveRecallNotes'));
 const TemplateGallery = lazy(() => import('./pages/TemplateGallery'));
+const TemplateDetailPage = lazy(() => import('./pages/TemplateDetailPage'));
 const SharedPagePreview = lazy(() => import('./pages/SharedPagePreview'));
 const WorkspaceApp = lazy(() => import('./components/Layout/WorkspaceApp'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -52,7 +55,10 @@ export default function App() {
 
           {/* Dedicated Programmatic SEO Pages */}
           <Route path="/notion-alternative" element={<NotionAlternative />} />
+          <Route path="/obsidian-alternative" element={<ObsidianAlternative />} />
+          <Route path="/active-recall-notes" element={<ActiveRecallNotes />} />
           <Route path="/templates" element={<TemplateGallery />} />
+          <Route path="/templates/:slug" element={<TemplateDetailPage />} />
 
           {/* Viral Snapshot / Share Preview */}
           <Route path="/share" element={<SharedPagePreview />} />

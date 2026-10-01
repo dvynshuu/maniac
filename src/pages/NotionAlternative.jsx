@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
+import { getNotionAltStructuredData } from '../seo/structuredData';
 import './NotionAlternative.css';
 
 export default function NotionAlternative() {
@@ -50,28 +51,7 @@ export default function NotionAlternative() {
     }
   ];
 
-  const structuredData = [
-    {
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      '@id': 'https://maniacc.vercel.app/notion-alternative#webpage',
-      'name': 'The Best Local-First Notion Alternative — MANIAC',
-      'description': 'Looking for an offline Notion alternative? MANIAC gives you Notion-style databases, block editing, and active recall with 0ms latency and AES-256 encryption.',
-      'url': 'https://maniacc.vercel.app/notion-alternative'
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      'mainEntity': faqData.map(f => ({
-        '@type': 'Question',
-        'name': f.q,
-        'acceptedAnswer': {
-          '@type': 'Answer',
-          'text': f.a
-        }
-      }))
-    }
-  ];
+  const structuredData = getNotionAltStructuredData(faqData);
 
   return (
     <div className="alt-page">
@@ -89,17 +69,17 @@ export default function NotionAlternative() {
       {/* Header Navigation */}
       <header className="alt-header">
         <div className="alt-container">
-          <nav className="alt-nav">
-            <Link to="/" className="alt-brand">
+          <nav className="alt-nav" aria-label="Main Navigation">
+            <Link to="/" className="alt-brand" aria-label="MANIAC Homepage">
               <ManiacLogo size="sm" />
               <span className="alt-brand-title">MANIAC</span>
             </Link>
 
             <div className="alt-nav-links">
               <Link to="/" className="alt-nav-link">Home</Link>
+              <Link to="/obsidian-alternative" className="alt-nav-link">Obsidian Alternative</Link>
+              <Link to="/active-recall-notes" className="alt-nav-link">Active Recall</Link>
               <Link to="/templates" className="alt-nav-link">Templates</Link>
-              <a href="#comparison" className="alt-nav-link">Comparison</a>
-              <a href="#faq" className="alt-nav-link">FAQ</a>
             </div>
 
             <div className="alt-nav-actions">
@@ -110,6 +90,17 @@ export default function NotionAlternative() {
           </nav>
         </div>
       </header>
+
+      {/* Breadcrumbs */}
+      <div className="alt-breadcrumb-bar">
+        <div className="alt-container">
+          <nav aria-label="Breadcrumb" className="alt-breadcrumb-nav">
+            <Link to="/" className="alt-breadcrumb-link">Home</Link>
+            <span className="alt-breadcrumb-sep">/</span>
+            <span className="alt-breadcrumb-current">Notion Alternative</span>
+          </nav>
+        </div>
+      </div>
 
       <main>
         {/* Hero Section */}
@@ -139,142 +130,82 @@ export default function NotionAlternative() {
               </Link>
             </div>
 
-            <div className="alt-trust-strip">
-              <span>✓ 100% Offline Capable</span>
-              <span>•</span>
-              <span>✓ Zero Account Required</span>
-              <span>•</span>
-              <span>✓ Client-Side AES-256 Encryption</span>
-              <span>•</span>
-              <span>✓ Instant 0ms Interaction</span>
-            </div>
-          </div>
-        </section>
-
-        {/* The 4 Core Pillars of Superiority */}
-        <section className="alt-section">
-          <div className="alt-container">
-            <div className="alt-section-header">
-              <div className="alt-tag">ARCHITECTURAL EVOLUTION</div>
-              <h2 className="alt-section-title">Why Knowledge Workers Are Leaving the Cloud</h2>
-              <p className="alt-section-desc">
-                Cloud-based note apps were built for centralized SaaS monetization. MANIAC was engineered for individual cognitive sovereignty and raw speed.
-              </p>
-            </div>
-
-            <div className="alt-pillars-grid">
-              <div className="alt-pillar-card">
-                <div className="pillar-icon-box orange">
-                  <Zap size={22} />
-                </div>
-                <h3>0ms Latency vs 1,200ms Cloud Wait</h3>
-                <p>
-                  Every keypress, block reorder, and database filter queries IndexedDB on your CPU. No loading skeletons, no WebSocket latency, and no network stutter.
-                </p>
+            <div className="alt-hero-stats">
+              <div className="alt-stat">
+                <span className="stat-val">0ms</span>
+                <span className="stat-lbl">Cloud Latency</span>
               </div>
-
-              <div className="alt-pillar-card">
-                <div className="pillar-icon-box red">
-                  <Lock size={22} />
-                </div>
-                <h3>AES-256 Hardware Encryption</h3>
-                <p>
-                  Notion stores your personal journals and proprietary business databases in plaintext on centralized databases. MANIAC allows locking pages with client-derived hardware keys.
-                </p>
+              <div className="alt-stat-divider" />
+              <div className="alt-stat">
+                <span className="stat-val">100%</span>
+                <span className="stat-lbl">Offline Accessible</span>
               </div>
-
-              <div className="alt-pillar-card">
-                <div className="pillar-icon-box purple">
-                  <Brain size={22} />
-                </div>
-                <h3>Active Recall &amp; Spaced Repetition</h3>
-                <p>
-                  Notion is passive storage where knowledge goes to die. MANIAC features an integrated active recall practice engine so your notes transform into durable long-term memory.
-                </p>
+              <div className="alt-stat-divider" />
+              <div className="alt-stat">
+                <span className="stat-val">AES-256</span>
+                <span className="stat-lbl">Vault Encryption</span>
               </div>
-
-              <div className="alt-pillar-card">
-                <div className="pillar-icon-box blue">
-                  <HardDrive size={22} />
-                </div>
-                <h3>Zero Vendor Lock-In &amp; Offline Freedom</h3>
-                <p>
-                  Board a flight, work in the mountains, or disconnect from Wi-Fi. MANIAC operates identically offline and allows full Markdown/JSON exports at any moment.
-                </p>
+              <div className="alt-stat-divider" />
+              <div className="alt-stat">
+                <span className="stat-val">Free</span>
+                <span className="stat-lbl">Zero Paywalls</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Head-to-Head Comparison Matrix */}
-        <section id="comparison" className="alt-section alt-section-bordered">
+        {/* Feature Comparison Matrix */}
+        <section id="comparison" className="alt-section">
           <div className="alt-container">
-            <div className="alt-section-header">
-              <div className="alt-tag">FEATURE BREAKDOWN</div>
-              <h2 className="alt-section-title">MANIAC vs Notion vs Obsidian</h2>
-              <p className="alt-section-desc">
-                Compare architecture, speed, privacy, and productivity capabilities side by side.
-              </p>
+            <div className="alt-section-head">
+              <h2>Detailed Feature Comparison</h2>
+              <p>See how MANIAC compares directly to Notion across performance, sovereignty, and productivity.</p>
             </div>
 
-            <div className="alt-table-wrapper">
+            <div className="alt-table-container">
               <table className="alt-table">
                 <thead>
                   <tr>
                     <th>Capability</th>
-                    <th className="highlight">MANIAC</th>
-                    <th>Notion</th>
-                    <th>Obsidian</th>
+                    <th className="highlight-col">MANIAC (Local-First)</th>
+                    <th>Notion (Cloud-Centric)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>Data Storage Architecture</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> Local IndexedDB (Zero Cloud)</td>
-                    <td><X size={16} className="text-danger" /> Central Cloud Servers</td>
-                    <td><Check size={16} className="text-success" /> Local Markdown Files</td>
+                    <td><strong>Data Storage Location</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> Client-Side IndexedDB</span></td>
+                    <td><span className="feature-cross"><X size={16} /> Proprietary Cloud Servers</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Offline Operation</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> 100% Native &amp; Permanent</td>
-                    <td><X size={16} className="text-danger" /> Degraded / Unreliable</td>
-                    <td><Check size={16} className="text-success" /> 100% Native</td>
+                    <td><strong>Offline Functionality</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> Complete &amp; Native 0ms</span></td>
+                    <td><span className="feature-cross"><X size={16} /> Highly Limited / Read Only</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Relational Databases (Table/Board/Calendar)</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> Built-in Native</td>
-                    <td><Check size={16} className="text-success" /> Built-in Native</td>
-                    <td><X size={16} className="text-danger" /> Requires Third-Party Community Plugins</td>
+                    <td><strong>Data Encryption</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> Hardware AES-256-GCM Vault</span></td>
+                    <td><span className="feature-cross"><X size={16} /> Unencrypted at Rest from Notion Staff</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Client-Side Hardware Encryption</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> AES-256-GCM Hardware Vault</td>
-                    <td><X size={16} className="text-danger" /> Plaintext on Cloud Servers</td>
-                    <td><X size={16} className="text-danger" /> Requires Community Plugins</td>
+                    <td><strong>Relational Databases</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> Tables, Boards, Calendars</span></td>
+                    <td><span className="feature-check"><Check size={16} /> Full Database Suite</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Active Recall &amp; Spaced Repetition</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> Native Integrated Engine</td>
-                    <td><X size={16} className="text-danger" /> Not Available</td>
-                    <td><X size={16} className="text-danger" /> Requires Complex Plugins</td>
+                    <td><strong>Active Recall &amp; SRS</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> Built-in Leitner Algorithm</span></td>
+                    <td><span className="feature-cross"><X size={16} /> Not Supported Natively</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Interactive 2D Knowledge Graph</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> Integrated Force Graph</td>
-                    <td><X size={16} className="text-danger" /> Not Available</td>
-                    <td><Check size={16} className="text-success" /> Built-in</td>
+                    <td><strong>Notion ZIP Importer</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> In-Browser Extraction</span></td>
+                    <td><span className="feature-cross"><X size={16} /> N/A</span></td>
                   </tr>
                   <tr>
-                    <td><strong>Notion ZIP Direct Migration</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> 1-Click Client-Side Parser</td>
-                    <td><span className="text-muted">—</span></td>
-                    <td><X size={16} className="text-danger" /> Requires Manual Scripting</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Registration / Account Requirement</strong></td>
-                    <td className="highlight"><Check size={16} className="text-success" /> Zero (Instant Browser Launch)</td>
-                    <td><X size={16} className="text-danger" /> Mandatory Cloud Login</td>
-                    <td><Check size={16} className="text-success" /> Zero</td>
+                    <td><strong>Pricing &amp; Account</strong></td>
+                    <td className="highlight-col"><span className="feature-check"><Check size={16} /> 100% Free, No Sign-up</span></td>
+                    <td><span className="feature-cross"><X size={16} /> Mandatory Account &amp; Paid Plans</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -282,49 +213,51 @@ export default function NotionAlternative() {
           </div>
         </section>
 
-        {/* Notion Migration Section */}
-        <section className="alt-section">
+        {/* Why Make the Switch */}
+        <section className="alt-section alt-reasons-section">
           <div className="alt-container">
-            <div className="alt-migration-box">
-              <div className="migration-content">
-                <div className="alt-tag">SEAMLESS TRANSITION</div>
-                <h2>Switch from Notion in Under 60 Seconds</h2>
-                <p>
-                  Export your Notion workspace as a standard Markdown &amp; HTML ZIP package. Drag the archive directly into MANIAC—our client-side engine parses your nested pages, tables, and media entirely in your browser.
-                </p>
-                <div className="migration-steps">
-                  <div className="step-item">
-                    <span className="step-num">1</span>
-                    <span>In Notion: Settings → Export all workspace content (Markdown &amp; CSV).</span>
-                  </div>
-                  <div className="step-item">
-                    <span className="step-num">2</span>
-                    <span>Open MANIAC → Settings → Import Notion Package.</span>
-                  </div>
-                  <div className="step-item">
-                    <span className="step-num">3</span>
-                    <span>Experience zero-latency local-first computing immediately.</span>
-                  </div>
+            <div className="alt-section-head">
+              <h2>Why Discerning Knowledge Workers Switch</h2>
+              <p>Designed from first principles to overcome the fundamental flaws of cloud-only workspaces.</p>
+            </div>
+
+            <div className="alt-reasons-grid">
+              <div className="alt-reason-card">
+                <div className="reason-icon-wrap ember">
+                  <Zap size={22} />
                 </div>
+                <h3>Zero Latency Architecture</h3>
+                <p>Notion requires constant network roundtrips to fetch pages and save edits. MANIAC writes synchronously to browser IndexedDB, eliminating all loading spinners and typing delays.</p>
               </div>
-              <div className="migration-cta">
-                <Link to="/app" className="btn-alt-primary-lg">
-                  Launch &amp; Import Now <ArrowRight size={16} />
-                </Link>
+
+              <div className="alt-reason-card">
+                <div className="reason-icon-wrap blue">
+                  <Shield size={22} />
+                </div>
+                <h3>Sovereign Privacy</h3>
+                <p>Cloud tools expose your private thoughts to data breaches, AI training pipelines, and employee inspection. MANIAC keeps your notes strictly on your device with hardware AES-256 encryption.</p>
+              </div>
+
+              <div className="alt-reason-card">
+                <div className="reason-icon-wrap emerald">
+                  <Brain size={22} />
+                </div>
+                <h3>Active Recall Integration</h3>
+                <p>Stop merely collecting notes. MANIAC transforms any toggle block into an active recall flashcard, using spaced repetition to guarantee permanent knowledge retention.</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="alt-section alt-section-bordered">
+        <section id="faq" className="alt-section">
           <div className="alt-container">
-            <div className="alt-section-header">
-              <div className="alt-tag">FREQUENTLY ASKED QUESTIONS</div>
-              <h2 className="alt-section-title">Everything You Need to Know</h2>
+            <div className="alt-section-head">
+              <h2>Frequently Asked Questions</h2>
+              <p>Everything you need to know about migrating from Notion to MANIAC.</p>
             </div>
 
-            <div className="alt-faq-list">
+            <div className="alt-faq-grid">
               {faqData.map((item, index) => (
                 <div key={index} className={`alt-faq-item ${openFaq === index ? 'active' : ''}`}>
                   <button 
@@ -334,7 +267,7 @@ export default function NotionAlternative() {
                     aria-expanded={openFaq === index}
                   >
                     <span>{item.q}</span>
-                    <ChevronDown size={18} className="faq-chevron" />
+                    <ChevronDown size={18} className={`faq-chevron ${openFaq === index ? 'rotate' : ''}`} />
                   </button>
                   {openFaq === index && (
                     <div className="alt-faq-answer">
@@ -372,13 +305,18 @@ export default function NotionAlternative() {
         <div className="alt-container">
           <div className="alt-footer-content">
             <div className="alt-footer-brand">
-              <ManiacLogo size="xs" />
-              <span>MANIAC — Sovereign Local-First Workspace</span>
+              <div className="alt-footer-brand-header">
+                <ManiacLogo size="xs" />
+                <span className="alt-footer-brand-title">MANIAC</span>
+              </div>
+              <p className="alt-footer-desc">Sovereign Local-First Workspace</p>
             </div>
             <div className="alt-footer-links">
-              <Link to="/">Home</Link>
-              <Link to="/templates">Templates</Link>
-              <Link to="/app">Workspace</Link>
+              <Link to="/" className="alt-footer-link">Home</Link>
+              <Link to="/obsidian-alternative" className="alt-footer-link">Obsidian Alternative</Link>
+              <Link to="/active-recall-notes" className="alt-footer-link">Active Recall</Link>
+              <Link to="/templates" className="alt-footer-link">Templates</Link>
+              <Link to="/app" className="alt-footer-link">Workspace</Link>
             </div>
           </div>
         </div>

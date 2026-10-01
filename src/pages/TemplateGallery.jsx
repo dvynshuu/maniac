@@ -5,109 +5,22 @@ import {
   Copy, 
   Check, 
   ArrowRight, 
-  Brain, 
-  Layers, 
-  Calendar, 
-  Flame, 
   Sparkles,
-  CheckCircle2,
-  Table,
-  Kanban
+  ExternalLink,
+  BookOpen
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
+import { TEMPLATES, TEMPLATE_CATEGORIES } from '../data/templatesData';
+import { getTemplatesCollectionStructuredData } from '../seo/structuredData';
 import { cloneSnapshotToWorkspace, compressSnapshot } from '../utils/shareUtils';
 import './TemplateGallery.css';
-
-const TEMPLATES = [
-  {
-    id: 'active-recall-srs',
-    title: 'Active Recall & Spaced Repetition Hub',
-    category: 'Learning & Exams',
-    icon: '🧠',
-    description: 'Master complex subjects with spaced repetition flashcard blocks, recall prompts, and high-yield concept review queues.',
-    blocks: [
-      { type: 'heading1', content: 'Active Recall & Spaced Repetition Hub' },
-      { type: 'callout', content: 'Tip: Test yourself using the toggles below before revealing answers. Rate your recall difficulty to optimize your retention interval.', properties: { icon: '⚡' } },
-      { type: 'heading2', content: 'High-Yield Review Queue' },
-      { type: 'toggle', content: 'Q: What is the primary difference between IndexedDB and LocalStorage in modern browsers?', properties: { details: 'IndexedDB is an asynchronous, transactional, indexed NoSQL database supporting large binary blobs and gigabytes of storage. LocalStorage is synchronous, blocking, and limited to ~5MB of string key-values.' } },
-      { type: 'toggle', content: 'Q: How do Conflict-Free Replicated Data Types (CRDTs) guarantee convergence?', properties: { details: 'CRDTs mathematically ensure that concurrent edits can be merged in any arbitrary network order without requiring a central coordination server.' } },
-      { type: 'heading2', content: 'Weekly Study Milestones' },
-      { type: 'todo', content: 'Review Neuroscience & Memory Consolidation', properties: { checked: true } },
-      { type: 'todo', content: 'Complete Chapter 4 Problem Set', properties: { checked: false } },
-      { type: 'todo', content: 'Self-quiz on Cryptography primitives (AES-256-GCM)', properties: { checked: false } },
-      { type: 'quote', content: 'Testing yourself is not just a measurement of what you know; it actively alters and strengthens your memory.' }
-    ]
-  },
-  {
-    id: 'para-method-second-brain',
-    title: 'PARA Method: Second Brain System',
-    category: 'Productivity & PKM',
-    icon: '🏛️',
-    description: 'Organize your entire digital life into Tiago Forte’s PARA framework: Projects, Areas, Resources, and Archives.',
-    blocks: [
-      { type: 'heading1', content: 'PARA Knowledge Architecture' },
-      { type: 'callout', content: 'The PARA method organizes information by actionability rather than rigid subject taxonomy.', properties: { icon: '🎯' } },
-      { type: 'heading2', content: '1. Active Projects (Definite Deadline)' },
-      { type: 'bullet', content: '<strong>Project Apollo:</strong> Ship local-first encrypted workspace v2.0' },
-      { type: 'bullet', content: '<strong>Personal Health:</strong> Complete half-marathon conditioning' },
-      { type: 'heading2', content: '2. Areas of Responsibility (Continuous Standards)' },
-      { type: 'bullet', content: 'System Architecture & Cryptographic Integrity' },
-      { type: 'bullet', content: 'Personal Financial Independence & Capital Allocation' },
-      { type: 'heading2', content: '3. Resources (Topics of Ongoing Interest)' },
-      { type: 'bullet', content: 'Distributed Systems & CRDT Convergence Papers' },
-      { type: 'bullet', content: 'Typography & Bespoke Digital Craft Principles' },
-      { type: 'heading2', content: '4. Archives (Completed or Inactive)' },
-      { type: 'bullet', content: '2025 Retrospective & System Log' }
-    ]
-  },
-  {
-    id: 'engineering-roadmap',
-    title: 'Engineering Sprint & Roadmap Tracker',
-    category: 'Engineering & Dev',
-    icon: '🚀',
-    description: 'Track milestones, epics, bug queues, and sprint tasks with relational databases and kanban status columns.',
-    blocks: [
-      { type: 'heading1', content: 'Engineering Sprint Board' },
-      { type: 'callout', content: 'Prioritize tasks based on leverage and user impact. Strive for zero-latency execution.', properties: { icon: '🛠️' } },
-      { type: 'heading2', content: 'Sprint Objectives' },
-      { type: 'todo', content: 'Implement client-side compressed snapshot sharing', properties: { checked: true } },
-      { type: 'todo', content: 'Add offline pre-rendered semantic HTML for crawlers', properties: { checked: true } },
-      { type: 'todo', content: 'Refactor sort key compaction in Web Worker', properties: { checked: false } },
-      { type: 'heading2', content: 'Architecture Principles' },
-      { type: 'bullet', content: '<strong>Local-First:</strong> All writes touch IndexedDB before any network negotiation.' },
-      { type: 'bullet', content: '<strong>Privacy First:</strong> Plaintext data never leaves the client unencrypted.' },
-      { type: 'bullet', content: '<strong>Zero Lag:</strong> Keep animation loops at locked 60fps with CSS hardware acceleration.' }
-    ]
-  },
-  {
-    id: 'daily-performance-tracker',
-    title: 'Daily Habit & Metric Mastery',
-    category: 'Personal Growth',
-    icon: '⚡',
-    description: 'Build indestructible habits, log daily quantitative metrics, and maintain personal performance streaks.',
-    blocks: [
-      { type: 'heading1', content: 'Daily Performance & Habit Log' },
-      { type: 'callout', content: 'Consistency compounds exponentially. Win the morning, win the day.', properties: { icon: '🔥' } },
-      { type: 'heading2', content: 'Non-Negotiable Morning Routine' },
-      { type: 'todo', content: 'Hydration: 500ml water + electrolytes', properties: { checked: true } },
-      { type: 'todo', content: '20 minutes deep reading / active recall practice', properties: { checked: true } },
-      { type: 'todo', content: '30 minutes high-intensity physical movement', properties: { checked: false } },
-      { type: 'heading2', content: 'Deep Work Sprint (90 Minutes)' },
-      { type: 'todo', content: 'Execute top-priority engineering deliverable with zero distractions', properties: { checked: false } },
-      { type: 'heading2', content: 'Evening Reflection & Shutdown' },
-      { type: 'todo', content: 'Log quantitative metrics & plan tomorrow’s 3 primary objectives', properties: { checked: false } }
-    ]
-  }
-];
 
 export default function TemplateGallery() {
   const navigate = useNavigate();
   const [cloningId, setCloningId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
-
-  const categories = ['All', 'Learning & Exams', 'Productivity & PKM', 'Engineering & Dev', 'Personal Growth'];
 
   const filteredTemplates = activeCategory === 'All' 
     ? TEMPLATES 
@@ -155,22 +68,13 @@ export default function TemplateGallery() {
     }
   };
 
-  const structuredData = [
-    {
-      '@context': 'https://schema.org',
-      '@type': 'CollectionPage',
-      '@id': 'https://maniacc.vercel.app/templates#collection',
-      'name': 'Free Local-First Productivity & Active Recall Templates — MANIAC',
-      'description': 'Browse free, 1-click cloneable templates for Notion alternative MANIAC: Active Recall decks, PARA method hubs, sprint trackers, and habit logs.',
-      'url': 'https://maniacc.vercel.app/templates'
-    }
-  ];
+  const structuredData = getTemplatesCollectionStructuredData(TEMPLATES);
 
   return (
     <div className="tpl-page">
       <SEO 
         title="Free Local-First Productivity & Active Recall Templates | MANIAC"
-        description="Browse free, 1-click cloneable templates for MANIAC: Active Recall flashcards, PARA method second brain, sprint trackers, and habit logs."
+        description="Browse free, 1-click cloneable templates for MANIAC: Active Recall flashcards, PARA method second brain, sprint trackers, student hubs, and habit logs."
         canonical="https://maniacc.vercel.app/templates"
         structuredData={structuredData}
       />
@@ -182,8 +86,8 @@ export default function TemplateGallery() {
       {/* Navigation */}
       <header className="tpl-header">
         <div className="tpl-container">
-          <nav className="tpl-nav">
-            <Link to="/" className="tpl-brand">
+          <nav className="tpl-nav" aria-label="Main Navigation">
+            <Link to="/" className="tpl-brand" aria-label="MANIAC Homepage">
               <ManiacLogo size="sm" />
               <span className="tpl-brand-title">MANIAC</span>
             </Link>
@@ -191,6 +95,7 @@ export default function TemplateGallery() {
             <div className="tpl-nav-links">
               <Link to="/" className="tpl-nav-link">Home</Link>
               <Link to="/notion-alternative" className="tpl-nav-link">Notion Alternative</Link>
+              <Link to="/obsidian-alternative" className="tpl-nav-link">Obsidian Alternative</Link>
               <Link to="/templates" className="tpl-nav-link active">Templates</Link>
             </div>
 
@@ -202,6 +107,17 @@ export default function TemplateGallery() {
           </nav>
         </div>
       </header>
+
+      {/* Breadcrumb Strip */}
+      <div className="tpl-breadcrumb-bar">
+        <div className="tpl-container">
+          <nav aria-label="Breadcrumb" className="tpl-breadcrumb-nav">
+            <Link to="/" className="tpl-breadcrumb-link">Home</Link>
+            <span className="tpl-breadcrumb-sep">/</span>
+            <span className="tpl-breadcrumb-current">Templates</span>
+          </nav>
+        </div>
+      </div>
 
       <main>
         {/* Hero */}
@@ -223,7 +139,7 @@ export default function TemplateGallery() {
 
             {/* Category Filter Pills */}
             <div className="tpl-category-filters">
-              {categories.map(cat => (
+              {TEMPLATE_CATEGORIES.map(cat => (
                 <button
                   key={cat}
                   type="button"
@@ -244,18 +160,31 @@ export default function TemplateGallery() {
               {filteredTemplates.map(template => (
                 <div key={template.id} className="tpl-card">
                   <div className="tpl-card-top">
-                    <span className="tpl-icon">{template.icon}</span>
+                    <span className="tpl-icon" aria-hidden="true">{template.icon}</span>
                     <span className="tpl-category-tag">{template.category}</span>
                   </div>
 
-                  <h3 className="tpl-card-title">{template.title}</h3>
-                  <p className="tpl-card-desc">{template.description}</p>
+                  <h2 className="tpl-card-title">
+                    <Link to={`/templates/${template.id}`}>
+                      {template.title}
+                    </Link>
+                  </h2>
+                  <p className="tpl-card-desc">{template.summary}</p>
 
                   <div className="tpl-card-blocks-preview">
                     <span className="preview-label">Contains:</span>
                     <span className="preview-pill">{template.blocks.length} modular blocks</span>
-                    <span className="preview-pill">Active Recall</span>
+                    <span className="preview-pill">{template.difficulty}</span>
                   </div>
+
+                  {/* Direct Link to Guide & Details */}
+                  <Link 
+                    to={`/templates/${template.id}`} 
+                    className="tpl-card-guide-link"
+                  >
+                    <span>View Template Guide &amp; Preview</span>
+                    <ArrowRight size={13} />
+                  </Link>
 
                   <div className="tpl-card-actions">
                     <button
@@ -312,14 +241,37 @@ export default function TemplateGallery() {
         <div className="tpl-container">
           <div className="tpl-footer-inner">
             <div className="tpl-footer-brand">
-              <ManiacLogo size="xs" />
-              <span>MANIAC Template Hub</span>
+              <div className="tpl-footer-logo-row">
+                <ManiacLogo size="xs" />
+                <span className="tpl-footer-brand-title">MANIAC</span>
+              </div>
+              <p className="tpl-footer-desc">
+                Turn chaos into a system with local-first modular knowledge workspaces.
+              </p>
             </div>
             <div className="tpl-footer-links">
-              <Link to="/">Home</Link>
-              <Link to="/notion-alternative">Notion Alternative</Link>
-              <Link to="/app">Workspace</Link>
+              <div className="tpl-footer-col">
+                <span className="tpl-footer-col-title">Navigation</span>
+                <Link to="/" className="tpl-footer-link">Home</Link>
+                <Link to="/notion-alternative" className="tpl-footer-link">Notion Alternative</Link>
+                <Link to="/obsidian-alternative" className="tpl-footer-link">Obsidian Alternative</Link>
+                <Link to="/active-recall-notes" className="tpl-footer-link">Active Recall Notes</Link>
+              </div>
+              <div className="tpl-footer-col">
+                <span className="tpl-footer-col-title">Top Templates</span>
+                <Link to="/templates/active-recall-srs" className="tpl-footer-link">Active Recall Hub</Link>
+                <Link to="/templates/para-method-second-brain" className="tpl-footer-link">PARA Second Brain</Link>
+                <Link to="/templates/engineering-roadmap" className="tpl-footer-link">Engineering Roadmap</Link>
+                <Link to="/templates/student-study-hub" className="tpl-footer-link">Student Study Hub</Link>
+              </div>
+              <div className="tpl-footer-col">
+                <span className="tpl-footer-col-title">Workspace</span>
+                <Link to="/app" className="tpl-footer-link">Launch App</Link>
+              </div>
             </div>
+          </div>
+          <div className="tpl-footer-bottom">
+            © {new Date().getFullYear()} MANIAC. All data stored strictly on your local device.
           </div>
         </div>
       </footer>
