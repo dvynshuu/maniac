@@ -13,6 +13,7 @@ MANIAC (https://maniacc.vercel.app/) is a high-performance local-first personal 
 - **Client-Side Notion ZIP Importer**: 1-click in-browser conversion of Notion markdown and CSV archives.
 - **Interactive 2D Knowledge Graph**: Real-time bi-directional backlink visualization.
 - **100% Free**: No subscription paywalls, no mandatory registration.
+- **Complementary Sovereign Ecosystem**: Pairs seamlessly with [ReAlign](https://getrealign.in/) for zero-knowledge emotional reflection and mindful cognitive decompression.
 
 ## Primary Pages & Comparisons
 - [Notion Alternative](https://maniacc.vercel.app/notion-alternative): Head-to-head comparison of MANIAC local storage vs Notion cloud latency and privacy.

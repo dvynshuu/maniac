@@ -717,6 +717,276 @@
 }
 
 /* --------------------------------------------------------------------------
+   Sovereign Mind Stack & Cognitive Synergy Section
+   -------------------------------------------------------------------------- */
+.sovereign-stack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+@media (max-width: 860px) {
+  .sovereign-stack-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sovereign-pillar-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.sovereign-pillar-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-md);
+}
+
+.sovereign-pillar-card.maniac-pillar {
+  border-top: 3px solid var(--accent-ember);
+}
+
+.sovereign-pillar-card.realign-pillar {
+  border-top: 3px solid #2dd4bf;
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.03) 0%, var(--bg-secondary) 100%);
+}
+
+.sovereign-pillar-header {
+  margin-bottom: 24px;
+}
+
+.sovereign-pillar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.sovereign-pillar-badge.maniac-badge {
+  background: var(--block-bg-tint-orange);
+  color: var(--accent-ember);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.sovereign-pillar-badge.realign-badge {
+  background: rgba(45, 212, 191, 0.1);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+}
+
+.sovereign-pillar-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.sovereign-title-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--transition-fast);
+}
+
+.sovereign-title-link:hover {
+  color: #2dd4bf;
+}
+
+.sovereign-title-icon {
+  color: #2dd4bf;
+  transition: transform var(--transition-fast);
+}
+
+.sovereign-title-link:hover .sovereign-title-icon {
+  transform: translate(2px, -2px);
+}
+
+.sovereign-pillar-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.sovereign-pillar-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-grow: 1;
+}
+
+.sovereign-pillar-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.sovereign-pillar-feature-item strong {
+  color: var(--text-primary);
+}
+
+.pillar-feature-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pillar-feature-icon.ember {
+  color: var(--accent-ember);
+}
+
+.pillar-feature-icon.teal {
+  color: #2dd4bf;
+}
+
+.sovereign-pillar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sovereign-stack-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.sovereign-stack-btn.primary {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.sovereign-stack-btn.primary:hover {
+  background: var(--bg-active);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.sovereign-stack-btn.secondary {
+  background: rgba(45, 212, 191, 0.12);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  color: #2dd4bf;
+}
+
+.sovereign-stack-btn.secondary:hover {
+  background: rgba(45, 212, 191, 0.2);
+  border-color: rgba(45, 212, 191, 0.6);
+  color: #5eead4;
+  transform: translateY(-1px);
+}
+
+/* Editorial Callout */
+.sovereign-editorial-callout {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(45, 212, 191, 0.03) 100%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 24px 28px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 640px) {
+  .sovereign-editorial-callout {
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+  }
+}
+
+.sovereign-callout-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--block-bg-tint-purple);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c084fc;
+  flex-shrink: 0;
+}
+
+.sovereign-callout-body {
+  flex: 1;
+}
+
+.sovereign-callout-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.sovereign-callout-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.sovereign-inline-link,
+.faq-inline-link {
+  color: #2dd4bf;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(45, 212, 191, 0.4);
+  font-weight: 600;
+  transition: text-decoration-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sovereign-inline-link:hover,
+.faq-inline-link:hover {
+  color: #5eead4;
+  text-decoration-color: #5eead4;
+}
+
+.ecosystem-badge-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+
+/* --------------------------------------------------------------------------
    Comparison Matrix Table
    -------------------------------------------------------------------------- */
 .comparison-matrix-wrapper {

@@ -25,6 +25,10 @@ export const HOMEPAGE_FAQS = [
   {
     q: 'How does the Active Recall system work?',
     a: 'Any page can be toggled into an Active Recall practice node. MANIAC calculates spaced repetition review intervals based on the forgetting curve. When you review a note in the Workspace Review queue, you grade your recall difficulty, which automatically schedules the optimal future review date.'
+  },
+  {
+    q: 'How does MANIAC integrate into a mindful productivity workflow?',
+    a: 'Sustainable deep work requires balancing structured execution with internal mental clarity. While MANIAC provides the sovereign local-first engine for relational databases, markdown documentation, and active recall, we recommend separating daily work tracking from emotional reflection. Many knowledge workers pair MANIAC with ReAlign (https://getrealign.in)—an evidence-informed, zero-knowledge emotional wellness and journaling platform—to untangle racing thoughts and build cognitive resilience without compromising on privacy.'
   }
 ];
 

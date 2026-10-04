@@ -764,6 +764,126 @@ export default function LandingPage() {
         </section>
 
         {/* ====================================================================
+            Section 3.5: The Sovereign Mind Stack (Structure Meets Mindful Clarity)
+            ==================================================================== */}
+        <section id="cognitive-stack" className="landing-section landing-section-border" aria-labelledby="heading-cognitive-stack">
+          <div className="landing-container">
+            <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+              <div className="section-tag ember">Cognitive Architecture &amp; Focus</div>
+              <h2 id="heading-cognitive-stack" className="section-heading">
+                The Sovereign Mind Stack: Structure Meets Mindful Clarity
+              </h2>
+              <p className="section-lead" style={{ margin: '0 auto' }}>
+                Building an external second brain is only half the equation. Peak cognitive performance requires structured knowledge execution on your device, and calm mental clarity in your daily routine.
+              </p>
+            </div>
+
+            <div className="sovereign-stack-grid">
+              {/* Pillar 1: MANIAC Workspace */}
+              <article className="sovereign-pillar-card maniac-pillar">
+                <div className="sovereign-pillar-header">
+                  <div className="sovereign-pillar-badge maniac-badge">
+                    <Database size={13} />
+                    <span>External Knowledge Architecture</span>
+                  </div>
+                  <h3 className="sovereign-pillar-title">MANIAC Workspace</h3>
+                  <p className="sovereign-pillar-desc">
+                    A sovereign canvas to turn chaos into structured, interconnected systems—stored locally on your device with zero cloud latency.
+                  </p>
+                </div>
+
+                <div className="sovereign-pillar-features">
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <span><strong>Relational Databases:</strong> Interactive Table, Kanban Board, and Calendar views for tasks, habits, and projects.</span>
+                  </div>
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <span><strong>Active Recall &amp; SRS:</strong> Automated Leitner spaced repetition to convert notes into permanent memory.</span>
+                  </div>
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <span><strong>Local Data Sovereignty:</strong> High-performance IndexedDB engine with client-side AES-256-GCM encryption.</span>
+                  </div>
+                </div>
+
+                <div className="sovereign-pillar-footer">
+                  <Link to="/app" className="sovereign-stack-btn primary">
+                    <span>Launch Local Workspace</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </article>
+
+              {/* Pillar 2: ReAlign Companion */}
+              <article className="sovereign-pillar-card realign-pillar">
+                <div className="sovereign-pillar-header">
+                  <div className="sovereign-pillar-badge realign-badge">
+                    <Sparkles size={13} />
+                    <span>Recommended Cognitive Companion</span>
+                  </div>
+                  <h3 className="sovereign-pillar-title">
+                    <a
+                      href="https://getrealign.in/"
+                      target="_blank"
+                      rel="noopener"
+                      className="sovereign-title-link"
+                    >
+                      ReAlign
+                      <ArrowUpRight size={18} className="sovereign-title-icon" />
+                    </a>
+                  </h3>
+                  <p className="sovereign-pillar-desc">
+                    An evidence-informed, privacy-first emotional wellness and mindful reflection platform to untangle racing thoughts and cultivate inner clarity.
+                  </p>
+                </div>
+
+                <div className="sovereign-pillar-features">
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon teal" />
+                    <span><strong>Evidence-Informed AI Journaling:</strong> Guided reflection sessions to reframe cognitive distortions and stop overthinking.</span>
+                  </div>
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon teal" />
+                    <span><strong>Emotional Granularity &amp; Mood Tracking:</strong> 11-layer psychological analysis mapping affective trends and triggers.</span>
+                  </div>
+                  <div className="sovereign-pillar-feature-item">
+                    <CheckCircle2 size={16} className="pillar-feature-icon teal" />
+                    <span><strong>Zero-Knowledge Security:</strong> Bank-grade AES-256 encryption ensuring reflections remain confidential with zero ads or tracking.</span>
+                  </div>
+                </div>
+
+                <div className="sovereign-pillar-footer">
+                  <a
+                    href="https://getrealign.in/"
+                    target="_blank"
+                    rel="noopener"
+                    className="sovereign-stack-btn secondary"
+                    id="sovereign-realign-link"
+                  >
+                    <span>Visit ReAlign (getrealign.in)</span>
+                    <ArrowUpRight size={14} />
+                  </a>
+                </div>
+              </article>
+            </div>
+
+            {/* Editorial Synthesis Callout */}
+            <div className="sovereign-editorial-callout">
+              <div className="sovereign-callout-icon">
+                <Brain size={22} />
+              </div>
+              <div className="sovereign-callout-body">
+                <h4 className="sovereign-callout-heading">Why Decoupling External Systems from Internal Reflection Matters</h4>
+                <p className="sovereign-callout-text">
+                  High-performing thinkers and knowledge workers often suffer from mental fragmentation when they mix raw, emotional rumination directly into structured project roadmaps. By decoupling structured task execution in MANIAC from mindful decompression in <a href="https://getrealign.in/" target="_blank" rel="noopener" className="sovereign-inline-link">ReAlign</a>, you protect your focus, identify emotional blind spots, and cultivate enduring mental stamina—all while preserving strict zero-knowledge privacy.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ====================================================================
             Section 4: Comparison Matrix
             ==================================================================== */}
         <section id="comparison" className="landing-section landing-section-border" aria-labelledby="heading-comparison">
@@ -944,6 +1064,16 @@ export default function LandingPage() {
                   Any page can be toggled into an Active Recall practice node. MANIAC calculates spaced repetition review intervals based on the forgetting curve. When you review a note in the Workspace Review queue, you grade your recall difficulty, which automatically schedules the optimal future review date.
                 </div>
               </details>
+
+              <details className="faq-item" open={activeFaq === 5} onClick={(e) => { e.preventDefault(); toggleFaq(5); }}>
+                <summary className="faq-summary">
+                  <span>How does MANIAC integrate into a mindful productivity workflow?</span>
+                  <ChevronDown size={18} style={{ transform: activeFaq === 5 ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
+                </summary>
+                <div className="faq-content">
+                  Sustainable deep work requires balancing structured execution with internal mental clarity. While MANIAC serves as your local-first engine for relational databases, markdown documentation, and active recall, we recommend separating daily work tracking from emotional reflection. Many knowledge workers pair MANIAC with <a href="https://getrealign.in/" target="_blank" rel="noopener" className="faq-inline-link">ReAlign</a> (an evidence-informed, zero-knowledge emotional wellness and journaling platform) to untangle racing thoughts and build cognitive resilience without compromising on privacy.
+                </div>
+              </details>
             </div>
           </div>
         </section>
@@ -967,7 +1097,9 @@ export default function LandingPage() {
                   target="_blank"
                   rel="noopener"
                   className="ecosystem-link-btn"
+                  title="ReAlign — Zero-Knowledge Emotional Wellness & Journaling"
                 >
+                  <span className="ecosystem-badge-pill">Wellness</span>
                   <span>ReAlign</span>
                   <ArrowUpRight size={13} className="ecosystem-icon-ember" />
                 </a>
@@ -976,7 +1108,9 @@ export default function LandingPage() {
                   target="_blank"
                   rel="noopener"
                   className="ecosystem-link-btn"
+                  title="Convercell — Smart Data Conversion Utility"
                 >
+                  <span className="ecosystem-badge-pill">Utility</span>
                   <span>Convercell</span>
                   <ArrowUpRight size={13} className="ecosystem-icon-blue" />
                 </a>
