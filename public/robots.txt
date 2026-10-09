@@ -1,8 +1,28 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-Disallow: /app/
-Disallow: /page/
+Disallow: /app
+Disallow: /page
+Disallow: /share
+
+# Explicit AI Search Crawlers & Web Scrapers
+User-agent: GPTBot
+Allow: /
+Disallow: /app
+Disallow: /page
+Disallow: /share
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /app
+Disallow: /page
+Disallow: /share
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /app
+Disallow: /page
+Disallow: /share
 
 # Host and Sitemap
 Sitemap: https://maniacc.vercel.app/sitemap.xml

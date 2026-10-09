@@ -96,6 +96,7 @@ export default function TemplateGallery() {
               <Link to="/" className="tpl-nav-link">Home</Link>
               <Link to="/notion-alternative" className="tpl-nav-link">Notion Alternative</Link>
               <Link to="/obsidian-alternative" className="tpl-nav-link">Obsidian Alternative</Link>
+              <Link to="/active-recall-notes" className="tpl-nav-link">Active Recall</Link>
               <Link to="/templates" className="tpl-nav-link active">Templates</Link>
             </div>
 

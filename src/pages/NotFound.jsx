@@ -12,7 +12,7 @@ export default function NotFound() {
       <SEO
         title="404 — Page Not Found | MANIAC"
         description="The requested page could not be located in this workspace vault."
-        canonical={`${SITE_URL}/404`}
+        canonical={null}
         robots="noindex, nofollow"
       />
 

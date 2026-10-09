@@ -87,7 +87,8 @@ export default function SharedPagePreview() {
       <SEO 
         title={snapshot ? `${snapshot.title} — Shared via MANIAC` : 'Shared Document — MANIAC'}
         description={snapshot ? `Read and clone "${snapshot.title}" into your private, local-first MANIAC workspace.` : 'View shared documents and templates in MANIAC.'}
-        canonical="https://maniacc.vercel.app/share"
+        canonical={null}
+        robots="noindex, nofollow"
       />
 
       {/* Top Floating Viral Bar */}

@@ -80,6 +80,7 @@ export default function ObsidianAlternative() {
             <div className="obs-nav-links">
               <Link to="/" className="obs-nav-link">Home</Link>
               <Link to="/notion-alternative" className="obs-nav-link">Notion Alternative</Link>
+              <Link to="/active-recall-notes" className="obs-nav-link">Active Recall</Link>
               <Link to="/templates" className="obs-nav-link">Templates</Link>
             </div>
 

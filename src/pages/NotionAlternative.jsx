@@ -112,8 +112,8 @@ export default function NotionAlternative() {
             </div>
 
             <h1 className="alt-hero-title">
-              The Local-First, Zero-Latency <br />
-              <span className="alt-title-gradient">Alternative to Notion</span>
+              The Best Offline Notion Alternative — <br />
+              <span className="alt-title-gradient">Local-First &amp; Zero-Latency</span>
             </h1>
 
             <p className="alt-hero-subtitle">

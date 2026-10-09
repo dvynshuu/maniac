@@ -108,6 +108,9 @@ export default function LandingPage() {
               <Link to="/obsidian-alternative" className="landing-nav-link-btn">
                 Obsidian Alternative
               </Link>
+              <Link to="/active-recall-notes" className="landing-nav-link-btn">
+                Active Recall
+              </Link>
               <Link to="/templates" className="landing-nav-link-btn">
                 Templates
               </Link>
@@ -142,7 +145,7 @@ export default function LandingPage() {
             </div>
 
             <h1 id="hero-title" className="hero-title">
-              The Local-First, Zero-Latency <span className="hero-title-accent">Alternative to Notion</span>
+              Turn Chaos into a System with a <span className="hero-title-accent">Sovereign Workspace</span>
             </h1>
 
             <p className="hero-subtitle">

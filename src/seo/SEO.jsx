@@ -20,6 +20,10 @@ function setMetaTag(attributeName, attributeValue, content) {
 
 function setCanonical(url) {
   let link = document.querySelector('link[rel="canonical"]');
+  if (!url) {
+    if (link) link.remove();
+    return;
+  }
   if (!link) {
     link = document.createElement('link');
     link.setAttribute('rel', 'canonical');
