@@ -1,0 +1,363 @@
+/**
+ * ─── Slash Command Registry ────────────────────────────────────
+ * Provider-based command framework with fuzzy scoring,
+ * async providers, categorization, and extension API.
+ */
+
+import { BLOCK_TYPE_META } from '../utils/constants';
+import { usePageStore } from '../stores/pageStore';
+
+export interface CommandItem {
+  id: string;
+  type?: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  score: number;
+  action: string;
+  providerId?: string;
+  providerName?: string;
+  pageId?: string;
+  pageIcon?: string;
+  count?: number;
+  insertText?: string;
+  [key: string]: any;
+}
+
+export interface CommandProvider {
+  id: string;
+  name: string;
+  priority?: number;
+  getItems: (query: string) => Promise<CommandItem[]>;
+}
+
+// ─── Fuzzy Scoring ──────────────────────────────────────────────
+
+function fuzzyScore(query: string, target: string): number {
+  if (!query) return 1;
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  
+  if (t === q) return 100;
+  if (t.startsWith(q)) return 80 + (q.length / t.length) * 20;
+  const idx = t.indexOf(q);
+  if (idx !== -1) return 50 + (q.length / t.length) * 20;
+  const words = t.split(/\s+/);
+  for (const word of words) {
+    if (word.startsWith(q)) return 60 + (q.length / word.length) * 15;
+  }
+  let qi = 0;
+  let matched = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) { matched++; qi++; }
+  }
+  if (qi === q.length) return 20 + (matched / t.length) * 20;
+  return 0;
+}
+
+// ─── Provider Registry ──────────────────────────────────────────
+
+const _providers: CommandProvider[] = [];
+
+export function registerProvider(provider: CommandProvider): void {
+  const existing = _providers.findIndex(p => p.id === provider.id);
+  if (existing !== -1) {
+    _providers[existing] = provider;
+  } else {
+    _providers.push(provider);
+  }
+  _providers.sort((a, b) => (a.priority || 50) - (b.priority || 50));
+}
+
+export async function getCommands(query: string): Promise<CommandItem[]> {
+  const results = await Promise.all(
+    _providers.map(async (provider) => {
+      try {
+        const items = await provider.getItems(query);
+        return items.map(item => ({
+          ...item,
+          providerId: provider.id,
+          providerName: provider.name,
+        }));
+      } catch (e) {
+        console.warn(`[SlashRegistry] Provider "${provider.id}" failed:`, e);
+        return [];
+      }
+    })
+  );
+
+  const all = results.flat();
+  const seen = new Set<string>();
+  const deduped: CommandItem[] = [];
+  for (const item of all) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      deduped.push(item);
+    }
+  }
+
+  return deduped
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+export async function getCommandsByCategory(query: string): Promise<Map<string, CommandItem[]>> {
+  const commands = await getCommands(query);
+  const categories = new Map<string, CommandItem[]>();
+  
+  for (const cmd of commands) {
+    const cat = cmd.category || 'Other';
+    if (!categories.has(cat)) categories.set(cat, []);
+    categories.get(cat)!.push(cmd);
+  }
+
+  return categories;
+}
+
+// ─── Built-in Providers ─────────────────────────────────────────
+
+// 1. Block Type Provider
+registerProvider({
+  id: 'block-types',
+  name: 'Basic Blocks',
+  priority: 10,
+  getItems: async (query: string): Promise<CommandItem[]> => {
+    const baseItems: CommandItem[] = Object.entries(BLOCK_TYPE_META)
+      .filter(([type]) => type !== 'column' && type !== 'column_list')
+      .map(([type, meta]) => {
+        const labelScore = fuzzyScore(query, meta.label);
+        const typeScore = fuzzyScore(query, type);
+        const descScore = fuzzyScore(query, meta.description || '');
+        const score = Math.max(labelScore, typeScore, descScore * 0.5);
+
+        let category = 'Basic';
+        if (['heading1', 'heading2', 'heading3'].includes(type)) category = 'Basic';
+        else if (['image', 'embed', 'code', 'math'].includes(type)) category = 'Media & Code';
+        else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
+        else if (['toggle', 'callout', 'quote', 'divider'].includes(type)) category = 'Advanced';
+        else if (['countdown', 'pomodoro', 'progress_bar', 'widget'].includes(type)) category = 'Widgets';
+
+        return {
+          id: `block:${type}`,
+          type,
+          label: meta.label,
+          description: meta.description,
+          icon: meta.icon,
+          category,
+          score,
+          action: 'create_block',
+        };
+      });
+
+    const col2Score = Math.max(fuzzyScore(query, '2 columns'), fuzzyScore(query, 'columns'), fuzzyScore(query, 'col2'), fuzzyScore(query, 'two'));
+    const col3Score = Math.max(fuzzyScore(query, '3 columns'), fuzzyScore(query, 'columns'), fuzzyScore(query, 'col3'), fuzzyScore(query, 'three'));
+
+    if (col2Score > 0) {
+      baseItems.push({
+        id: 'columns:2',
+        type: 'column_list',
+        label: '2 Columns',
+        description: 'Create 2 side-by-side columns',
+        icon: 'Columns',
+        category: 'Advanced',
+        score: col2Score,
+        action: 'create_columns',
+        count: 2,
+      });
+    }
+
+    if (col3Score > 0) {
+      baseItems.push({
+        id: 'columns:3',
+        type: 'column_list',
+        label: '3 Columns',
+        description: 'Create 3 side-by-side columns',
+        icon: 'Columns',
+        category: 'Advanced',
+        score: col3Score,
+        action: 'create_columns',
+        count: 3,
+      });
+    }
+
+    const boardScore = Math.max(
+      fuzzyScore(query, 'board'), 
+      fuzzyScore(query, 'habit'), 
+      fuzzyScore(query, 'kanban'), 
+      fuzzyScore(query, 'goals'),
+      fuzzyScore(query, 'weekly')
+    );
+    if (boardScore > 0) {
+      baseItems.push({
+        id: 'block:board_custom',
+        type: 'database',
+        label: 'Board / Habit Tracker',
+        description: 'Weekly habit tracker with anime covers, checkboxes & stats',
+        icon: 'Layout',
+        category: 'Database',
+        score: Math.max(boardScore, 85),
+        action: 'create_block',
+      });
+    }
+
+    return baseItems;
+  },
+});
+
+// 2. Page Link Provider
+registerProvider({
+  id: 'page-links',
+  name: 'Link to Page',
+  priority: 20,
+  getItems: async (query: string): Promise<CommandItem[]> => {
+    if (!query || query.length < 1) return [];
+    
+    const pages = usePageStore.getState().pages;
+    return pages
+      .filter(p => !p.isArchived)
+      .map(p => {
+        const title = p.title || 'Untitled';
+        const score = fuzzyScore(query, title);
+        return {
+          id: `page:${p.id}`,
+          pageId: p.id,
+          label: title,
+          description: 'Link to page',
+          icon: 'FileText',
+          category: 'Pages',
+          score: score * 0.9,
+          action: 'link_page',
+          pageIcon: p.icon,
+        };
+      });
+  },
+});
+
+// 3. Turn Into Provider
+registerProvider({
+  id: 'turn-into',
+  name: 'Turn into',
+  priority: 30,
+  getItems: async (query: string): Promise<CommandItem[]> => {
+    const turnQuery = query.toLowerCase();
+    if (!turnQuery.startsWith('turn') && !turnQuery.startsWith('change') && !turnQuery.startsWith('convert')) {
+      return [];
+    }
+    
+    const subQuery = turnQuery
+      .replace(/^(turn\s*into|change\s*to|convert\s*to)\s*/i, '')
+      .trim();
+
+    return Object.entries(BLOCK_TYPE_META).map(([type, meta]) => {
+      const score = subQuery ? fuzzyScore(subQuery, meta.label) : 40;
+      return {
+        id: `turninto:${type}`,
+        type,
+        label: `Turn into ${meta.label}`,
+        description: `Convert current block to ${meta.label.toLowerCase()}`,
+        icon: meta.icon,
+        category: 'Turn into',
+        score,
+        action: 'change_type',
+      };
+    });
+  },
+});
+
+// 4. Quick Calculator & Math Provider
+registerProvider({
+  id: 'quick-calc',
+  name: 'Quick Calculator',
+  priority: 5,
+  getItems: async (query: string): Promise<CommandItem[]> => {
+    if (!query) return [];
+    let expr = query.trim();
+    if (expr.toLowerCase().startsWith('calc')) {
+      expr = expr.substring(4).trim();
+    }
+
+    if (!expr || !/^[\d\s+\-*/%().,^]+$/.test(expr)) return [];
+
+    try {
+      const sanitized = expr.replace(/,/g, '');
+      const calcResult = Function(`'use strict'; return (${sanitized})`)();
+      if (typeof calcResult === 'number' && !isNaN(calcResult) && isFinite(calcResult)) {
+        const formatted = Math.round(calcResult * 10000) / 10000;
+        return [{
+          id: `calc:${formatted}`,
+          label: `${expr} = ${formatted}`,
+          description: 'Insert calculation result',
+          icon: 'Calculator',
+          category: 'Calculations',
+          score: 95,
+          action: 'insert_text',
+          insertText: String(formatted),
+        }];
+      }
+    } catch {
+      return [];
+    }
+    return [];
+  },
+});
+
+// 5. Date & Productivity Helpers Provider
+registerProvider({
+  id: 'date-helpers',
+  name: 'Date Helpers',
+  priority: 15,
+  getItems: async (query: string): Promise<CommandItem[]> => {
+    const q = (query || '').toLowerCase().trim();
+    const items: CommandItem[] = [];
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+    if (fuzzyScore(q, 'today') > 0 || fuzzyScore(q, 'date') > 0) {
+      items.push({
+        id: 'helper:today',
+        label: `Today: ${todayStr}`,
+        description: 'Insert current date',
+        icon: 'Calendar',
+        category: 'Quick Helpers',
+        score: Math.max(fuzzyScore(q, 'today'), fuzzyScore(q, 'date')),
+        action: 'insert_text',
+        insertText: todayStr,
+      });
+    }
+
+    if (fuzzyScore(q, 'tomorrow') > 0) {
+      items.push({
+        id: 'helper:tomorrow',
+        label: `Tomorrow: ${tomorrowStr}`,
+        description: 'Insert tomorrow\'s date',
+        icon: 'Calendar',
+        category: 'Quick Helpers',
+        score: fuzzyScore(q, 'tomorrow'),
+        action: 'insert_text',
+        insertText: tomorrowStr,
+      });
+    }
+
+    if (fuzzyScore(q, 'time') > 0 || fuzzyScore(q, 'now') > 0) {
+      items.push({
+        id: 'helper:time',
+        label: `Current Time: ${timeStr}`,
+        description: 'Insert current timestamp',
+        icon: 'Clock',
+        category: 'Quick Helpers',
+        score: Math.max(fuzzyScore(q, 'time'), fuzzyScore(q, 'now')),
+        action: 'insert_text',
+        insertText: `${todayStr} at ${timeStr}`,
+      });
+    }
+
+    return items;
+  },
+});

@@ -1,0 +1,613 @@
+import { create } from 'zustand';
+import { db } from '../db/database';
+import { useBlockStore } from './blockStore';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from './securityStore';
+import { createProperty, createDatabaseRow, createId, debounce } from '../utils/helpers';
+import { dispatch } from '../core/commandBus';
+import { DatabaseProperty, DatabaseRow } from '../types/database';
+
+export interface DatabaseStateEntry {
+  schema: DatabaseProperty[];
+  rows: DatabaseRow[];
+  initialized?: boolean;
+  loading?: boolean;
+  lastUpdate?: number;
+}
+
+export interface DatabaseStore {
+  databases: Record<string, DatabaseStateEntry>;
+  initializeDatabase: (blockId: string, schema?: DatabaseProperty[], legacyRows?: any[]) => Promise<void>;
+  getDatabaseData: (blockId: string) => { schema: DatabaseProperty[]; rows: DatabaseRow[] };
+  debouncedSaves: Record<string, any>;
+  _saveToBlockStore: (blockId: string, updates: any) => void;
+  _immediateSave: (blockId: string, updates: any) => Promise<void>;
+  _updateLocal: (blockId: string, updates: Partial<DatabaseStateEntry>) => void;
+  addProperty: (blockId: string, overrides?: Partial<DatabaseProperty>) => Promise<DatabaseProperty>;
+  addPropertyToSchema: (blockId: string, property: DatabaseProperty) => Promise<void>;
+  updateProperty: (blockId: string, propertyId: string, updates: Partial<DatabaseProperty>) => Promise<void>;
+  deleteProperty: (blockId: string, propertyId: string) => Promise<void>;
+  reorderProperties: (blockId: string, sourceIndex: number, destinationIndex: number) => Promise<void>;
+  addRow: (blockId: string, overrides?: any) => Promise<DatabaseRow>;
+  updateCell: (blockId: string, rowId: string, propertyId: string, value: any) => void;
+  updateCellImmediate: (blockId: string, rowId: string, propertyId: string, value: any) => Promise<void>;
+  deleteRow: (blockId: string, rowId: string) => Promise<void>;
+  duplicateRow: (blockId: string, rowId: string) => Promise<void>;
+}
+
+const encryptCellForDB = async (cellObj: any) => {
+  const key = useSecurityStore.getState().derivedKey;
+  const dbCell = { ...cellObj };
+  if (key && dbCell.value !== undefined) {
+    dbCell.value = await SecurityService.encrypt(JSON.stringify(dbCell.value), key);
+    dbCell._isEncrypted = true;
+  }
+  return dbCell;
+};
+
+const syncReciprocalRelation = async (blockId: string, rowId: string, propertyId: string, newValue: any, oldValue: any) => {
+  const { schema } = useDatabaseStore.getState().getDatabaseData(blockId);
+  const prop = schema.find(p => p.id === propertyId);
+  if (!prop || prop.type !== 'relation') return;
+
+  const { relatedDatabaseId, reciprocalPropertyId } = prop.config || {};
+  if (!relatedDatabaseId || !reciprocalPropertyId) return;
+
+  const prevArray = Array.isArray(oldValue) ? oldValue : [];
+  const nextArray = Array.isArray(newValue) ? newValue : [];
+
+  const added = nextArray.filter(id => !prevArray.includes(id));
+  const removed = prevArray.filter(id => !nextArray.includes(id));
+
+  const targetStore = useDatabaseStore.getState();
+
+  if (!targetStore.databases[relatedDatabaseId]) {
+    const block = await db.blocks.get(relatedDatabaseId);
+    if (block) {
+      await targetStore.initializeDatabase(relatedDatabaseId, block.properties?.schema || [], []);
+    }
+  }
+
+  const updateTargetCell = async (targetRowId: string, isAdd: boolean) => {
+    const targetData = targetStore.getDatabaseData(relatedDatabaseId);
+    const targetRow = targetData.rows.find(r => r.id === targetRowId);
+    if (!targetRow) return;
+
+    const currentRecipVal = Array.isArray(targetRow.values?.[reciprocalPropertyId]) 
+      ? targetRow.values[reciprocalPropertyId] 
+      : [];
+
+    let nextRecipVal;
+    if (isAdd) {
+      nextRecipVal = currentRecipVal.includes(rowId) ? currentRecipVal : [...currentRecipVal, rowId];
+    } else {
+      nextRecipVal = currentRecipVal.filter(id => id !== rowId);
+    }
+
+    const updatedRows = targetData.rows.map(r => {
+      if (r.id === targetRowId) {
+        return {
+          ...r,
+          updatedAt: Date.now(),
+          values: { ...r.values, [reciprocalPropertyId]: nextRecipVal }
+        };
+      }
+      return r;
+    });
+
+    targetStore._updateLocal(relatedDatabaseId, { rows: updatedRows });
+
+    const cell = {
+      id: `${targetRowId}_${reciprocalPropertyId}`,
+      rowId: targetRowId,
+      blockId: relatedDatabaseId,
+      propertyId: reciprocalPropertyId,
+      value: nextRecipVal,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const encryptedCell = await encryptCellForDB(cell);
+    await db.database_cells.put(encryptedCell);
+  };
+
+  await Promise.all([
+    ...added.map(id => updateTargetCell(id, true)),
+    ...removed.map(id => updateTargetCell(id, false))
+  ]);
+};
+
+const EMPTY_ARRAY: any[] = [];
+
+const DEFAULT_SCHEMA: DatabaseProperty[] = [
+  {
+    id: 'title',
+    name: '',
+    type: 'text',
+    width: 200,
+    config: {}
+  },
+  {
+    id: 'tags',
+    name: '',
+    type: 'multi_select',
+    width: 200,
+    config: {}
+  }
+];
+
+export const useDatabaseStore = create<DatabaseStore>((set, get) => ({
+  // Local cache of database state for instant UI updates
+  // Structure: { [blockId]: { schema, rows, initialized: true } }
+  databases: {},
+
+  // Initializes local state from block properties
+  initializeDatabase: async (blockId, schema, legacyRows) => {
+    if (get().databases[blockId]?.initialized || get().databases[blockId]?.loading) return;
+
+    let activeSchema = schema;
+    if (!activeSchema || activeSchema.length === 0) {
+      activeSchema = DEFAULT_SCHEMA;
+      // Sync default schema to block properties immediately
+      const block = useBlockStore.getState().getBlock(blockId);
+      if (block) {
+        dispatch({
+          type: 'block/update',
+          payload: { blockId, updates: { properties: { ...block.properties, schema: activeSchema } } }
+        });
+      }
+    }
+
+    // Mark as loading to prevent concurrent calls
+    set(state => ({
+      databases: {
+        ...state.databases,
+        [blockId]: {
+          schema: activeSchema || DEFAULT_SCHEMA,
+          rows: [],
+          ...state.databases[blockId],
+          loading: true
+        }
+      }
+    }));
+
+    try {
+      if (legacyRows && legacyRows.length > 0) {
+        const rowsToInsert = legacyRows.map(r => ({ ...r, blockId }));
+        await db.database_rows.bulkPut(rowsToInsert);
+
+        const block = useBlockStore.getState().getBlock(blockId);
+        if (block) {
+          const newProps = { ...block.properties };
+          delete newProps.rows;
+          await dispatch({
+            type: 'block/update',
+            payload: { blockId, updates: { properties: newProps } }
+          });
+        }
+      }
+
+      let rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+
+      if (rowsRaw.length === 0 && (!legacyRows || legacyRows.length === 0)) {
+        const row1 = createDatabaseRow(activeSchema, { blockId });
+        const row2 = createDatabaseRow(activeSchema, { blockId });
+
+        await db.database_rows.bulkAdd([
+          { id: row1.id, blockId, createdAt: row1.createdAt, updatedAt: row1.updatedAt },
+          { id: row2.id, blockId, createdAt: row2.createdAt, updatedAt: row2.updatedAt }
+        ]);
+
+        const cellsToInsert: any[] = [];
+        [row1, row2].forEach(row => {
+          Object.entries(row.values || {}).forEach(([propId, val]) => {
+            cellsToInsert.push({
+              id: `${row.id}_${propId}`,
+              rowId: row.id,
+              blockId,
+              propertyId: propId,
+              value: val,
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            });
+          });
+        });
+
+        if (cellsToInsert.length > 0) {
+          const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+          await db.database_cells.bulkPut(encryptedCells);
+        }
+
+        rowsRaw = await db.database_rows.where('blockId').equals(blockId).sortBy('createdAt');
+      }
+
+      const cellsRaw = await db.database_cells.where('blockId').equals(blockId).toArray();
+
+      const key = useSecurityStore.getState().derivedKey;
+
+      const cellsByRow: Record<string, Record<string, any>> = {};
+      for (const cell of cellsRaw) {
+        if (!cellsByRow[cell.rowId]) cellsByRow[cell.rowId] = {};
+        let val = cell.value;
+        if (key && cell._isEncrypted && typeof val === 'string') {
+          try { val = JSON.parse(await SecurityService.decrypt(val, key) || ''); } catch { val = ''; }
+        }
+        cellsByRow[cell.rowId][cell.propertyId] = val;
+      }
+
+      const rows: DatabaseRow[] = await Promise.all(rowsRaw.map(async r => {
+        let values = cellsByRow[r.id] || {};
+
+        if ((r as any).values !== undefined) {
+          let oldVals = (r as any).values;
+          if (key && (r as any)._isEncrypted && typeof oldVals === 'string') {
+            try { oldVals = JSON.parse(await SecurityService.decrypt(oldVals, key) || ''); } catch { oldVals = {}; }
+          }
+          if (typeof oldVals === 'object' && oldVals !== null) {
+            values = { ...values, ...oldVals };
+            const cellsToInsert = Object.entries(oldVals).map(([propId, val]) => ({
+              id: `${r.id}_${propId}`, rowId: r.id, blockId, propertyId: propId, value: val, createdAt: Date.now(), updatedAt: Date.now()
+            }));
+            if (cellsToInsert.length > 0) await db.database_cells.bulkPut(cellsToInsert);
+          }
+          delete (r as any).values;
+          delete (r as any)._isEncrypted;
+          await db.database_rows.put(r);
+        }
+        return { ...r, values };
+      }));
+
+      set(state => ({
+        databases: {
+          ...state.databases,
+          [blockId]: { schema: activeSchema || DEFAULT_SCHEMA, rows, initialized: true, lastUpdate: Date.now() }
+        }
+      }));
+    } catch (error) {
+      console.error('[databaseStore] Failed to initialize database:', error);
+      set(state => ({
+        databases: {
+          ...state.databases,
+          [blockId]: { ...state.databases[blockId], loading: false }
+        }
+      }));
+    }
+  },
+
+  getDatabaseData: (blockId) => {
+    const local = get().databases[blockId];
+    // If we have local data (even if just from an addRow call), prefer it
+    if (local && (local.initialized || local.rows)) return { schema: local.schema, rows: local.rows };
+
+    const block = useBlockStore.getState().getBlock(blockId);
+    if (!block || !block.properties) return { schema: EMPTY_ARRAY, rows: EMPTY_ARRAY };
+
+    let schema = block.properties.schema || EMPTY_ARRAY;
+    if (schema.length === 0) {
+      schema = DEFAULT_SCHEMA;
+    }
+
+    return {
+      schema,
+      rows: block.properties.rows || EMPTY_ARRAY,
+    };
+  },
+
+  debouncedSaves: {},
+
+  _saveToBlockStore: (blockId, updates) => {
+    // This now only handles schema updates
+    const state = get();
+    if (!state.debouncedSaves[blockId]) {
+      state.debouncedSaves[blockId] = debounce((id: string, data: any) => {
+        const block = useBlockStore.getState().getBlock(id);
+        if (block) {
+          dispatch({
+            type: 'block/update',
+            payload: { blockId: id, updates: { properties: { ...block.properties, ...data } } }
+          });
+        }
+      }, 500);
+    }
+    state.debouncedSaves[blockId](blockId, updates);
+  },
+
+  // Immediate save for structural changes to Dexie (via blockStore)
+  _immediateSave: async (blockId, updates) => {
+    const block = useBlockStore.getState().getBlock(blockId);
+    if (block) {
+      await dispatch({
+        type: 'block/update',
+        payload: { blockId, updates: { properties: { ...block.properties, ...updates } } }
+      });
+    }
+  },
+
+  // Updates local store immediately
+  _updateLocal: (blockId, updates) => {
+    const current = get().getDatabaseData(blockId);
+    set(state => ({
+      databases: {
+        ...state.databases,
+        [blockId]: {
+          ...current,
+          ...updates,
+          initialized: state.databases[blockId]?.initialized || !!updates.rows || !!updates.schema,
+          lastUpdate: Date.now()
+        }
+      }
+    }));
+  },
+
+  // ---- Schema Operations ----
+
+  addProperty: async (blockId, overrides = {}) => {
+    const { schema, rows } = get().getDatabaseData(blockId);
+    const newProp = createProperty(overrides);
+
+    const updatedRows = rows.map(row => ({
+      ...row,
+      values: { ...row.values, [newProp.id]: newProp.type === 'checkbox' ? false : '' }
+    }));
+
+    const newSchema = [...schema, newProp];
+
+    get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
+    await get()._immediateSave(blockId, { schema: newSchema });
+
+    // Update all rows in Dexie concurrently
+    const cellsToInsert = updatedRows.map(r => ({
+      id: `${r.id}_${newProp.id}`, rowId: r.id, blockId, propertyId: newProp.id, value: newProp.type === 'checkbox' ? false : '', createdAt: Date.now(), updatedAt: Date.now()
+    }));
+    if (cellsToInsert.length > 0) {
+      const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+      await db.database_cells.bulkPut(encryptedCells);
+    }
+    return newProp;
+  },
+
+  addPropertyToSchema: async (blockId, property) => {
+    const data = get().databases[blockId];
+    let schema: DatabaseProperty[] = [];
+    if (data && data.initialized) {
+      schema = data.schema;
+    } else {
+      const block = useBlockStore.getState().getBlock(blockId);
+      if (block) {
+        schema = block.properties?.schema || [];
+      } else {
+        const dbBlock = await db.blocks.get(blockId);
+        schema = dbBlock?.properties?.schema || [];
+      }
+    }
+    const newSchema = [...schema, property];
+
+    get()._updateLocal(blockId, { schema: newSchema });
+    await get()._immediateSave(blockId, { schema: newSchema });
+  },
+
+  updateProperty: async (blockId, propertyId, updates) => {
+    const { schema } = get().getDatabaseData(blockId);
+    const newSchema = schema.map(p => p.id === propertyId ? { ...p, ...updates } : p);
+
+    get()._updateLocal(blockId, { schema: newSchema });
+    await get()._immediateSave(blockId, { schema: newSchema });
+  },
+
+  deleteProperty: async (blockId, propertyId) => {
+    const { schema, rows } = get().getDatabaseData(blockId);
+    const newSchema = schema.filter(p => p.id !== propertyId);
+
+    const updatedRows = rows.map(row => {
+      const newValues = { ...row.values };
+      delete newValues[propertyId];
+      return { ...row, values: newValues };
+    });
+
+    get()._updateLocal(blockId, { schema: newSchema, rows: updatedRows });
+    await get()._immediateSave(blockId, { schema: newSchema });
+
+    await db.database_cells.where('propertyId').equals(propertyId).delete();
+  },
+
+  reorderProperties: async (blockId, sourceIndex, destinationIndex) => {
+    const { schema } = get().getDatabaseData(blockId);
+    const newSchema = [...schema];
+    const [removed] = newSchema.splice(sourceIndex, 1);
+    newSchema.splice(destinationIndex, 0, removed);
+
+    get()._updateLocal(blockId, { schema: newSchema });
+    await get()._immediateSave(blockId, { schema: newSchema });
+  },
+
+
+  // ---- Row Operations ----
+
+  addRow: async (blockId, overrides = {}) => {
+    try {
+      const { schema, rows } = get().getDatabaseData(blockId);
+      const newRow = createDatabaseRow(schema, { ...overrides, blockId });
+      const newRows = [...rows, newRow];
+
+      // Update local state immediately for snappy UI
+      get()._updateLocal(blockId, { rows: newRows });
+
+      // Background persistence
+      const cellsToInsert = Object.entries(newRow.values || {}).map(([propId, value]) => ({
+        id: `${newRow.id}_${propId}`,
+        rowId: newRow.id,
+        blockId,
+        propertyId: propId,
+        value,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }));
+
+      const rowToInsert: DatabaseRow = {
+        id: newRow.id,
+        blockId: newRow.blockId,
+        createdAt: newRow.createdAt,
+        updatedAt: newRow.updatedAt
+      };
+
+      // We use a transaction to ensure atomic insert in Dexie
+      if (cellsToInsert.length > 0) {
+        const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+        await db.transaction('rw', [db.database_rows, db.database_cells], async () => {
+          await db.database_rows.add(rowToInsert);
+          await db.database_cells.bulkAdd(encryptedCells);
+        });
+      } else {
+        await db.database_rows.add(rowToInsert);
+      }
+
+      return newRow;
+    } catch (error) {
+      console.error('[databaseStore] Failed to add row:', error);
+      throw error;
+    }
+  },
+
+  updateCell: (blockId, rowId, propertyId, value) => {
+    const { rows } = get().getDatabaseData(blockId);
+    const oldRow = rows.find(r => r.id === rowId);
+    const oldValue = oldRow ? oldRow.values?.[propertyId] : null;
+
+    let updatedRow: DatabaseRow | null = null;
+    const newRows = rows.map(row => {
+      if (row.id === rowId) {
+        updatedRow = {
+          ...row,
+          updatedAt: Date.now(),
+          values: { ...row.values, [propertyId]: value }
+        };
+        return updatedRow;
+      }
+      return row;
+    });
+
+    get()._updateLocal(blockId, { rows: newRows });
+
+    // Sync title cell changes to corresponding page in pageStore
+    const { schema } = get().getDatabaseData(blockId);
+    if (schema.length > 0 && schema[0].id === propertyId) {
+      import('./pageStore').then(async ({ usePageStore }) => {
+        const store = usePageStore.getState();
+        const page = await store.ensureRowPage(rowId, blockId, value);
+        if (page.title !== value) {
+          await store.updatePage(rowId, { title: value });
+        }
+      }).catch(err => console.error('Failed to sync database cell to page:', err));
+    }
+
+    // Background save to isolated table
+    if (updatedRow) {
+      const targetRow = updatedRow as DatabaseRow;
+      const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: targetRow.updatedAt };
+      encryptCellForDB(cell).then(encryptedCell => {
+        db.database_cells.put(encryptedCell);
+      });
+
+      // Reciprocal sync
+      syncReciprocalRelation(blockId, rowId, propertyId, value, oldValue);
+    }
+  },
+
+  updateCellImmediate: async (blockId, rowId, propertyId, value) => {
+    const { rows } = get().getDatabaseData(blockId);
+    const oldRow = rows.find(r => r.id === rowId);
+    const oldValue = oldRow ? oldRow.values?.[propertyId] : null;
+
+    let updatedRow: DatabaseRow | null = null;
+    const newRows = rows.map(row => {
+      if (row.id === rowId) {
+        updatedRow = {
+          ...row,
+          updatedAt: Date.now(),
+          values: { ...row.values, [propertyId]: value }
+        };
+        return updatedRow;
+      }
+      return row;
+    });
+
+    get()._updateLocal(blockId, { rows: newRows });
+
+    // Sync title cell changes to corresponding page in pageStore
+    const { schema } = get().getDatabaseData(blockId);
+    if (schema.length > 0 && schema[0].id === propertyId) {
+      try {
+        const { usePageStore } = await import('./pageStore');
+        const store = usePageStore.getState();
+        const page = await store.ensureRowPage(rowId, blockId, value);
+        if (page.title !== value) {
+          await store.updatePage(rowId, { title: value });
+        }
+      } catch (err) {
+        console.error('Failed to sync database cell to page:', err);
+      }
+    }
+
+    if (updatedRow) {
+      const targetRow = updatedRow as DatabaseRow;
+      const cell = { id: `${rowId}_${propertyId}`, rowId, blockId, propertyId, value, createdAt: Date.now(), updatedAt: targetRow.updatedAt };
+      const encryptedCell = await encryptCellForDB(cell);
+      await db.database_cells.put(encryptedCell);
+
+      // Reciprocal sync
+      await syncReciprocalRelation(blockId, rowId, propertyId, value, oldValue);
+    }
+  },
+
+  deleteRow: async (blockId, rowId) => {
+    const { rows } = get().getDatabaseData(blockId);
+    const newRows = rows.filter(r => r.id !== rowId);
+
+    get()._updateLocal(blockId, { rows: newRows });
+    await db.database_rows.delete(rowId);
+    await db.database_cells.where('rowId').equals(rowId).delete();
+
+    // Delete corresponding page record & its blocks
+    try {
+      const { usePageStore } = await import('./pageStore');
+      await usePageStore.getState().deletePage(rowId);
+    } catch (err) {
+      console.error('Failed to delete row page:', err);
+    }
+  },
+
+  duplicateRow: async (blockId, rowId) => {
+    const { rows } = get().getDatabaseData(blockId);
+    const rowToDuplicate = rows.find(r => r.id === rowId);
+    if (!rowToDuplicate) return;
+
+    const newRow: DatabaseRow = {
+      ...rowToDuplicate,
+      id: createId(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      blockId // Ensure blockId is set correctly
+    };
+
+    const index = rows.findIndex(r => r.id === rowId);
+    const newRows = [...rows];
+    newRows.splice(index + 1, 0, newRow);
+
+    get()._updateLocal(blockId, { rows: newRows });
+
+    const cellsToInsert = Object.entries(newRow.values || {}).map(([propId, value]) => ({
+      id: `${newRow.id}_${propId}`, rowId: newRow.id, blockId, propertyId: propId, value, createdAt: Date.now(), updatedAt: Date.now()
+    }));
+    const rowToInsert: DatabaseRow = {
+      id: newRow.id,
+      blockId: newRow.blockId,
+      createdAt: newRow.createdAt,
+      updatedAt: newRow.updatedAt
+    };
+
+    await db.database_rows.add(rowToInsert);
+    if (cellsToInsert.length > 0) {
+      const encryptedCells = await Promise.all(cellsToInsert.map(encryptCellForDB));
+      await db.database_cells.bulkAdd(encryptedCells);
+    }
+  }
+}));

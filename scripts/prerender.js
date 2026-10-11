@@ -9,13 +9,18 @@ const DIST_DIR = path.resolve(ROOT_DIR, 'dist');
 const PUBLIC_DIR = path.resolve(ROOT_DIR, 'public');
 
 // Import templates
-const templatesDataFile = path.resolve(ROOT_DIR, 'src/data/templatesData.js');
 let TEMPLATES = [];
 try {
-  const imported = await import(`file://${templatesDataFile}`);
-  TEMPLATES = imported.TEMPLATES || [];
+  const assetsDir = path.resolve(DIST_DIR, 'assets');
+  if (fs.existsSync(assetsDir)) {
+    const chunkFile = fs.readdirSync(assetsDir).find(f => f.startsWith('templatesData-') && f.endsWith('.js'));
+    if (chunkFile) {
+      const imported = await import(`file://${path.resolve(assetsDir, chunkFile)}`);
+      TEMPLATES = imported.TEMPLATES || [];
+    }
+  }
 } catch (e) {
-  console.warn('Could not import templatesData directly, using fallback list', e);
+  console.warn('Could not import templatesData from dist/assets, using fallback list', e);
 }
 
 const SITE_URL = 'https://maniacc.vercel.app';

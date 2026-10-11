@@ -1,0 +1,197 @@
+import { create } from 'zustand';
+import { db } from '../db/database';
+import { SecurityService } from '../utils/securityService';
+import { useSecurityStore } from './securityStore';
+import { invalidateStore } from '../core/derivedCache';
+import { Block } from '../types/block';
+
+/**
+ * Safely resolve a block's properties from raw DB data.
+ * Handles: plain object, encrypted string, null, undefined.
+ */
+function resolveProperties(raw: any): Record<string, any> {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    if (SecurityService.isEncrypted(raw)) {
+      return {}; // Encrypted string — return empty, decryption will fill it later
+    }
+    try { return JSON.parse(raw); } catch { return {}; }
+  }
+  return {};
+}
+
+export interface BlockStore {
+  blockMap: Record<string, Block>;
+  blockOrder: string[];
+  focusBlockId: string | null;
+  focusPosition: 'start' | 'end' | number;
+  lastLoadId: number;
+
+  getBlocks: () => Block[];
+  getBlock: (id: string) => Block | undefined;
+  loadBlocks: (pageId: string | null) => Promise<void>;
+  setFocusBlock: (blockId: string | null, position?: 'start' | 'end' | number) => void;
+  getDescendants: (blockId: string) => string[];
+}
+
+export const useBlockStore = create<BlockStore>((set, get) => ({
+  blockMap: {},
+  blockOrder: [],
+  focusBlockId: null,
+  focusPosition: 'end',
+  lastLoadId: 0,
+
+  getBlocks: () => {
+    const { blockMap, blockOrder } = get();
+    return blockOrder.map(id => blockMap[id]).filter(Boolean);
+  },
+
+  getBlock: (id) => get().blockMap[id],
+
+  loadBlocks: async (pageId) => {
+    if (!pageId) {
+      set({ blockMap: {}, blockOrder: [] });
+      return;
+    }
+    const loadId = (get().lastLoadId || 0) + 1;
+    set({ lastLoadId: loadId });
+
+    try {
+      const key = useSecurityStore.getState().derivedKey;
+      const blocksRaw = await db.blocks.where('pageId').equals(pageId).toArray();
+      blocksRaw.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+
+      const initialMap: Record<string, Block> = {};
+      const initialOrder: string[] = [];
+      const needsDecryption: any[] = [];
+
+      blocksRaw.forEach(b => {
+        initialOrder.push(b.id);
+        const encrypted = !!(b._isEncrypted && key);
+        initialMap[b.id] = {
+          ...b,
+          content: (encrypted && SecurityService.isEncrypted(b.content)) ? '' : (b.content || ''),
+          properties: (encrypted && SecurityService.isEncrypted(b.properties)) ? {} : resolveProperties(b.properties),
+          _isDecrypting: encrypted,
+        } as Block;
+        if (encrypted) needsDecryption.push(b);
+      });
+
+      // Stale load guard
+      if (get().lastLoadId !== loadId) return;
+
+      set({ blockMap: initialMap, blockOrder: initialOrder });
+      invalidateStore('blockStore');
+
+      // Decrypt encrypted blocks in background
+      if (needsDecryption.length > 0 && key) {
+        const decryptOne = async (b: any): Promise<Block> => {
+          let content = b.content || '';
+          let properties = b.properties;
+
+          try {
+            if (b.content && typeof b.content === 'string') {
+              if (SecurityService.isEncrypted(b.content)) {
+                const dec = await SecurityService.decrypt(b.content, key);
+                if (dec != null) content = dec;
+              } else {
+                content = b.content;
+              }
+            }
+          } catch {
+            content = '🔒 Decryption Failed';
+          }
+
+          try {
+            if (typeof properties === 'string' && properties.length > 0) {
+              if (SecurityService.isEncrypted(properties)) {
+                const decProps = await SecurityService.decrypt(properties, key);
+                if (decProps != null) {
+                  properties = JSON.parse(decProps);
+                } else {
+                  properties = {};
+                }
+              } else {
+                try { properties = JSON.parse(properties); } catch { properties = {}; }
+              }
+            } else if (typeof properties === 'object' && properties !== null) {
+              // Already an object — no decryption needed (edge case: mixed state)
+            } else {
+              properties = {};
+            }
+          } catch {
+            properties = {};
+          }
+
+          return { ...b, content, properties, _isDecrypting: false } as Block;
+        };
+
+        // Process in small batches to keep UI responsive
+        const BATCH = 10;
+        const allDecrypted: Block[] = [];
+
+        for (let i = 0; i < needsDecryption.length; i += BATCH) {
+          if (get().lastLoadId !== loadId) return; // stale
+
+          const batch = needsDecryption.slice(i, i + BATCH);
+          const decBatch = await Promise.all(batch.map(decryptOne));
+          allDecrypted.push(...decBatch);
+
+          // Incremental UI update
+          set(state => {
+            if (state.lastLoadId !== loadId) return state;
+            const newMap = { ...state.blockMap };
+            let changed = false;
+            decBatch.forEach(b => {
+              if (newMap[b.id] && (newMap[b.id] as any)._isDecrypting) {
+                newMap[b.id] = b;
+                changed = true;
+              }
+            });
+            return changed ? { blockMap: newMap } : state;
+          });
+
+          // Yield to main thread
+          if (i + BATCH < needsDecryption.length) {
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[blockStore] loadBlocks failed:', error);
+    }
+  },
+
+  setFocusBlock: (blockId, position = 'end') => {
+    set({ focusBlockId: blockId, focusPosition: position });
+  },
+
+  /**
+   * Get all recursive descendant block IDs.
+   * Used for circular reparenting prevention.
+   */
+  getDescendants: (blockId) => {
+    const { blockMap, blockOrder } = get();
+    const childMap = new Map<string, string[]>();
+    for (const id of blockOrder) {
+      const parentId = blockMap[id]?.parentId;
+      if (parentId) {
+        if (!childMap.has(parentId)) childMap.set(parentId, []);
+        childMap.get(parentId)!.push(id);
+      }
+    }
+    const descendants: string[] = [];
+    const collect = (parentId: string) => {
+      const children = childMap.get(parentId);
+      if (children) {
+        for (const childId of children) {
+          descendants.push(childId);
+          collect(childId);
+        }
+      }
+    };
+    collect(blockId);
+    return descendants;
+  },
+}));
