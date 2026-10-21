@@ -345,7 +345,14 @@ registerHandler('page/create', async (payload) => {
   const lastSibling = siblings[siblings.length - 1];
   const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
 
-  const page = createPage({ id, parentId, title, icon, coverImage, sortOrder });
+  const page = createPage({
+    ...(id ? { id } : {}),
+    parentId,
+    title,
+    icon,
+    coverImage,
+    sortOrder
+  });
 
   usePageStore.setState(s => ({ pages: [...s.pages, page] }));
 
@@ -504,12 +511,13 @@ registerHandler('page/reorder', async (payload) => {
 
 registerHandler('page/delete', async (payload) => {
   const pageId = payload.pageId || payload.id;
+  if (!pageId || pageId === 'undefined') return null;
   const store = usePageStore.getState();
   const page = store.pages.find(p => p.id === pageId) || store.archivedPages.find(p => p.id === pageId);
   if (!page) return null;
 
   // Collect all descendant IDs
-  const collectIds = (parentId) => {
+  const collectIds = (parentId: string): string[] => {
     const children = store.pages.filter(p => p.parentId === parentId);
     let ids = [parentId];
     for (const child of children) {
@@ -517,20 +525,20 @@ registerHandler('page/delete', async (payload) => {
     }
     return ids;
   };
-  const idsToDelete = collectIds(pageId);
+  const idsToDelete = collectIds(pageId).filter(id => Boolean(id) && id !== 'undefined');
   const pagesBackup = store.pages.filter(p => idsToDelete.includes(p.id));
 
   usePageStore.setState(s => ({
     pages: s.pages.filter(p => !idsToDelete.includes(p.id)),
     archivedPages: s.archivedPages.filter(p => !idsToDelete.includes(p.id)),
+    currentPageId: idsToDelete.includes(s.currentPageId || '') ? null : s.currentPageId,
   }));
 
-  // DB delete deferred to persistenceWorker
+  // Operations for all deleted pages
+  const ops = idsToDelete.map(id => createOp(EntityType.PAGE, id, OpType.DELETE, null, null));
+  const inverseOps = pagesBackup.map(p => createOp(EntityType.PAGE, p.id, OpType.CREATE, p, null));
 
-  const op = createOp(EntityType.PAGE, pageId, OpType.DELETE, null, { pages: pagesBackup, ids: idsToDelete });
-  const inverseOp = createOp(EntityType.PAGE, pageId, OpType.CREATE, { pages: pagesBackup, ids: idsToDelete });
-
-  return { ops: [op], inverseOps: [inverseOp] };
+  return { ops, inverseOps, returnValue: { ids: idsToDelete, pages: pagesBackup } };
 });
 
 // ═══════════════════════════════════════════════════════════════

@@ -47,20 +47,20 @@ function Sidebar() {
     clearSelectedPages();
 
     // Start bulk delete process
-    const { undo, commit } = await usePageStore.getState().bulkDeletePages(idsToDelete);
+    const { undo, commit } = (await usePageStore.getState().bulkDeletePages(idsToDelete)) || {};
 
     let undone = false;
     useUIStore.getState().addToast(`Deleted ${idsToDelete.length} pages`, 'success', {
       label: 'Undo',
       onClick: () => {
         undone = true;
-        undo();
+        undo?.();
       }
     });
 
     // Commit to database after 5 seconds if not undone
     setTimeout(() => {
-      if (!undone) commit();
+      if (!undone) commit?.();
     }, 5000);
   };
 

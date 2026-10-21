@@ -60,7 +60,13 @@ self.onmessage = async (e) => {
 };
 
 function enqueueOperation(operation) {
+  if (!operation) return;
   const { entityType, entityId, op, payload, meta } = operation;
+
+  if (!entityId || entityId === 'undefined' || entityId === 'null') {
+    console.warn('[PersistenceWorker] Ignored operation with invalid entityId:', operation);
+    return;
+  }
   
   // 1. Enqueue the opLog append only for domain entities (block, page), not raw CRDT keystrokes
   if (entityType === 'block' || entityType === 'BLOCK' || entityType === 'page' || entityType === 'PAGE') {
@@ -171,6 +177,11 @@ async function flushQueue() {
     for (const [table, map] of snapshot) {
       const isBlock = table === 'blocks';
       for (const [id, item] of map) {
+        if (!id || id === 'undefined' || id === 'null') {
+          console.warn(`[PersistenceWorker] Skipping invalid item with id "${id}" on table "${table}"`);
+          continue;
+        }
+
         const { op, payload, meta } = item;
 
         transactions.push(async () => {
@@ -178,6 +189,9 @@ async function flushQueue() {
           try {
             if (opUpper === 'DELETE') {
               await db[table].delete(id);
+              if (table === 'pages') {
+                await db.blocks.where('pageId').equals(id).delete();
+              }
               if (meta?.source !== 'remote') {
                 broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'delete', tabId: meta?.tabId });
               }
@@ -191,7 +205,9 @@ async function flushQueue() {
                   await db[table].put(dbPayload);
                 } else {
                   dbPayload = await encryptForDB(payload, isBlock);
-                  await db[table].update(id, dbPayload);
+                  if (dbPayload && dbPayload.id && dbPayload.id !== 'undefined') {
+                    await db[table].put(dbPayload);
+                  }
                 }
               } else {
                 await db[table].update(id, dbPayload);
@@ -201,9 +217,13 @@ async function flushQueue() {
               }
             } else if (opUpper === 'CREATE') {
               const dbPayload = (table === 'blocks' || table === 'pages') ? await encryptForDB(payload, isBlock) : payload;
-              await db[table].put(dbPayload);
-              if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload, tabId: meta?.tabId });
+              if (dbPayload && dbPayload.id && dbPayload.id !== 'undefined') {
+                await db[table].put(dbPayload);
+                if (meta?.source !== 'remote') {
+                  broadcastOps.push({ entityType: table === 'blocks' ? 'block' : 'page', entityId: id, op: 'create', payload, tabId: meta?.tabId });
+                }
+              } else {
+                console.warn(`[PersistenceWorker] Skipping CREATE with missing/invalid id on table "${table}":`, dbPayload);
               }
             } else if (opUpper === 'CRDT_UPDATE') {
               await db[table].put({
@@ -261,13 +281,19 @@ async function flushQueue() {
   } catch (error) {
     console.error('[PersistenceWorker] Flush failed:', error?.name, error?.message, error?.stack, error);
     self.postMessage({ type: 'FLUSH_ERROR', error: error?.message || 'Unknown error' });
-    // Put items back into the queue
-    for (const [table, map] of snapshot) {
-      if (!pendingQueue.has(table)) pendingQueue.set(table, new Map());
-      const currentQueue = pendingQueue.get(table);
-      for (const [id, data] of map) {
-        if (!currentQueue.has(id)) currentQueue.set(id, data);
+    // Put valid items back into the queue, avoiding infinite retry on fatal DataErrors
+    if (error?.name !== 'DataError') {
+      for (const [table, map] of snapshot) {
+        if (!pendingQueue.has(table)) pendingQueue.set(table, new Map());
+        const currentQueue = pendingQueue.get(table);
+        for (const [id, data] of map) {
+          if (id && id !== 'undefined' && !currentQueue.has(id)) {
+            currentQueue.set(id, data);
+          }
+        }
       }
+    } else {
+      console.warn('[PersistenceWorker] Dropped invalid batch due to DataError to avoid infinite retry loop');
     }
   }
 }

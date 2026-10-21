@@ -64,14 +64,14 @@ function SidebarPageItem({ page, depth }) {
       setCurrentPage(null);
     }
 
-    const { undo, commit } = await usePageStore.getState().bulkDeletePages([page.id]);
+    const { undo, commit } = (await usePageStore.getState().bulkDeletePages([page.id])) || {};
     
     let undone = false;
     useUIStore.getState().addToast(`Deleted "${page.title || 'Untitled'}"`, 'info', {
       label: 'Undo',
       onClick: () => {
         undone = true;
-        undo();
+        undo?.();
         if (isActive) {
            setCurrentPage(page.id);
            navigate(`/app/page/${page.id}`);
@@ -80,7 +80,7 @@ function SidebarPageItem({ page, depth }) {
     });
 
     setTimeout(() => {
-      if (!undone) commit();
+      if (!undone) commit?.();
     }, 5000);
   };
 

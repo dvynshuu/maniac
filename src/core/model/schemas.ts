@@ -124,7 +124,6 @@ export function createPage(overrides: Partial<Page> = {}): Page {
   const now = Date.now();
   const sortOrder = overrides.sortOrder || (overrides as any).orderKey || 'm';
   return {
-    id: overrides.id || createId(),
     workspaceId: overrides.workspaceId || 'local',
     parentId: overrides.parentId !== undefined ? overrides.parentId : null,
     title: overrides.title || '',
@@ -138,6 +137,7 @@ export function createPage(overrides: Partial<Page> = {}): Page {
     lastViewedAt: overrides.lastViewedAt || now,
     tombstonedAt: overrides.tombstonedAt || null,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
     sortOrder,
     orderKey: sortOrder,
   };
@@ -147,7 +147,6 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
   const now = Date.now();
   const sortOrder = overrides.sortOrder || (overrides as any).orderKey || 'm';
   return {
-    id: overrides.id || createId(),
     pageId,
     parentId: overrides.parentId !== undefined ? overrides.parentId : null,
     type,
@@ -160,6 +159,7 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
     sortOrder,
     orderKey: sortOrder,
   };
@@ -168,11 +168,11 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
 export function createDatabaseRow(blockId: string, overrides: Partial<DatabaseRow> = {}): DatabaseRow {
   const now = Date.now();
   return {
-    id: overrides.id || createId(),
     blockId,
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
   };
 }
 
@@ -185,7 +185,6 @@ export function createDatabaseCell(
 ): DatabaseCell {
   const now = Date.now();
   return {
-    id: overrides.id || `${rowId}_${propertyId}`,
     rowId,
     propertyId,
     blockId,
@@ -193,6 +192,7 @@ export function createDatabaseCell(
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : `${rowId}_${propertyId}`,
   };
 }
 

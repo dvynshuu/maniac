@@ -48,21 +48,27 @@ export const usePageStore = create<PageStore>((set, get) => ({
         .replace(/&apos;/g, "'");
     };
 
-    // Auto-heal any persisted titles that had unescaped HTML entities
+    // Auto-heal any persisted titles that had unescaped HTML entities or clean corrupt pages
     allPagesRaw.forEach(p => {
+      if (!p.id || p.id === 'undefined') {
+        if (p.id) db.pages.delete(p.id).catch(() => {});
+        return;
+      }
       if (p.title && p.title.includes('&amp;')) {
         const cleaned = unescapeTitle(p.title) || '';
         db.pages.update(p.id, { title: cleaned }).catch(() => {});
       }
     });
 
+    const validPagesRaw = allPagesRaw.filter(p => p.id && p.id !== 'undefined');
+
     // Optimistic initial load (encrypted titles will show raw or placeholders)
     set({
-      pages: allPagesRaw.filter(p => !p.isArchived).map(p => ({
+      pages: validPagesRaw.filter(p => !p.isArchived).map(p => ({
         ...p,
         title: unescapeTitle(p._isEncrypted && key ? 'Decrypting...' : p.title) || ''
       })),
-      archivedPages: allPagesRaw.filter(p => p.isArchived).map(p => ({
+      archivedPages: validPagesRaw.filter(p => p.isArchived).map(p => ({
         ...p,
         title: unescapeTitle(p._isEncrypted && key ? 'Decrypting...' : p.title) || ''
       }))
@@ -87,11 +93,11 @@ export const usePageStore = create<PageStore>((set, get) => ({
          // Optionally, we could stream updates here.
       };
 
-      const allPages = await batchDecrypt(allPagesRaw, key, decryptFn, 50, onProgress);
+      const allPages = await batchDecrypt(validPagesRaw, key, decryptFn, 50, onProgress);
       
       set({
-        pages: allPages.filter(p => !p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) || '' })),
-        archivedPages: allPages.filter(p => p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) || '' }))
+        pages: allPages.filter(p => p.id && p.id !== 'undefined' && !p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) || '' })),
+        archivedPages: allPages.filter(p => p.id && p.id !== 'undefined' && p.isArchived).map(p => ({ ...p, title: unescapeTitle(p.title) || '' }))
       });
     }
   },
@@ -159,19 +165,44 @@ export const usePageStore = create<PageStore>((set, get) => ({
   },
 
   deletePage: async (id) => {
+    if (!id || id === 'undefined') return null;
     return dispatch({
       type: 'page/delete',
       payload: { pageId: id }
     });
   },
 
-  bulkDeletePages: async (ids) => {
-    for (const id of ids) {
-      await dispatch({
-        type: 'page/delete',
-        payload: { pageId: id }
-      });
+  bulkDeletePages: async (ids: string[]) => {
+    const validIds = (ids || []).filter(id => Boolean(id) && id !== 'undefined');
+    if (validIds.length === 0) {
+      return { undo: () => {}, commit: () => {} };
     }
+
+    const { undo: busUndo, transaction } = await import('../core/commandBus');
+    await transaction(async () => {
+      for (const id of validIds) {
+        await dispatch({
+          type: 'page/delete',
+          payload: { pageId: id }
+        });
+      }
+    });
+
+    return {
+      undo: async () => {
+        await busUndo();
+      },
+      commit: async () => {
+        try {
+          await db.transaction('rw', [db.blocks, db.pages], async () => {
+            for (const id of validIds) {
+              await db.blocks.where('pageId').equals(id).delete();
+              await db.pages.delete(id);
+            }
+          });
+        } catch { /* ignore */ }
+      }
+    };
   },
 
   archivePage: async (id) => {

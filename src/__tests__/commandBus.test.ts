@@ -192,5 +192,43 @@ describe('Command Bus & Command Handlers Pipeline', () => {
       expect(usePageStore.getState().pages.some(p => p.id === 'p-arch-1')).toBe(false);
       expect(usePageStore.getState().archivedPages.some(p => p.id === 'p-arch-1')).toBe(true);
     });
+
+    it('dispatches page/create without id: generates a valid nanoid and registers in pageStore', async () => {
+      const page = await commandBus.dispatch({
+        type: 'page/create',
+        payload: {
+          title: 'Brand New Blank Page'
+        }
+      });
+
+      expect(page).toBeDefined();
+      expect(page.id).toBeDefined();
+      expect(typeof page.id).toBe('string');
+      expect(page.id.length).toBeGreaterThan(0);
+      expect(page.id).not.toBe('undefined');
+
+      const stored = usePageStore.getState().pages.find(p => p.id === page.id);
+      expect(stored).toBeDefined();
+      expect(stored?.title).toBe('Brand New Blank Page');
+    });
+
+    it('bulkDeletePages returns undo and commit handlers, supporting undo deletion', async () => {
+      const page = await usePageStore.getState().addPage();
+      expect(page.id).toBeDefined();
+      expect(usePageStore.getState().pages.some(p => p.id === page.id)).toBe(true);
+
+      const result = await usePageStore.getState().bulkDeletePages([page.id]);
+      expect(result).toHaveProperty('undo');
+      expect(result).toHaveProperty('commit');
+      expect(typeof result.undo).toBe('function');
+      expect(typeof result.commit).toBe('function');
+
+      // Page is deleted
+      expect(usePageStore.getState().pages.some(p => p.id === page.id)).toBe(false);
+
+      // Undo deletion
+      await result.undo();
+      expect(usePageStore.getState().pages.some(p => p.id === page.id)).toBe(true);
+    });
   });
 });

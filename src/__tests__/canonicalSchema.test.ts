@@ -62,6 +62,14 @@ describe('Canonical Data Model & Schemas', () => {
       expect(validation.errors).toHaveLength(0);
       expect(isCanonicalPage(page)).toBe(true);
     });
+
+    it('generates a valid id even when { id: undefined } is explicitly passed', () => {
+      const page = createPage({ id: undefined, title: 'Undefined ID Bug Test' });
+      expect(page.id).toBeDefined();
+      expect(typeof page.id).toBe('string');
+      expect(page.id.length).toBeGreaterThan(0);
+      expect(page.id).not.toBe('undefined');
+    });
   });
 
   describe('normalizeBlock', () => {

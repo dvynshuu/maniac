@@ -11,7 +11,6 @@ export function createPage(overrides: Partial<Page> = {}): Page {
   const now = Date.now();
   const sortOrder = overrides.sortOrder || (overrides as any).orderKey || 'm';
   return {
-    id: overrides.id || createId(),
     workspaceId: overrides.workspaceId || 'local',
     parentId: overrides.parentId !== undefined ? overrides.parentId : null,
     title: overrides.title || '',
@@ -27,6 +26,7 @@ export function createPage(overrides: Partial<Page> = {}): Page {
     updatedAt: overrides.updatedAt || now,
     lastViewedAt: overrides.lastViewedAt || now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
     sortOrder,
     orderKey: sortOrder,
   };
@@ -36,7 +36,6 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
   const now = Date.now();
   const sortOrder = overrides.sortOrder || (overrides as any).orderKey || 'm';
   return {
-    id: overrides.id || createId(),
     pageId,
     parentId: overrides.parentId !== undefined ? overrides.parentId : null,
     type,
@@ -49,6 +48,7 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
     sortOrder,
     orderKey: sortOrder,
   };
@@ -57,7 +57,6 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
 export function createTracker(overrides: Partial<Tracker> = {}): Tracker {
   const now = Date.now();
   return {
-    id: createId(),
     name: 'Untitled Tracker',
     description: '',
     icon: '📊',
@@ -66,29 +65,30 @@ export function createTracker(overrides: Partial<Tracker> = {}): Tracker {
     createdAt: now,
     updatedAt: now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
   };
 }
 
 export function createTrackerEntry(trackerId: string, data: Record<string, any> = {}, overrides: Partial<TrackerEntry> = {}): TrackerEntry {
   const now = Date.now();
   return {
-    id: createId(),
     trackerId,
     data,
     createdAt: overrides.createdAt || now,
     updatedAt: now,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
   };
 }
 
 export function createTrackerField(overrides: Partial<TrackerField> = {}): TrackerField {
   return {
-    id: createId(),
     name: '',
     type: 'text',
     options: [],
     defaultValue: null,
     ...overrides,
+    id: (overrides.id && String(overrides.id).trim() !== '' && overrides.id !== 'undefined') ? overrides.id : createId(),
   };
 }
 
