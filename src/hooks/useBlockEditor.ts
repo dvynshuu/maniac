@@ -54,11 +54,26 @@ const CustomHighlight = Mark.create({
 
 
 const EDITABLE_TYPES = [
-  'text', 'heading1', 'heading2', 'heading3', 'todo', 
-  'quote', 'callout', 'bullet', 'numbered', 'toggle', 'code'
+  'text', 'heading1', 'heading2', 'heading3',
+  'toggle_heading1', 'toggle_heading2', 'toggle_heading3',
+  'todo', 'quote', 'callout', 'bullet', 'numbered', 'toggle', 'code'
 ];
 
-function getNextEditableBlockId(currentId, direction) {
+function isBlockVisibleInTree(blockId: string, blockMap: Record<string, any>): boolean {
+  let curr = blockMap[blockId];
+  while (curr && curr.parentId) {
+    const parent = blockMap[curr.parentId];
+    if (!parent) break;
+    const isCollapsible = parent.type === 'toggle' || parent.type === 'toggle_heading1' || parent.type === 'toggle_heading2' || parent.type === 'toggle_heading3';
+    if (isCollapsible && parent.properties?.expanded === false) {
+      return false;
+    }
+    curr = parent;
+  }
+  return true;
+}
+
+function getNextEditableBlockId(currentId: string, direction: 'up' | 'down') {
   const store = useBlockStore.getState();
   const { blockOrder, blockMap } = store;
   const index = blockOrder.indexOf(currentId);
@@ -69,7 +84,7 @@ function getNextEditableBlockId(currentId, direction) {
   while (i >= 0 && i < blockOrder.length) {
     const nextId = blockOrder[i];
     const block = blockMap[nextId];
-    if (block && EDITABLE_TYPES.includes(block.type)) {
+    if (block && EDITABLE_TYPES.includes(block.type) && isBlockVisibleInTree(nextId, blockMap)) {
       return nextId;
     }
     i += step;
@@ -118,14 +133,15 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     return config;
   }, [disableExtensions]);
 
-  const saveContent = useCallback((blockId: string, html: string) => {
-    lastSavedContentRef.current = html;
-    engine.startTransaction().updateBlock(blockId, { content: html }).commit();
+  const saveContent = useCallback((blockId: string, rawHtml: string) => {
+    const cleanHtml = sanitize(rawHtml);
+    lastSavedContentRef.current = cleanHtml;
+    engine.startTransaction().updateBlock(blockId, { content: cleanHtml }).commit();
   }, [engine]);
 
   const debouncedSaveRef = useRef<any>(null);
   if (!debouncedSaveRef.current) {
-    debouncedSaveRef.current = debounce(saveContent, 400);
+    debouncedSaveRef.current = debounce(saveContent, 350);
   }
 
   const extensions = useMemo(() => [
@@ -181,6 +197,12 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
               targetType = 'heading2';
             } else if (trimText === '###') {
               targetType = 'heading3';
+            } else if (trimText === '>>#' || trimText === '>#') {
+              targetType = 'toggle_heading1';
+            } else if (trimText === '>>##' || trimText === '>##') {
+              targetType = 'toggle_heading2';
+            } else if (trimText === '>>###' || trimText === '>###') {
+              targetType = 'toggle_heading3';
             } else if (trimText === '*' || trimText === '-') {
               targetType = 'bullet';
             } else if (trimText === '1.') {
@@ -193,12 +215,33 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
               targetType = 'math';
             } else if (trimText === '```') {
               targetType = 'code';
+            } else if (trimText === '---' || trimText === '***') {
+              targetType = 'divider';
             }
 
             if (targetType) {
               event.preventDefault();
               editor.commands.clearContent();
-              engine.convertType(block.id, targetType);
+              if (targetType === 'divider') {
+                engine.startTransaction()
+                  .convertType(block.id, 'divider')
+                  .createBlock('text', block.parentId, block.id)
+                  .commit()
+                  .then((results) => {
+                    const newBlock = results?.[1];
+                    if (newBlock) {
+                      useBlockStore.getState().setFocusBlock(newBlock.id, 'start');
+                    }
+                  });
+              } else {
+                engine.startTransaction()
+                  .updateBlock(block.id, { content: '' })
+                  .convertType(block.id, targetType)
+                  .commit()
+                  .then(() => {
+                    useBlockStore.getState().setFocusBlock(block.id, 'start');
+                  });
+              }
               return true;
             }
           }
@@ -230,10 +273,24 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
 
         // Enter — split block
         if (event.key === 'Enter' && !event.shiftKey) {
+          if (onEnter) {
+            const handled = onEnter(editor);
+            if (handled) return true;
+          }
+
           event.preventDefault();
+
+          // If in an empty non-text block (bullet, numbered, todo, quote, callout),
+          // hitting Enter smoothly breaks out to regular text!
+          if (editor.isEmpty && block.type !== 'text') {
+            engine.convertType(block.id, 'text');
+            useBlockStore.getState().setFocusBlock(block.id, 'start');
+            return true;
+          }
           
           const { selection, doc } = editor.state;
           const pos = selection.anchor;
+          const isAtEnd = pos >= doc.content.size - 1;
 
           // Serialize htmlBefore and htmlAfter
           const serializer = DOMSerializer.fromSchema(editor.schema);
@@ -247,8 +304,18 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
           divAfter.appendChild(serializer.serializeFragment(fragAfter));
           const htmlAfter = divAfter.innerHTML;
 
+          // Determine target new block type:
+          // If at end of heading/quote/callout, create normal text block.
+          // If list item, keep list item type.
+          const targetNewType = isAtEnd
+            ? newBlockType
+            : (['bullet', 'numbered', 'todo'].includes(block.type) ? block.type : newBlockType);
+
+          // Optimistically truncate current editor immediately for zero-lag feeling
+          editor.chain().deleteRange({ from: pos, to: doc.content.size }).run();
+
           // Perform split
-          engine.split(block.id, htmlBefore, htmlAfter).then((results) => {
+          engine.split(block.id, htmlBefore, htmlAfter, targetNewType).then((results) => {
             if (results && results[1]) {
               const newBlock = results[1];
               // Set focus position to start of the new block
@@ -260,13 +327,23 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
 
         // Backspace — convert, delete, or merge
         if (event.key === 'Backspace') {
+          if (onBackspace) {
+            const handled = onBackspace(editor);
+            if (handled) return true;
+          }
+
           const { selection } = editor.state;
           
           if (editor.isEmpty) {
             event.preventDefault();
             if (backspaceAction === 'convert' && block.type !== 'text') {
               engine.convertType(block.id, 'text');
+              useBlockStore.getState().setFocusBlock(block.id, 'start');
             } else {
+              const prevId = getNextEditableBlockId(block.id, 'up');
+              if (prevId) {
+                useBlockStore.getState().setFocusBlock(prevId, 'end');
+              }
               engine.startTransaction().deleteBlock(block.id).commit();
             }
             return true;
@@ -274,6 +351,13 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
 
           if (selection.empty && selection.anchor === 1) {
             event.preventDefault();
+
+            // If non-text block at pos 1, convert to text first
+            if (block.type !== 'text' && backspaceAction === 'convert') {
+              engine.convertType(block.id, 'text');
+              useBlockStore.getState().setFocusBlock(block.id, 'start');
+              return true;
+            }
             
             const prevId = getNextEditableBlockId(block.id, 'up');
             if (prevId) {
@@ -309,14 +393,18 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
         // Tab — Nest
         if (event.key === 'Tab' && !event.shiftKey) {
           event.preventDefault();
-          engine.nest(block.id);
+          engine.nest(block.id).then(() => {
+            useBlockStore.getState().setFocusBlock(block.id);
+          });
           return true;
         }
 
         // Shift+Tab — Unnest
         if (event.key === 'Tab' && event.shiftKey) {
           event.preventDefault();
-          engine.unnest(block.id);
+          engine.unnest(block.id).then(() => {
+            useBlockStore.getState().setFocusBlock(block.id);
+          });
           return true;
         }
 
@@ -324,10 +412,10 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
       },
     },
     onUpdate: ({ editor: ed }) => {
-      // Yjs handles the real-time sync, but we still debounce save to CommandBus 
-      // so it goes into db.blocks for full-text search and previews.
-      const html = sanitize(ed.getHTML());
-      debouncedSaveRef.current(block.id, html);
+      // Yjs handles the real-time sync with 0ms overhead.
+      // We pass raw HTML to debounced saver, which sanitizes & saves when idle.
+      const rawHtml = ed.getHTML();
+      debouncedSaveRef.current(block.id, rawHtml);
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to } = ed.state.selection;
@@ -381,13 +469,21 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     return () => { isMounted = false; };
   }, [editor, block.content, block._isDecrypting, block.pageId, block.id]);
 
-  // Focus management
+  // Focus management: immediate focus if DOM connected, rAF fallback
   useEffect(() => {
     if (editor && isFocusedTarget && !editor.isFocused) {
       const position = useBlockStore.getState().focusPosition || 'end';
-      requestAnimationFrame(() => {
-        editor.commands.focus(position);
-      });
+      const focusEditor = () => {
+        if (!editor.isDestroyed) {
+          editor.commands.focus(position);
+        }
+      };
+
+      if (editor.view?.dom && document.body.contains(editor.view.dom)) {
+        focusEditor();
+      } else {
+        requestAnimationFrame(focusEditor);
+      }
     }
   }, [isFocusedTarget, block.id, editor]);
 

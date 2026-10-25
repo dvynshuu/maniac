@@ -86,15 +86,21 @@ export class EditorEngine {
     return tx.commit();
   }
 
-  async split(blockId: string, contentBefore: string, contentAfter: string): Promise<any> {
+  async split(blockId: string, contentBefore: string, contentAfter: string, newType?: string): Promise<any> {
     const tx = this.startTransaction();
     const block = useBlockStore.getState().blockMap[blockId];
     if (!block) return;
     
     tx.updateBlock(blockId, { content: contentBefore });
-    tx.createBlock(block.type, block.parentId, blockId, { 
+
+    const targetType = newType || block.type;
+    const properties = targetType === 'todo'
+      ? { checked: false }
+      : (targetType === block.type ? { ...block.properties } : {});
+
+    tx.createBlock(targetType, block.parentId, blockId, { 
       content: contentAfter,
-      properties: { ...block.properties } 
+      properties 
     });
     
     return tx.commit();

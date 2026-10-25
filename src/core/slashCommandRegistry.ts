@@ -129,13 +129,29 @@ registerProvider({
         const labelScore = fuzzyScore(query, meta.label);
         const typeScore = fuzzyScore(query, type);
         const descScore = fuzzyScore(query, meta.description || '');
-        const score = Math.max(labelScore, typeScore, descScore * 0.5);
+        let extraScore = 0;
+
+        if (type === 'toggle_heading1') {
+          extraScore = Math.max(fuzzyScore(query, 'th1'), fuzzyScore(query, 'toggle h1'), fuzzyScore(query, 'toggle heading 1'));
+        } else if (type === 'toggle_heading2') {
+          extraScore = Math.max(fuzzyScore(query, 'th2'), fuzzyScore(query, 'toggle h2'), fuzzyScore(query, 'toggle heading 2'));
+        } else if (type === 'toggle_heading3') {
+          extraScore = Math.max(fuzzyScore(query, 'th3'), fuzzyScore(query, 'toggle h3'), fuzzyScore(query, 'toggle heading 3'));
+        } else if (type === 'table_of_contents') {
+          extraScore = Math.max(fuzzyScore(query, 'toc'), fuzzyScore(query, 'outline'), fuzzyScore(query, 'contents'));
+        } else if (type === 'bookmark') {
+          extraScore = Math.max(fuzzyScore(query, 'url'), fuzzyScore(query, 'link'), fuzzyScore(query, 'preview'));
+        } else if (type === 'synced_block' || type === 'synced_reference') {
+          extraScore = Math.max(fuzzyScore(query, 'sync'), fuzzyScore(query, 'transclude'));
+        }
+
+        const score = Math.max(labelScore, typeScore, descScore * 0.5, extraScore);
 
         let category = 'Basic';
-        if (['heading1', 'heading2', 'heading3'].includes(type)) category = 'Basic';
-        else if (['image', 'embed', 'code', 'math'].includes(type)) category = 'Media & Code';
+        if (['heading1', 'heading2', 'heading3', 'toggle_heading1', 'toggle_heading2', 'toggle_heading3'].includes(type)) category = 'Basic';
+        else if (['image', 'embed', 'code', 'math', 'bookmark'].includes(type)) category = 'Media & Code';
         else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
-        else if (['toggle', 'callout', 'quote', 'divider'].includes(type)) category = 'Advanced';
+        else if (['toggle', 'callout', 'quote', 'divider', 'table_of_contents', 'synced_block', 'synced_reference'].includes(type)) category = 'Advanced';
         else if (['countdown', 'pomodoro', 'progress_bar', 'widget'].includes(type)) category = 'Widgets';
 
         return {

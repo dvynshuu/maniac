@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getCommandsByCategory } from '../../core/slashCommandRegistry';
 import * as Icons from 'lucide-react';
@@ -18,8 +18,8 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
   const [loading, setLoading] = useState(false);
   const menuRef = useRef(null);
 
-  // Calculate coordinates on mount relative to the cursor
-  useEffect(() => {
+  // Calculate coordinates relative to the cursor with smooth bounds checking
+  const updateCoords = useCallback(() => {
     if (!editor) return;
     try {
       const { selection } = editor.state;
@@ -28,11 +28,11 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
         const scrollTop = window.scrollY || document.documentElement.scrollTop;
         const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
-        let top = r.bottom + scrollTop;
+        let top = r.bottom + scrollTop + 4;
         let left = r.left + scrollLeft;
 
         const menuHeight = 340;
-        const menuWidth = 280;
+        const menuWidth = 290;
 
         if (r.bottom + menuHeight > window.innerHeight) {
           top = r.top + scrollTop - menuHeight - 8;
@@ -50,6 +50,10 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
     }
   }, [editor]);
 
+  useEffect(() => {
+    updateCoords();
+  }, [updateCoords, query]);
+
   // Flatten categories to a single list for keyboard navigation
   const flatItems = useMemo(() => {
     const items = [];
@@ -61,12 +65,12 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
     return items;
   }, [categories]);
 
-  // Fetch commands from registry
+  // Fetch commands from registry with zero-delay for empty queries and light debounce for typed search
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    const timeout = setTimeout(async () => {
+    const runFetch = async () => {
       try {
         const result = await getCommandsByCategory(query);
         if (!cancelled) {
@@ -78,8 +82,14 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 50); // Small debounce for async providers
+    };
 
+    if (!query) {
+      runFetch();
+      return () => { cancelled = true; };
+    }
+
+    const timeout = setTimeout(runFetch, 25);
     return () => {
       cancelled = true;
       clearTimeout(timeout);

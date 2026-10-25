@@ -223,7 +223,13 @@ export function useBlockVirtualizer(
       },
       getBlockVisible: (blockId) => {
         if (pinnedRef.current.has(blockId)) return true;
-        if (blockId === focusBlockIdRef.current) return true;
+        const currentFocusId = useBlockStore.getState().focusBlockId;
+        if (blockId === currentFocusId) {
+          if (!renderSetRef.current.has(blockId)) {
+            renderSetRef.current.add(blockId);
+          }
+          return true;
+        }
         return renderSetRef.current.has(blockId);
       },
       pinBlock: (blockId) => {

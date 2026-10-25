@@ -4,6 +4,9 @@ export type BlockType =
   | 'heading1'
   | 'heading2'
   | 'heading3'
+  | 'toggle_heading1'
+  | 'toggle_heading2'
+  | 'toggle_heading3'
   | 'bullet'
   | 'bulletList'
   | 'numbered'
@@ -20,6 +23,7 @@ export type BlockType =
   | 'math'
   | 'database'
   | 'table'
+  | 'table_of_contents'
   | 'tracker'
   | 'countdown'
   | 'pomodoro'
@@ -57,6 +61,7 @@ export interface BlockProperties {
   expanded?: boolean;
   emoji?: string;
   color?: string;
+  textColor?: string;
   language?: string;
   caption?: string;
   wrap?: boolean;
@@ -65,6 +70,10 @@ export interface BlockProperties {
   height?: string | number | null;
   alignment?: 'left' | 'center' | 'right';
   url?: string;
+  description?: string;
+  title?: string;
+  favicon?: string;
+  thumbnail?: string;
   embedType?: string;
   widgetSettings?: Record<string, any>;
   schema?: any[];
@@ -72,6 +81,7 @@ export interface BlockProperties {
   hasHeader?: boolean;
   hasHeaderCol?: boolean;
   columnWidths?: number[];
+  columnRatios?: number[];
   rowHeights?: number[];
   isFitToPage?: boolean;
   pageId?: string | null;

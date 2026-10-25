@@ -34,7 +34,6 @@ import { storeBlob, loadBlobUrl, isBlobRef } from '../../utils/blobService';
 import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
-import { useSelectionStore } from '../../core/editor/selectionStore';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
 import { DragDropContext } from './DragDropContext';
 import ActiveRecallPanel from './ActiveRecallPanel';
@@ -70,11 +69,16 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
   const [scrollElement, setScrollElement] = useState(null);
 
   const engine = useEditorEngine();
-  const setSelection = useSelectionStore(s => s.setSelection);
-  const selection = useSelectionStore(useShallow(s => ({
-    anchorBlockId: s.anchorBlockId,
-    focusBlockId: s.focusBlockId
-  })));
+
+  // Typewriter Mode: smoothly center the active block in viewport
+  const activeBlockId = useUIStore(s => s.activeEditorBlockId);
+  useEffect(() => {
+    if (!isTypewriterMode || !activeBlockId) return;
+    const el = document.querySelector<HTMLElement>(`[data-block-id="${activeBlockId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isTypewriterMode, activeBlockId]);
 
   // Block virtualization — only renders blocks within viewport + overscan
   const virtualizer = useBlockVirtualizer(scrollElement, rootBlockIds, pageId);
@@ -595,7 +599,12 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
           onClick={(e) => {
              if (!isLocked && e.target === e.currentTarget && rootBlockIds.length > 0) {
                  const lastId = rootBlockIds[rootBlockIds.length - 1];
-                 engine.insertAfter(lastId, 'text');
+                 const lastBlock = useBlockStore.getState().blockMap[lastId];
+                 if (lastBlock && lastBlock.type === 'text' && (!lastBlock.content || lastBlock.content === '<p></p>' || lastBlock.content.trim() === '')) {
+                   useBlockStore.getState().setFocusBlock(lastId, 'end');
+                 } else {
+                   engine.insertAfter(lastId, 'text');
+                 }
              }
           }}
         />

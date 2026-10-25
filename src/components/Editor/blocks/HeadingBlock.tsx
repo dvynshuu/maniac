@@ -8,7 +8,7 @@ function ActiveHeadingBlock({ block, level, className }) {
   const editor = useBlockEditor(block, {
     placeholder: `Heading ${level}`,
     newBlockType: 'text',
-    backspaceAction: 'delete',
+    backspaceAction: 'convert',
   });
 
   if (!editor) return null;

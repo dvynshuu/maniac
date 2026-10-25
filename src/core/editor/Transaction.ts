@@ -1,6 +1,7 @@
 import { createId } from '../ids/identity';
 import { useBlockStore } from '../../stores/blockStore';
 import { Normalizer } from './Normalizer';
+import { dispatchBatch } from '../commandBus';
 import type { EditorEngine } from './Engine';
 import type { BlockType } from '../../types';
 
@@ -146,7 +147,6 @@ export class Transaction {
 
     this.normalize();
 
-    const { dispatchBatch } = await import('../commandBus');
     return dispatchBatch(this.ops);
   }
 }

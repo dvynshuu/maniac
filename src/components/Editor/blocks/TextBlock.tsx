@@ -44,7 +44,7 @@ function ActiveTextBlock({ block }) {
         if (!query.includes(' ')) {
           setSlashQuery(query);
           setShowSlashMenu(true);
-          setShowMentionMenu(false);
+          setShowMentionMenu(prev => (prev ? false : prev));
           return;
         }
       }
@@ -56,13 +56,13 @@ function ActiveTextBlock({ block }) {
         if (!query.includes(' ')) {
           setMentionQuery(query);
           setShowMentionMenu(true);
-          setShowSlashMenu(false);
+          setShowSlashMenu(prev => (prev ? false : prev));
           return;
         }
       }
 
-      setShowSlashMenu(false);
-      setShowMentionMenu(false);
+      setShowSlashMenu(prev => (prev ? false : prev));
+      setShowMentionMenu(prev => (prev ? false : prev));
     };
 
     editor.on('update', handleUpdate);

@@ -18,14 +18,17 @@ import CodeBlock from './blocks/CodeBlock';
 import BulletBlock from './blocks/BulletBlock';
 import NumberedBlock from './blocks/NumberedBlock';
 import ToggleBlock from './blocks/ToggleBlock';
+import ToggleHeadingBlock from './blocks/ToggleHeadingBlock';
+import TableOfContentsBlock from './blocks/TableOfContentsBlock';
+import BookmarkBlock from './blocks/BookmarkBlock';
 import ColumnListBlock from './blocks/ColumnListBlock';
 import ColumnBlock from './blocks/ColumnBlock';
 import PageBlock from './blocks/PageBlock';
+import SyncedBlock from './blocks/SyncedBlock';
 
 // Lazy load heavy blocks to keep core editor bundle ultra-fast
 const TableBlock = lazy(() => import('./blocks/TableBlock'));
 const EmbedBlock = lazy(() => import('./blocks/EmbedBlock'));
-const SyncedBlock = lazy(() => import('./blocks/SyncedBlock'));
 const DatabaseBlock = lazy(() => import('../Database/DatabaseBlock'));
 const TrackerBlock = lazy(() => import('../Tracker/TrackerBlock'));
 const MathBlock = lazy(() => import('./blocks/MathBlock'));
@@ -214,6 +217,22 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
       case BLOCK_TYPES.TOGGLE:
         return <ToggleBlock block={block} />;
 
+      case 'toggle_heading1':
+      case 'toggle_heading2':
+      case 'toggle_heading3':
+      case BLOCK_TYPES.TOGGLE_HEADING1:
+      case BLOCK_TYPES.TOGGLE_HEADING2:
+      case BLOCK_TYPES.TOGGLE_HEADING3:
+        return <ToggleHeadingBlock block={block} />;
+
+      case 'table_of_contents':
+      case BLOCK_TYPES.TABLE_OF_CONTENTS:
+        return <TableOfContentsBlock block={block} />;
+
+      case 'bookmark':
+      case BLOCK_TYPES.BOOKMARK:
+        return <BookmarkBlock block={block} />;
+
       case BLOCK_TYPES.EMBED:
       case BLOCK_TYPES.COUNTDOWN:
       case BLOCK_TYPES.POMODORO:
@@ -226,11 +245,9 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
         );
 
       case BLOCK_TYPES.SYNCED_REFERENCE:
-        return (
-          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 32 }} />}>
-            <SyncedBlock block={block} />
-          </Suspense>
-        );
+      case BLOCK_TYPES.SYNCED_BLOCK:
+      case 'synced_block':
+        return <SyncedBlock block={block} />;
 
       case BLOCK_TYPES.COLUMN_LIST:
         return <ColumnListBlock block={block} />;
@@ -325,12 +342,19 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
 
   const isOver = overId === blockId && activeId !== blockId;
 
+  const blockTint = block.properties?.color;
+  const blockTextColor = block.properties?.textColor;
+
   return (
     <div
       ref={combinedRef}
-      style={style}
-      className={`block-wrapper block-${block.type.replace('_', '-')} ${isDragging ? 'dragging' : ''}`}
+      style={{
+        ...style,
+        ...(blockTextColor ? { color: blockTextColor } : {}),
+      }}
+      className={`block-wrapper block-${block.type.replace('_', '-')} ${isDragging ? 'dragging' : ''} ${blockTint ? `block-tint-${blockTint}` : ''}`}
       data-block-id={block.id}
+      data-tint={blockTint || undefined}
       {...attributes}
     >
       {isOver && dropPosition === 'top' && (
@@ -375,6 +399,11 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
       {/* Skip generic child rendering for blocks that manage their own children */}
       {childBlockIds.length > 0 && 
        block.type !== BLOCK_TYPES.TOGGLE && 
+       block.type !== 'toggle_heading1' &&
+       block.type !== 'toggle_heading2' &&
+       block.type !== 'toggle_heading3' &&
+       block.type !== 'synced_block' &&
+       block.type !== 'synced_reference' &&
        block.type !== 'database' && 
        block.type !== BLOCK_TYPES.COLUMN_LIST && 
        block.type !== BLOCK_TYPES.COLUMN && (
