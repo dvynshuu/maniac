@@ -109,19 +109,12 @@ export class SecurityService {
   }
 
   /**
-   * Basic heuristic to check if a string is likely encrypted.
-   * Checks if it's valid Base64 and has minimum IV length.
+   * Deterministic check if a string is encrypted with the MANIAC vault scheme.
+   * All encrypted blobs produced by this engine are strictly prefixed with "menc:".
    */
   static isEncrypted(val: any): boolean {
     if (typeof val !== 'string') return false;
-    if (val.startsWith('menc:')) return true;
-    if (val.length < 40) return false;
-    try {
-      if (!/^[A-Za-z0-9+/=]+$/.test(val)) return false;
-      return true;
-    } catch {
-      return false;
-    }
+    return val.startsWith('menc:');
   }
 
   // ─── Encrypt / Decrypt ─────────────────────────────────────

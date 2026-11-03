@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PROPERTY_TYPES, PROPERTY_COLORS } from '../../utils/constants';
 import { formatDate, formatDateTime, debounce } from '../../utils/helpers';
-import * as Icons from 'lucide-react';
-import { ExternalLink, Mail, Phone, Clock, Calendar, CheckSquare, Square, Type, Hash, Tag, Tags } from 'lucide-react';
+
+import { ExternalLink, Mail, Phone, Clock, Calendar, CheckSquare, Square, Type, Hash, Tag, Tags, Check } from 'lucide-react';
 import SelectDropdown from './SelectDropdown';
 import DatePicker from './DatePicker';
 import { useDatabaseStore } from '../../stores/databaseStore';
@@ -114,7 +114,7 @@ function RelationDropdown({ relatedDatabaseId, selectedRowIds, onChange, stopEdi
                 }}
               >
                 <div style={{ width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isSelected && <Icons.Check size={12} />}
+                  {isSelected && <Check size={12} />}
                 </div>
                 <span className="truncate">{title}</span>
               </button>

@@ -794,14 +794,13 @@ export default function GraphView({ pages }: GraphViewProps) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              background: 'rgba(15, 15, 22, 0.88)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '20px',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
               padding: '5px 12px',
               width: full ? '260px' : '160px',
               transition: 'all 0.2s ease',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.45)',
+              boxShadow: 'var(--shadow-sm)',
               pointerEvents: 'auto',
             }}
           >
@@ -848,12 +847,11 @@ export default function GraphView({ pages }: GraphViewProps) {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(15, 15, 22, 0.88)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '20px',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
               padding: '3px 6px',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.45)',
+              boxShadow: 'var(--shadow-sm)',
               pointerEvents: 'auto',
             }}
           >
@@ -965,13 +963,12 @@ export default function GraphView({ pages }: GraphViewProps) {
               alignSelf: 'flex-start',
               fontSize: '9px',
               fontWeight: 600,
-              background: 'rgba(15, 15, 22, 0.88)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
               color: 'var(--text-secondary)',
               padding: '3px 8px',
-              borderRadius: '10px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+              borderRadius: 'var(--radius-xs)',
+              boxShadow: 'var(--shadow-sm)',
               pointerEvents: 'auto',
             }}
           >
@@ -1053,7 +1050,7 @@ export default function GraphView({ pages }: GraphViewProps) {
 
         {!isFullscreen && (inlineWidth === 0 || inlineHeight === 0) && stats.activeNodes > 0 && (
           <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: PALETTE.nodePrimary, animation: 'pulse 1.5s infinite' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: PALETTE.nodePrimary }} />
             Initializing graph engine...
           </div>
         )}
@@ -1068,8 +1065,7 @@ export default function GraphView({ pages }: GraphViewProps) {
           style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(8, 8, 12, 0.98)',
-            backdropFilter: 'blur(24px)',
+            background: 'var(--bg-primary)',
             zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
@@ -1088,11 +1084,12 @@ export default function GraphView({ pages }: GraphViewProps) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
-                width: 36, height: 36, borderRadius: '10px',
-                background: `linear-gradient(135deg, ${PALETTE.nodePrimary}, ${PALETTE.nodeSecondary})`,
+                width: 36, height: 36, borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-subtle)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Network size={18} color="#fff" />
+                <Network size={18} color="var(--accent-primary)" />
               </div>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -1111,7 +1108,7 @@ export default function GraphView({ pages }: GraphViewProps) {
                   <>
                     {communityMetadata.topCommunities.map((c, i) => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, boxShadow: `0 0 6px ${hexToRgba(c.color, 0.4)}` }} />
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color }} />
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500 }}>
                           Cluster {i + 1} ({c.count})
                         </span>
@@ -1130,7 +1127,7 @@ export default function GraphView({ pages }: GraphViewProps) {
                     { color: PALETTE.nodeOrphan, label: 'Orphan' },
                   ].map(item => (
                     <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${hexToRgba(item.color, 0.4)}` }} />
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
                       <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500 }}>{item.label}</span>
                     </div>
                   ))

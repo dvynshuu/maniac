@@ -41,11 +41,11 @@ self.onmessage = async (e) => {
   const { type, payload } = e.data;
 
   if (type === 'INIT_KEYS') {
-    if (derivedKey !== payload.derivedKey || hmacKey !== payload.hmacKey) {
+    if (derivedKey !== payload.derivedKey || hmacKey !== payload.hmacKey || !payload.derivedKey) {
       hmacWordCache.clear();
     }
-    derivedKey = payload.derivedKey;
-    hmacKey = payload.hmacKey;
+    derivedKey = payload.derivedKey || null;
+    hmacKey = payload.hmacKey || null;
     return;
   }
 
@@ -226,14 +226,23 @@ async function flushQueue() {
                 console.warn(`[PersistenceWorker] Skipping CREATE with missing/invalid id on table "${table}":`, dbPayload);
               }
             } else if (opUpper === 'CRDT_UPDATE') {
-              await db[table].put({
-                id: `${payload.pageId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                pageId: payload.pageId,
-                update: payload.update,
-                timestamp: Date.now()
-              });
-              if (meta?.source !== 'remote') {
-                broadcastOps.push({ entityType: 'CRDT', entityId: payload.pageId, op: 'CRDT_UPDATE', payload, tabId: meta?.tabId });
+              const targetPageId = payload?.pageId || id;
+              if (targetPageId) {
+                await db[table].put({
+                  id: `${targetPageId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                  pageId: targetPageId,
+                  update: payload.update,
+                  timestamp: Date.now()
+                });
+                if (meta?.source !== 'remote') {
+                  broadcastOps.push({
+                    entityType: 'CRDT',
+                    entityId: targetPageId,
+                    op: 'CRDT_UPDATE',
+                    payload: { ...payload, pageId: targetPageId },
+                    tabId: meta?.tabId
+                  });
+                }
               }
             }
           } catch (dbErr) {

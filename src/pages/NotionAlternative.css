@@ -13,16 +13,7 @@
 
 /* Atmospheric Glows & Kinetic Grid */
 .alt-ambient-glow {
-  position: absolute;
-  top: -10%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 900px;
-  height: 520px;
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.1) 0%, rgba(239, 68, 68, 0.05) 45%, transparent 75%);
-  pointer-events: none;
-  filter: blur(80px);
-  z-index: 0;
+  display: none;
 }
 
 .alt-grid-bg {
@@ -101,24 +92,27 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  background: var(--accent-scar, #ea580c);
   color: #ffffff;
   padding: 8px 18px;
   border-radius: var(--radius-md, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease), background var(--transition-fast, 150ms ease);
 }
 
 .btn-alt-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+  background: #f97316;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .btn-alt-primary:active {
   transform: translateY(1px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /* Breadcrumb Bar */
@@ -186,10 +180,7 @@
 }
 
 .alt-title-gradient {
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 50%, #f43f5e 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent-scar, #ea580c);
 }
 
 .alt-hero-subtitle {
@@ -213,24 +204,27 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  background: var(--accent-scar, #ea580c);
   color: #ffffff;
   font-size: 15px;
   font-weight: 700;
   padding: 14px 32px;
   border-radius: var(--radius-md, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   text-decoration: none;
-  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease), background var(--transition-fast, 150ms ease);
 }
 
 .btn-alt-primary-lg:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1.5px);
+  background: #f97316;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
 .btn-alt-primary-lg:active {
   transform: translateY(1px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .btn-alt-secondary-lg {
@@ -565,9 +559,10 @@ button[aria-expanded="true"] .faq-chevron {
 }
 
 .alt-cta-card {
-  background: radial-gradient(circle at center, rgba(249, 115, 22, 0.12) 0%, rgba(18, 18, 26, 0.85) 75%);
-  border: 1px solid rgba(249, 115, 22, 0.25);
-  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-secondary, #0f121a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl, 12px);
   padding: 64px 32px;
   text-align: center;
   display: flex;

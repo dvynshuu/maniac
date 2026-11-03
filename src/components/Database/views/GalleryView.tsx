@@ -49,7 +49,7 @@ export default function GalleryView({
                 className="gallery-card-cover"
                 style={{
                   backgroundImage: coverImage ? `url(${coverImage})` : undefined,
-                  background: !coverImage ? 'linear-gradient(135deg, var(--accent-primary-subtle) 0%, rgba(99, 102, 241, 0.04) 100%)' : undefined,
+                  background: !coverImage ? 'var(--bg-tertiary)' : undefined,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}

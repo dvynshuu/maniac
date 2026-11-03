@@ -481,7 +481,7 @@ export default function LandingPage() {
                         <circle cx="100" cy="240" r="6" fill="#818cf8" />
                         <circle cx="410" cy="220" r="6" fill="#818cf8" />
                       </svg>
-                      <div style={{ position: 'absolute', bottom: '12px', right: '14px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                      <div style={{ position: 'absolute', bottom: '12px', right: '14px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--text-tertiary)', boxShadow: 'var(--shadow-sm)' }}>
                         Live 2D Force-Directed Simulation
                       </div>
                     </div>

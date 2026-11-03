@@ -291,10 +291,7 @@ export function ManiacWordmark({ size = 'md', showLogo = true }) {
           fontSize: `${fs}px`,
           fontWeight: 800,
           letterSpacing: '-0.02em',
-          background: 'linear-gradient(135deg, #f3f3f4 0%, rgba(243,243,244,0.65) 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: 'var(--text-primary, #f8fafc)',
           lineHeight: 1,
         }}
       >

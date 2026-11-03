@@ -13,11 +13,14 @@ export default function IconPicker({ onSelect, onClose }) {
         };
         
         // Small delay so the click that opened it doesn't immediately close it
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             document.addEventListener('click', handleClickOutside);
         }, 10);
         
-        return () => document.removeEventListener('click', handleClickOutside);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('click', handleClickOutside);
+        };
     }, [onClose]);
 
     return (

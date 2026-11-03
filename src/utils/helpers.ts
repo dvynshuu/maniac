@@ -110,7 +110,7 @@ export function buildPageTree(pages: Page[]): any[] {
 
   // Sort children by sortOrder
   const sortChildren = (nodes: any[]) => {
-    nodes.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    nodes.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
     nodes.forEach((n) => sortChildren(n.children));
   };
   sortChildren(roots);
@@ -190,22 +190,32 @@ export function createDatabaseRow(schema: DatabaseProperty[] = [], overrides: Pa
 }
 
 /**
- * Generates a lexical sort string between two other strings.
- * Implementation based on fractional indexing to allow infinite insertions.
+ * Binary comparison for lexical sort order keys.
+ * Immune to localeCompare case-folding and collation inconsistencies.
+ */
+export function compareSortOrder(a?: string | null, b?: string | null): number {
+  const strA = a ?? '';
+  const strB = b ?? '';
+  return strA < strB ? -1 : strA > strB ? 1 : 0;
+}
+
+/**
+ * Generates a lexical sort string strictly within lowercase ASCII [a-z] range.
+ * Implementation based on fractional indexing to allow infinite insertions without collation drift.
  */
 export function generateLexicalOrder(prev: string | null = null, next: string | null = null): string {
   if (!prev) prev = '';
   if (!next) {
     if (prev === '') return 'm';
     const last = prev[prev.length - 1];
-    if (last < 'z') return prev.slice(0, -1) + String.fromCharCode(last.charCodeAt(0) + 1);
+    if (last >= 'a' && last < 'z') return prev.slice(0, -1) + String.fromCharCode(last.charCodeAt(0) + 1);
     return prev + 'm';
   }
 
   let i = 0;
   while (true) {
-    const charA = prev[i] || ' ';
-    const charB = next[i] || '{';
+    const charA = prev[i] || '`'; // ASCII 96, immediate predecessor of 'a' (97)
+    const charB = next[i] || '{'; // ASCII 123, immediate successor of 'z' (122)
 
     if (charA === charB) {
       i++;

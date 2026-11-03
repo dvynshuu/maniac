@@ -64,6 +64,15 @@ describe('SecurityService (E2E Encryption & Web Crypto)', () => {
 
       expect(failedDecryption).toBeNull();
     });
+
+    it('does not falsely classify plain text tokens, API keys, or long strings as encrypted', () => {
+      const apiKey = 'sk-proj-1234567890abcdefghijklmnopqrstuvwxyz1234567890';
+      expect(SecurityService.isEncrypted(apiKey)).toBe(false);
+      const jwtPayload = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+      expect(SecurityService.isEncrypted(jwtPayload)).toBe(false);
+      const longNote = 'This is an unencrypted note with more than forty characters written by a user.';
+      expect(SecurityService.isEncrypted(longNote)).toBe(false);
+    });
   });
 
   describe('Canary Password Verification', () => {

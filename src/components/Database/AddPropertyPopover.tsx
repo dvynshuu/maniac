@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { PROPERTY_TYPES, PROPERTY_TYPE_META } from '../../utils/constants';
 import { useDatabaseStore } from '../../stores/databaseStore';
-import * as Icons from 'lucide-react';
+import { resolveDynamicIcon } from '../Common/IconResolver';
 import { Type, Plus, X } from 'lucide-react';
 
 export default function AddPropertyPopover({ blockId, position, onClose }) {
@@ -91,7 +91,7 @@ export default function AddPropertyPopover({ blockId, position, onClose }) {
           <div className="db-type-selector">
             {Object.entries(PROPERTY_TYPES).map(([key, t]) => {
               const meta = PROPERTY_TYPE_META[t];
-              const Icon = Icons[meta.icon] || Type;
+              const Icon = resolveDynamicIcon(meta.icon, Type);
               const isSelected = type === t;
               return (
                 <button 

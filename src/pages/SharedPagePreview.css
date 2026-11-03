@@ -68,26 +68,28 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 60%, #e11d48 100%);
+  background: var(--accent-scar, #ea580c);
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   padding: 8px 18px;
   border-radius: var(--radius-md, 6px);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: transform var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all var(--transition-fast, 150ms ease);
 }
 
 .btn-share-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background: #f97316;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
 .btn-share-primary:active {
   transform: translateY(1px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .btn-share-secondary {
@@ -294,8 +296,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--bg-secondary, #0f121a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg, 12px);
   padding: 28px 32px;
 }

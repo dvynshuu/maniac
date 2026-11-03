@@ -9,7 +9,7 @@
 import { registerHandler } from './commandBus';
 import { createOp, OpType, EntityType } from '../db/opLog';
 import { db } from '../db/database';
-import { createBlock, createPage, generateLexicalOrder } from '../utils/helpers';
+import { createBlock, createPage, generateLexicalOrder, compareSortOrder } from '../utils/helpers';
 import { content_sanitizer, sanitizeObject } from '../utils/sanitizer';
 import { ensureDefaults } from './schemaRegistry';
 import { useBlockStore } from '../stores/blockStore';
@@ -68,7 +68,7 @@ registerHandler('block/create', async (payload) => {
   // Optimistic update
   const newBlockMap = { ...store.blockMap, [block.id]: block };
   const newBlockOrder = [...store.blockOrder, block.id];
-  newBlockOrder.sort((a, b) => String(newBlockMap[a]?.sortOrder || '').localeCompare(String(newBlockMap[b]?.sortOrder || '')));
+  newBlockOrder.sort((a, b) => compareSortOrder(newBlockMap[a]?.sortOrder, newBlockMap[b]?.sortOrder));
 
   useBlockStore.setState({
     blockMap: newBlockMap,
@@ -223,7 +223,7 @@ registerHandler('block/reorder', async (payload) => {
   };
   const newBlockMap = { ...blockMap, [blockId]: updatedBlock };
   const allBlocks = blockOrder.map(id => id === blockId ? updatedBlock : blockMap[id]);
-  allBlocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+  allBlocks.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
 
   useBlockStore.setState({ blockMap: newBlockMap, blockOrder: allBlocks.map(b => b.id) });
 
@@ -317,7 +317,7 @@ registerHandler('block/move', async (payload) => {
     const newMap = { ...s.blockMap, [blockId]: updatedBlock };
     const newOrder = [...s.blockOrder].filter(id => id !== blockId);
     // Find insertion index in sorted order
-    let insertIdx = newOrder.findIndex(id => String(newMap[id]?.sortOrder || '').localeCompare(sortOrder) > 0);
+    let insertIdx = newOrder.findIndex(id => compareSortOrder(newMap[id]?.sortOrder, sortOrder) > 0);
     if (insertIdx === -1) newOrder.push(blockId);
     else newOrder.splice(insertIdx, 0, blockId);
 
@@ -341,7 +341,7 @@ registerHandler('page/create', async (payload) => {
   const { id, parentId = null, title = '', icon = '📝', coverImage = null } = payload;
   const store = usePageStore.getState();
   const siblings = store.pages.filter(p => p.parentId === parentId)
-    .sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    .sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
   const lastSibling = siblings[siblings.length - 1];
   const sortOrder = generateLexicalOrder(lastSibling?.sortOrder || null, null);
 
@@ -551,8 +551,8 @@ registerHandler('crdt/update', async (payload) => {
   // DB addition deferred to persistenceWorker
 
   // Since crdt/update doesn't need to mutate Zustand directly (Yjs handles that),
-  // we just create an op so it gets broadcasted to other tabs.
-  const op = createOp('CRDT', pageId, 'CRDT_UPDATE', { update });
+  // we just create an op so it gets broadcasted to other tabs with canonical pageId.
+  const op = createOp('CRDT', pageId, 'CRDT_UPDATE', { update, pageId });
   
   return { ops: [op], inverseOps: [] };
 });

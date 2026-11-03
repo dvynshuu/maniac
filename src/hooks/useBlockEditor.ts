@@ -469,6 +469,16 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     return () => { isMounted = false; };
   }, [editor, block.content, block._isDecrypting, block.pageId, block.id]);
 
+  // External store synchronization for structural undo, redo, and remote mutations
+  useEffect(() => {
+    if (editor && !isFirstLoad.current && !block._isDecrypting) {
+      if (block.content !== lastSavedContentRef.current && !editor.isFocused) {
+        lastSavedContentRef.current = block.content || '';
+        editor.commands.setContent(block.content || '', { emitUpdate: false });
+      }
+    }
+  }, [editor, block.content, block._isDecrypting]);
+
   // Focus management: immediate focus if DOM connected, rAF fallback
   useEffect(() => {
     if (editor && isFocusedTarget && !editor.isFocused) {

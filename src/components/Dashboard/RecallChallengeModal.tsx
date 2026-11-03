@@ -4,6 +4,7 @@ import { useSecurityStore } from '../../stores/securityStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
+import { compareSortOrder } from '../../utils/helpers';
 
 // Simple lightweight HTML5 Canvas Confetti helper
 function CanvasConfetti({ active }) {
@@ -145,7 +146,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
       try {
         const key = useSecurityStore.getState().derivedKey;
         const rawBlocks = await db.blocks.where('pageId').equals(currentPage.id).toArray();
-        const sortedBlocks = rawBlocks.sort((a, b) => String(a.orderKey || '').localeCompare(String(b.orderKey || '')));
+        const sortedBlocks = rawBlocks.sort((a, b) => compareSortOrder(a.orderKey || a.sortOrder, b.orderKey || b.sortOrder));
         
         const textContents = [];
         const detectedClozes = [];
@@ -271,9 +272,9 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
           maxWidth: '520px',
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-default)',
-          borderRadius: '16px',
+          borderRadius: 'var(--radius-dialog, 12px)',
           padding: '24px',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), var(--shadow-modal)',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',

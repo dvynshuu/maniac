@@ -14,6 +14,7 @@
 import { db } from '../db/database';
 import { useBlockStore } from '../stores/blockStore';
 import { usePageStore } from '../stores/pageStore';
+import { compareSortOrder } from '../utils/helpers';
 
 const COMPACTION_THRESHOLD = 8;  // Trigger when any key length exceeds this
 const COMPACTION_INTERVAL = 300000; // Check every 5 minutes during idle
@@ -87,7 +88,7 @@ async function compactPage(pageId: string): Promise<{ compacted: boolean; pageId
   const updates: Array<{ id: string; sortOrder: string }> = [];
 
   for (const [, siblings] of byParent) {
-    siblings.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    siblings.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
     if (siblings.some(b => (b.sortOrder || '').length > COMPACTION_THRESHOLD)) {
       const newKeys = generateEvenKeys(siblings.length);
       for (let i = 0; i < siblings.length; i++) {
@@ -124,7 +125,7 @@ async function compactPage(pageId: string): Promise<{ compacted: boolean; pageId
       }
       if (mapChanged) {
         const sortedOrder = [...currentBlockOrder].sort((a, b) => 
-          String(newBlockMap[a]?.sortOrder || '').localeCompare(String(newBlockMap[b]?.sortOrder || ''))
+          compareSortOrder(newBlockMap[a]?.sortOrder, newBlockMap[b]?.sortOrder)
         );
         useBlockStore.setState({ blockMap: newBlockMap, blockOrder: sortedOrder });
       }
@@ -154,7 +155,7 @@ async function compactPages(): Promise<{ compacted: boolean; count: number } | n
 
   const updates: Array<{ id: string; sortOrder: string }> = [];
   for (const [, siblings] of byParent) {
-    siblings.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+    siblings.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
     if (siblings.some(p => (p.sortOrder || '').length > COMPACTION_THRESHOLD)) {
       const newKeys = generateEvenKeys(siblings.length);
       for (let i = 0; i < siblings.length; i++) {

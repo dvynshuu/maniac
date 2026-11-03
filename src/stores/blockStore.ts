@@ -4,6 +4,7 @@ import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { invalidateStore } from '../core/derivedCache';
 import { Block } from '../types/block';
+import { compareSortOrder } from '../utils/helpers';
 
 /**
  * Safely resolve a block's properties from raw DB data.
@@ -60,7 +61,7 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
     try {
       const key = useSecurityStore.getState().derivedKey;
       const blocksRaw = await db.blocks.where('pageId').equals(pageId).toArray();
-      blocksRaw.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+      blocksRaw.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
 
       const initialMap: Record<string, Block> = {};
       const initialOrder: string[] = [];

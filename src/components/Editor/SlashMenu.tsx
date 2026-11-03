@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getCommandsByCategory } from '../../core/slashCommandRegistry';
-import * as Icons from 'lucide-react';
+import { resolveDynamicIcon } from '../Common/IconResolver';
+import { Zap } from 'lucide-react';
 
 interface SlashMenuProps {
   editor: any;
@@ -174,7 +175,7 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
         const showCategoryHeader = item._category !== lastCategory;
         lastCategory = item._category;
         
-        const IconComponent = Icons[item.icon];
+        const IconComponent = resolveDynamicIcon(item.icon, Zap);
         
         return (
           <div key={item.id}>
@@ -191,10 +192,8 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
               <div className="slash-menu-item-icon">
                 {item.pageIcon ? (
                   <span style={{ fontSize: '16px' }}>{item.pageIcon}</span>
-                ) : IconComponent ? (
-                  <IconComponent size={18} strokeWidth={1.5} />
                 ) : (
-                  <Icons.Zap size={18} strokeWidth={1.5} />
+                  <IconComponent size={18} strokeWidth={1.5} />
                 )}
               </div>
               <div className="slash-menu-item-text">

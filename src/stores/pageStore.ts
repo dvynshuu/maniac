@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { db } from '../db/database';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
-import { dispatch } from '../core/commandBus';
+import { dispatch, undo as busUndo, transaction } from '../core/commandBus';
 import { Page } from '../types/page';
+import { compareSortOrder } from '../utils/helpers';
 
 export interface PageStore {
   pages: Page[];
@@ -178,7 +179,6 @@ export const usePageStore = create<PageStore>((set, get) => ({
       return { undo: () => {}, commit: () => {} };
     }
 
-    const { undo: busUndo, transaction } = await import('../core/commandBus');
     await transaction(async () => {
       for (const id of validIds) {
         await dispatch({
@@ -282,7 +282,7 @@ export const usePageStore = create<PageStore>((set, get) => ({
 
     if (newPage) {
       const blocks = await db.blocks.where('pageId').equals(id).toArray();
-      blocks.sort((a, b) => String(a.sortOrder || '').localeCompare(String(b.sortOrder || '')));
+      blocks.sort((a, b) => compareSortOrder(a.sortOrder, b.sortOrder));
       for (const b of blocks) {
         await dispatch({
           type: 'block/create',

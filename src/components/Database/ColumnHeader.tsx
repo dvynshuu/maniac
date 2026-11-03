@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PROPERTY_TYPE_META } from '../../utils/constants';
-import * as Icons from 'lucide-react';
-import { ChevronDown } from 'lucide-react';
+import { resolveDynamicIcon } from '../Common/IconResolver';
+import { ChevronDown, Type } from 'lucide-react';
 import ColumnMenu from './ColumnMenu';
 
 export default function ColumnHeader({ 
@@ -16,7 +16,7 @@ export default function ColumnHeader({
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
   const meta = PROPERTY_TYPE_META[property.type];
-  const Icon = Icons[meta.icon] || Icons.Type;
+  const Icon = resolveDynamicIcon(meta.icon, Type);
 
   const handleOpenMenu = (e) => {
     e.stopPropagation();

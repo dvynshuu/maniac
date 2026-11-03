@@ -26,7 +26,16 @@ export const useSecurityStore = create<SecurityStore>((set) => ({
     isLocked: false 
   }),
   
-  lock: () => set({ derivedKey: null, hmacKey: null, isLocked: true }),
+  lock: () => {
+    // Purge in-memory decrypted stores for zero-knowledge safety
+    import('./blockStore').then(({ useBlockStore }) => {
+      useBlockStore.setState({ blockMap: {}, blockOrder: [], focusBlockId: null });
+    }).catch(() => {});
+    import('./databaseStore').then(({ useDatabaseStore }) => {
+      useDatabaseStore.setState({ databases: {} });
+    }).catch(() => {});
+    set({ derivedKey: null, hmacKey: null, isLocked: true });
+  },
   
   setInitialized: (val) => set({ isInitialized: val }),
 }));

@@ -21,6 +21,7 @@ import { getTabId } from '../db/crossTabChannel';
 import { can, Permission } from './permissions';
 import { trace, event } from './observability';
 import { nanoid } from 'nanoid';
+import { compareSortOrder } from '../utils/helpers';
 import PersistenceWorker from './persistenceWorker?worker';
 import { useSecurityStore } from '../stores/securityStore';
 import { useUIStore } from '../stores/uiStore';
@@ -85,14 +86,12 @@ persistenceWorker.onmessage = (e) => {
   }
 };
 
-// Send keys whenever they change
+// Send keys whenever they change (including null on vault lock)
 useSecurityStore.subscribe((state) => {
-  if (state.derivedKey) {
-    persistenceWorker.postMessage({
-      type: 'INIT_KEYS',
-      payload: { derivedKey: state.derivedKey, hmacKey: state.hmacKey }
-    });
-  }
+  persistenceWorker.postMessage({
+    type: 'INIT_KEYS',
+    payload: { derivedKey: state.derivedKey || null, hmacKey: state.hmacKey || null }
+  });
 });
 
 // ─── Undo / Redo Stacks ────────────────────────────────────────
@@ -311,7 +310,7 @@ export async function executeOp(operation) {
         newOrder.sort((a, b) => {
           const blockA = newMap[a];
           const blockB = newMap[b];
-          return String(blockA?.sortOrder || '').localeCompare(String(blockB?.sortOrder || ''));
+          return compareSortOrder(blockA?.sortOrder, blockB?.sortOrder);
         });
 
         useBlockStore.setState({
@@ -360,7 +359,7 @@ export async function executeOp(operation) {
             newOrder = [...store.blockOrder].sort((a, b) => {
               const blockA = newMap[a];
               const blockB = newMap[b];
-              return String(blockA?.sortOrder || '').localeCompare(String(blockB?.sortOrder || ''));
+              return compareSortOrder(blockA?.sortOrder, blockB?.sortOrder);
             });
           }
 

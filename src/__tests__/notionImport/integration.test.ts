@@ -4,7 +4,7 @@ import { runNotionImportPipeline } from '../../features/notion-import/pipeline.j
 import { db } from '../../db/database.js';
 
 describe('Notion Importer Full Integration (Real Notion Export ZIP)', () => {
-  const zipPath = 'C:\\Downloads\\IMP\\Notion data\\Export-91edeb0a-e69c-4022-b974-d64c4970e8fd-Part-1.zip';
+  const zipPath = process.env.NOTION_TEST_ZIP || 'C:\\Downloads\\IMP\\Notion data\\Export-91edeb0a-e69c-4022-b974-d64c4970e8fd-Part-1.zip';
 
   beforeEach(async () => {
     await db.pages.clear();

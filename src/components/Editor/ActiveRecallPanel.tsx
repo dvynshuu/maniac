@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useSecurityStore } from '../../stores/securityStore';
 import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
+import { compareSortOrder } from '../../utils/helpers';
 
 export default function ActiveRecallPanel({ page, updatePage, onClose }) {
   const [prompt, setPrompt] = useState(page.srsPrompt || '');
@@ -64,7 +65,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
     try {
       const key = useSecurityStore.getState().derivedKey;
       const rawBlocks = await db.blocks.where('pageId').equals(page.id).toArray();
-      const sortedBlocks = rawBlocks.sort((a, b) => String(a.orderKey || '').localeCompare(String(b.orderKey || '')));
+      const sortedBlocks = rawBlocks.sort((a, b) => compareSortOrder(a.orderKey || a.sortOrder, b.orderKey || b.sortOrder));
       
       const textContents = [];
       for (const block of sortedBlocks.slice(0, 8)) {

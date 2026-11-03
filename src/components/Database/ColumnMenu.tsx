@@ -4,7 +4,7 @@ import { useDatabaseStore } from '../../stores/databaseStore';
 import { useBlockStore } from '../../stores/blockStore';
 import { db } from '../../db/database';
 import { createId } from '../../utils/helpers';
-import * as Icons from 'lucide-react';
+import { resolveDynamicIcon } from '../Common/IconResolver';
 import { Trash2, Type, Hash, Tag, Tags, Calendar, CheckSquare, Link, Mail, Phone, Clock, ChevronRight } from 'lucide-react';
 
 const ROLLUP_CALCULATIONS = [
@@ -662,7 +662,7 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
           <div className="db-type-selector">
             {Object.entries(PROPERTY_TYPES).map(([key, type]) => {
               const meta = PROPERTY_TYPE_META[type];
-              const Icon = Icons[meta.icon] || Type;
+              const Icon = resolveDynamicIcon(meta.icon, Type);
               const isSelected = property.type === type;
               return (
                 <button 

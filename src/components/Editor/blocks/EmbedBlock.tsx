@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { useBlockStore } from '../../../stores/blockStore';
+import { dispatch } from '../../../core/commandBus';
 
 export default function EmbedBlock({ block }) {
   const url = block.properties?.url || '';
@@ -183,7 +184,7 @@ export default function EmbedBlock({ block }) {
   };
 
   const handleDuplicate = async () => {
-    const { dispatch } = await import('../../../core/commandBus');
+
     await dispatch({
       type: 'block/create',
       payload: {
@@ -606,6 +607,8 @@ export default function EmbedBlock({ block }) {
               src={`https://www.youtube.com/embed/${extractYouTubeId(url)}?rel=0&modestbranding=1`}
               title={caption || 'YouTube video'}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              sandbox="allow-scripts allow-same-origin allow-presentation"
+              loading="lazy"
               allowFullScreen
               style={{ width: '100%', height: '100%', border: 'none' }}
             />

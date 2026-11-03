@@ -6,6 +6,7 @@
 
 import { Transaction } from './Transaction';
 import { useBlockStore } from '../../stores/blockStore';
+import { undo, redo } from '../commandBus';
 import type { BlockType } from '../../types';
 
 export class EditorEngine {
@@ -147,12 +148,10 @@ export class EditorEngine {
   }
 
   async undo(): Promise<any> {
-    const { undo } = await import('../commandBus');
     return undo();
   }
 
   async redo(): Promise<any> {
-    const { redo } = await import('../commandBus');
     return redo();
   }
 }

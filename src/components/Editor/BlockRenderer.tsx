@@ -34,6 +34,7 @@ const TrackerBlock = lazy(() => import('../Tracker/TrackerBlock'));
 const MathBlock = lazy(() => import('./blocks/MathBlock'));
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
+import { dispatch } from '../../core/commandBus';
 import { useChildBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useVirtualizerContext, useBlockVisible, getCachedHeight, setCachedHeight } from '../../hooks/useBlockVirtualizer';
@@ -305,7 +306,6 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
   };
 
   const handleDuplicate = async () => {
-    const { dispatch } = await import('../../core/commandBus');
     const { usePageStore } = await import('../../stores/pageStore');
     let properties = { ...block.properties };
     if (block.type === 'page' && block.properties?.pageId) {

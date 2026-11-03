@@ -81,6 +81,8 @@ function Sidebar() {
   const handleExport = async () => {
     const allPages = await db.pages.toArray();
     const blocks = await db.blocks.toArray();
+    const databaseRows = await db.database_rows.toArray();
+    const databaseCells = await db.database_cells.toArray();
     const trackers = await db.trackers.toArray();
     const entries = await db.tracker_entries.toArray();
     const blobsRaw = await db.blobs.toArray();
@@ -95,7 +97,7 @@ function Sidebar() {
       return { hash: b.hash, base64, mimeType: b.mimeType, createdAt: b.createdAt };
     }));
 
-    const data = { pages: allPages, blocks, trackers, entries, blobs: serializedBlobs };
+    const data = { pages: allPages, blocks, databaseRows, databaseCells, trackers, entries, blobs: serializedBlobs };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

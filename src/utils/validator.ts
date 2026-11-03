@@ -87,9 +87,37 @@ function validateTrackerEntry(entry: any): Record<string, any> | null {
   };
 }
 
+function validateDatabaseRow(row: any): Record<string, any> | null {
+  if (!row || typeof row !== 'object') return null;
+  if (!isValidString(row.id)) return null;
+  return {
+    id: row.id,
+    blockId: isValidString(row.blockId) ? row.blockId : '',
+    createdAt: isValidNumber(row.createdAt) ? row.createdAt : Date.now(),
+    updatedAt: isValidNumber(row.updatedAt) ? row.updatedAt : Date.now(),
+  };
+}
+
+function validateDatabaseCell(cell: any): Record<string, any> | null {
+  if (!cell || typeof cell !== 'object') return null;
+  if (!isValidString(cell.id)) return null;
+  return {
+    id: cell.id,
+    rowId: isValidString(cell.rowId) ? cell.rowId : '',
+    propertyId: isValidString(cell.propertyId) ? cell.propertyId : '',
+    blockId: isValidString(cell.blockId) ? cell.blockId : '',
+    value: cell.value !== undefined ? cell.value : null,
+    createdAt: isValidNumber(cell.createdAt) ? cell.createdAt : Date.now(),
+    updatedAt: isValidNumber(cell.updatedAt) ? cell.updatedAt : Date.now(),
+    _isEncrypted: isValidBoolean(cell._isEncrypted) ? cell._isEncrypted : false,
+  };
+}
+
 export interface BackupValidationResult {
   pages: any[];
   blocks: any[];
+  databaseRows: any[];
+  databaseCells: any[];
   trackers: any[];
   entries: any[];
   blobs: any[];
@@ -117,7 +145,17 @@ export function validateBackupData(file: { size: number; name?: string }, data: 
     throw new Error(`Payload exceeds maximum record limit of ${MAX_RECORDS}.`);
   }
 
-  const result: BackupValidationResult = { pages: [], blocks: [], trackers: [], entries: [], blobs: [], quarantined: [], _validated: false };
+  const result: BackupValidationResult = {
+    pages: [],
+    blocks: [],
+    databaseRows: [],
+    databaseCells: [],
+    trackers: [],
+    entries: [],
+    blobs: [],
+    quarantined: [],
+    _validated: false
+  };
 
   if (Array.isArray(data.pages)) {
     for (const p of data.pages) {
@@ -132,6 +170,22 @@ export function validateBackupData(file: { size: number; name?: string }, data: 
       const parsed = validateBlock(b);
       if (parsed) result.blocks.push(parsed);
       else result.quarantined.push({ type: 'block', raw: b });
+    }
+  }
+
+  if (Array.isArray(data.databaseRows)) {
+    for (const r of data.databaseRows) {
+      const parsed = validateDatabaseRow(r);
+      if (parsed) result.databaseRows.push(parsed);
+      else result.quarantined.push({ type: 'database_row', raw: r });
+    }
+  }
+
+  if (Array.isArray(data.databaseCells)) {
+    for (const c of data.databaseCells) {
+      const parsed = validateDatabaseCell(c);
+      if (parsed) result.databaseCells.push(parsed);
+      else result.quarantined.push({ type: 'database_cell', raw: c });
     }
   }
 
