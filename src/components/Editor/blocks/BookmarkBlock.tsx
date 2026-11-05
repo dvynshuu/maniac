@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
-import { ExternalLink, Bookmark, Globe, Edit2, Check, X } from 'lucide-react';
+import { ExternalLink, Bookmark, Globe, Edit2, Check, X, Copy } from 'lucide-react';
 
 export default function BookmarkBlock({ block }: { block: any }) {
   const url = block.properties?.url || block.content || '';
@@ -10,6 +10,7 @@ export default function BookmarkBlock({ block }: { block: any }) {
 
   const [inputUrl, setInputUrl] = useState(url);
   const [isEditing, setIsEditing] = useState(!url);
+  const [copied, setCopied] = useState(false);
   const engine = useEditorEngine();
 
   const getHostname = (rawUrl: string) => {
@@ -23,7 +24,7 @@ export default function BookmarkBlock({ block }: { block: any }) {
 
   const hostname = url ? getHostname(url) : '';
   const displayTitle = title || hostname || 'Web Bookmark';
-  const displayDesc = description || (url ? `Visit ${hostname}` : '');
+  const displayDesc = description || (url ? `Direct link to ${hostname}` : '');
   const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=64` : '';
 
   const handleSubmitUrl = (e?: React.FormEvent) => {
@@ -45,6 +46,16 @@ export default function BookmarkBlock({ block }: { block: any }) {
       },
     });
     setIsEditing(false);
+  };
+
+  const handleCopyUrl = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignored */ }
   };
 
   return (
@@ -111,18 +122,30 @@ export default function BookmarkBlock({ block }: { block: any }) {
               />
             ) : (
               <div className="bookmark-thumbnail-placeholder">
-                <Globe size={28} strokeWidth={1.2} />
+                <Globe size={26} strokeWidth={1.2} />
               </div>
             )}
           </a>
-          <button
-            type="button"
-            className="bookmark-edit-btn"
-            onClick={() => setIsEditing(true)}
-            title="Edit bookmark URL"
-          >
-            <Edit2 size={12} />
-          </button>
+
+          {/* Quick Floating Actions on Hover */}
+          <div className="bookmark-hover-tray">
+            <button
+              type="button"
+              className="bookmark-tool-btn"
+              onClick={handleCopyUrl}
+              title="Copy URL"
+            >
+              {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+            </button>
+            <button
+              type="button"
+              className="bookmark-tool-btn"
+              onClick={() => setIsEditing(true)}
+              title="Edit URL"
+            >
+              <Edit2 size={12} />
+            </button>
+          </div>
         </div>
       )}
     </div>

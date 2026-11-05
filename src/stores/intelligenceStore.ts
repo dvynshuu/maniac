@@ -11,6 +11,7 @@ export interface IntelligenceStore {
     dayBlocks: number;
     weekBlocks: number;
     totalBlocks: number;
+    totalRelations?: number;
     dailyActivity: number[];
     depthLevel: number;
   };
@@ -23,7 +24,7 @@ export const useIntelligenceStore = create<IntelligenceStore>((set) => ({
   nextActions: [],
   forgetting: { stalePages: [], abandonedTodos: [] },
   weeklyFocus: null,
-  knowledgeVelocity: { velocity: 0, dayBlocks: 0, weekBlocks: 0, totalBlocks: 0, dailyActivity: [5, 5, 5, 5, 5, 5, 5], depthLevel: 1 },
+  knowledgeVelocity: { velocity: 0, dayBlocks: 0, weekBlocks: 0, totalBlocks: 0, totalRelations: 0, dailyActivity: [5, 5, 5, 5, 5, 5, 5], depthLevel: 1 },
   isAnalyzing: false,
   lastAnalysisAt: null,
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -8,9 +8,11 @@ import { SecurityService } from '../../utils/securityService';
 import { 
   Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, 
   RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
-  Check, Plus, Activity, Brain, AlertCircle, TrendingUp, Search, Flame 
+  Check, Plus, Activity, Brain, AlertCircle, TrendingUp, Search, Flame,
+  FileText, Database, Shield, ArrowUpRight, CheckCircle2, Layers,
+  Compass, BarChart3, Radio, RefreshCw, Eye, Sparkles, Filter, Lock,
+  Terminal, ArrowRight
 } from 'lucide-react';
-import { batchDecrypt } from '../../utils/cryptoWorker';
 import './Dashboard.css';
 import { ProfilePopover } from './ProfilePopover';
 import { NotificationsPopover } from './NotificationsPopover';
@@ -25,21 +27,49 @@ import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
 import { getPlainText } from '../../utils/helpers';
 
-function Dashboard() {
+// Helper for high-precision relative timestamps
+function formatRelativeTime(timestamp: number | string | undefined | null): string {
+  if (!timestamp) return '—';
+  const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+  if (Number.isNaN(time)) return '—';
+  
+  const diff = Date.now() - time;
+  if (diff < 0) return 'Just now';
+  if (diff < 60000) return 'Just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+export function Dashboard() {
   const pages = usePageStore((s) => s.pages);
   const archivedPages = usePageStore((s) => s.archivedPages);
   const restorePage = usePageStore((s) => s.restorePage);
   const deletePage = usePageStore((s) => s.deletePage);
+  const addPage = usePageStore((s) => s.addPage);
   const userProfileImage = useSettingsStore((s) => s.userProfileImage);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Workspace');
-  const [activePopover, setActivePopover] = useState(null);
+
+  const [activeTab, setActiveTab] = useState<'Workspace' | 'Intelligence' | 'Calendar' | 'Archives'>('Workspace');
+  const [activePopover, setActivePopover] = useState<'notifications' | 'profile' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState('Appearance');
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const openCommandPalette = useUIStore((s) => s.openCommandPalette);
 
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+
+  // Active recall pages count for topbar badge
+  const dueSrsCount = useMemo(() => {
+    const srsPages = pages.filter(p => p.srsEnabled && !p.isArchived);
+    return srsPages.filter(p => p.srsNextReview && p.srsNextReview <= Date.now()).length;
+  }, [pages]);
 
   useEffect(() => {
     loadNotifications();
@@ -50,388 +80,235 @@ function Dashboard() {
     setIsSettingsOpen(true);
   };
 
-  const togglePopover = (popover) => {
-    if (activePopover === popover) setActivePopover(null);
-    else setActivePopover(popover);
+  const togglePopover = (popover: 'notifications' | 'profile') => {
+    setActivePopover(prev => (prev === popover ? null : popover));
+  };
+
+  const handleQuickNewPage = async () => {
+    try {
+      const page = await addPage();
+      if (page?.id) {
+        navigate(`/app/page/${page.id}`);
+      }
+    } catch (err) {
+      console.error('Failed to create page', err);
+    }
   };
 
   return (
-    <div className="editor-scroll bg-primary dashboard-wrapper" style={{ height: '100%' }} onClick={() => setActivePopover(null)}>
+    <div 
+      className="editor-scroll bg-primary dashboard-wrapper" 
+      style={{ height: '100%' }} 
+      onClick={() => setActivePopover(null)}
+    >
       {/* Settings Modal */}
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} initialTab={settingsTab} />}
 
-      {/* Dashboard Topbar */}
-      <div className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
+      {/* Hardware Instrument Topbar */}
+      <header className="dashboard-topbar" style={{ paddingLeft: sidebarOpen ? '32px' : '56px' }}>
         <div className="dashboard-brand-container">
-          <div className="dashboard-tabs" role="tablist">
-            {['Workspace', 'Review', 'Calendar', 'Archives'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab === 'Review' ? 'Intelligence' : tab)}
-                role="tab"
-                aria-selected={(tab === 'Review' ? 'Intelligence' : tab) === activeTab}
-                className="dashboard-tab"
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {/* Milled Segmented Tab Switcher */}
+          <nav className="dashboard-tabs" role="tablist" aria-label="Dashboard views">
+            <button
+              onClick={() => setActiveTab('Workspace')}
+              role="tab"
+              aria-selected={activeTab === 'Workspace'}
+              className="dashboard-tab"
+            >
+              <Terminal size={14} className="tab-icon" />
+              <span>Workspace</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Intelligence')}
+              role="tab"
+              aria-selected={activeTab === 'Intelligence'}
+              className="dashboard-tab"
+            >
+              <Brain size={14} className="tab-icon" />
+              <span>Review</span>
+              {dueSrsCount > 0 && (
+                <span className="tab-badge due-badge" title={`${dueSrsCount} notes due for recall`}>
+                  {dueSrsCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Calendar')}
+              role="tab"
+              aria-selected={activeTab === 'Calendar'}
+              className="dashboard-tab"
+            >
+              <CalendarIcon size={14} className="tab-icon" />
+              <span>Calendar</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Archives')}
+              role="tab"
+              aria-selected={activeTab === 'Archives'}
+              className="dashboard-tab"
+            >
+              <Trash2 size={14} className="tab-icon" />
+              <span>Archives</span>
+              {archivedPages.length > 0 && (
+                <span className="tab-badge archive-badge">
+                  {archivedPages.length}
+                </span>
+              )}
+            </button>
+          </nav>
         </div>
+
+        {/* Action Tray */}
         <div className="dashboard-actions" onClick={e => e.stopPropagation()}>
-          <button aria-label="Settings" className="icon-btn" onClick={() => openSettings('Appearance')}>
-            <Settings size={18} />
+          {/* Fast Note CTA */}
+          <button 
+            className="topbar-action-btn primary"
+            onClick={handleQuickNewPage}
+            title="Create new note"
+          >
+            <Plus size={14} />
+            <span className="topbar-btn-text">New Note</span>
           </button>
 
+          {/* Quick Search Shortcut */}
+          <button 
+            className="topbar-action-btn secondary"
+            onClick={() => openCommandPalette()}
+            title="Search notes and commands (⌘K)"
+          >
+            <Search size={14} />
+            <span className="topbar-btn-text">Search</span>
+            <kbd className="topbar-kbd">⌘K</kbd>
+          </button>
+
+          <div className="topbar-divider" />
+
+          {/* System Settings */}
+          <button 
+            aria-label="Settings" 
+            className="topbar-icon-btn" 
+            onClick={() => openSettings('Appearance')}
+            title="Workspace Settings"
+          >
+            <Settings size={16} />
+          </button>
+
+          {/* Notifications */}
           <div style={{ position: 'relative' }}>
-            <button aria-label="Notifications" className="icon-btn" onClick={() => togglePopover('notifications')}>
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="notification-badge" />
-              )}
+            <button 
+              aria-label="Notifications" 
+              className="topbar-icon-btn" 
+              onClick={() => togglePopover('notifications')}
+              title="Notifications"
+            >
+              <Bell size={16} />
+              {unreadCount > 0 && <span className="notification-badge" />}
             </button>
             {activePopover === 'notifications' && <NotificationsPopover onClose={() => setActivePopover(null)} />}
           </div>
 
+          {/* Profile Popover */}
           <div style={{ position: 'relative' }}>
-            <button aria-label="Profile" className="dashboard-profile-btn" onClick={() => togglePopover('profile')}>
-              <div className="dashboard-profile-avatar" style={{ padding: 0, overflow: 'hidden' }}>
+            <button 
+              aria-label="Profile" 
+              className="dashboard-profile-btn" 
+              onClick={() => togglePopover('profile')}
+              title="Profile & Vault Security"
+            >
+              <div className="dashboard-profile-avatar">
                 {userProfileImage ? (
-                  <img src={userProfileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={userProfileImage} alt="Profile" />
                 ) : (
-                  <User size={16} />
+                  <User size={15} />
                 )}
               </div>
             </button>
-            {activePopover === 'profile' && <ProfilePopover onClose={() => setActivePopover(null)} onOpenSettings={openSettings} />}
+            {activePopover === 'profile' && (
+              <ProfilePopover onClose={() => setActivePopover(null)} onOpenSettings={openSettings} />
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="editor-container dashboard-main-content">
+      {/* Main Workspace Frame */}
+      <main className="editor-container dashboard-main-content">
         {activeTab === 'Workspace' && <WorkspaceTab pages={pages} navigate={navigate} />}
         {activeTab === 'Intelligence' && <IntelligenceTab navigate={navigate} />}
         {activeTab === 'Calendar' && <CalendarTab pages={pages} navigate={navigate} />}
-        {activeTab === 'Archives' && <ArchivesTab archivedPages={archivedPages} restore={restorePage} permaDelete={deletePage} />}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// Intelligence Tab (Workspace Review & Insights)
-// ==========================================
-function IntelligenceTab({ navigate }) {
-  const { nextActions, forgetting, weeklyFocus, knowledgeVelocity, analyze, isAnalyzing } = useIntelligenceStore();
-  const key = useSecurityStore(s => s.derivedKey);
-
-  // Active Recall additions
-  const pages = usePageStore(s => s.pages);
-  const updatePage = usePageStore(s => s.updatePage);
-  const srsStreak = useSettingsStore(s => s.srsStreak);
-  const [srsModalOpen, setSrsModalOpen] = useState(false);
-
-  const srsPages = pages.filter(p => p.srsEnabled);
-  const duePages = srsPages.filter(p => p.srsNextReview && p.srsNextReview <= Date.now());
-
-  useEffect(() => {
-    analyze();
-  }, [key]);
-
-  if (isAnalyzing && !nextActions.length) {
-    return (
-      <div className="intelligence-loading">
-        <div className="spinner"></div>
-        <div className="intelligence-loading-title">Gathering workspace insights...</div>
-        <div className="intelligence-loading-subtitle">Reviewing action items, spaced repetition queue, and active pages.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="intelligence-container animate-fade-in">
-      <div className="intelligence-header">
-        <div className="intelligence-title-row">
-          <Brain size={24} className="intelligence-header-icon" />
-          <h2 className="intelligence-title">Workspace Review</h2>
-        </div>
-        <p className="intelligence-subtitle">Spaced repetition queue, pending tasks, and weekly activity.</p>
-      </div>
-
-      <div className={`intelligence-card srs-card ${duePages.length > 0 ? 'glass active-recall-due' : ''}`}>
-        <div className="srs-header">
-          <div className="srs-info">
-            <div className="srs-icon-container">
-              <Brain size={20} />
-            </div>
-            <div>
-              <h3 className="srs-title">Active Recall Queue</h3>
-              <p className="srs-description">
-                {srsPages.length === 0 
-                  ? 'Enable Spaced Repetition on your pages to retain information.' 
-                  : duePages.length === 0 
-                    ? 'All caught up! Your memory traces are reinforced and stable.' 
-                    : `${duePages.length} notes are due for cognitive recall checks.`}
-              </p>
-            </div>
-          </div>
-          <div className="srs-streak-badge">
-            <Flame size={16} />
-            <span>Streak: {srsStreak || 0}d</span>
-          </div>
-        </div>
-
-        {srsPages.length > 0 && (
-          <div className="srs-progress-bar">
-            <div 
-              className="srs-progress-fill"
-              style={{
-                width: `${srsPages.length > 0 ? ((srsPages.length - duePages.length) / srsPages.length) * 100 : 0}%`
-              }}
-            />
-          </div>
+        {activeTab === 'Archives' && (
+          <ArchivesTab 
+            archivedPages={archivedPages} 
+            restore={restorePage} 
+            permaDelete={deletePage} 
+          />
         )}
-
-        {duePages.length > 0 ? (
-          <button 
-            className="btn btn-primary srs-start-btn"
-            onClick={() => setSrsModalOpen(true)}
-          >
-            <Brain size={16} /> Start Recall Checks ({duePages.length} due)
-          </button>
-        ) : srsPages.length === 0 ? (
-          <div className="srs-tip">
-            Tip: Go to any page and toggle "Active Recall" in the page header to add it to your daily practice.
-          </div>
-        ) : null}
-      </div>
-
-      {srsModalOpen && (
-        <RecallChallengeModal 
-          duePages={duePages} 
-          updatePage={updatePage} 
-          onClose={() => setSrsModalOpen(false)} 
-        />
-      )}
-
-      <div className="intelligence-grid">
-        {/* Next Actions */}
-        <div className="intelligence-card glass card-next-actions">
-          <div className="intelligence-card-header">
-            <Zap size={18} />
-            <h3>What should I do next?</h3>
-          </div>
-          <div className="intelligence-card-content">
-            {nextActions.length > 0 ? nextActions.map(action => (
-              <div
-                key={action.id}
-                className="intelligence-item"
-                onClick={() => navigate(`/app/page/${action.pageId}`)}
-              >
-                <div className="intelligence-item-inner">
-                  {action.priority > 0 && <span className={`priority-tag p-${action.priority}`}>!</span>}
-                  <span className="intelligence-item-text">{getPlainText(action.content)}</span>
-                </div>
-              </div>
-            )) : (
-              <div className="intelligence-empty-state">No pending tasks detected.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Forgetting */}
-        <div className="intelligence-card glass card-forgetting">
-          <div className="intelligence-card-header">
-            <AlertCircle size={18} />
-            <h3>What am I forgetting?</h3>
-          </div>
-          <div className="intelligence-card-content">
-            {forgetting.stalePages.length > 0 && (
-              <div className="intelligence-sub-section">
-                <div className="intelligence-sub-title">STALE PAGES</div>
-                <div className="intelligence-sub-list">
-                  {forgetting.stalePages.slice(0, 3).map(page => (
-                    <div key={page.id} className="intelligence-item" onClick={() => navigate(`/app/page/${page.id}`)}>
-                      <span className="intelligence-item-text flex-align">
-                        <EmojiIcon emoji={page.icon || '📄'} size="14px" />
-                        <span>{page.title}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {forgetting.abandonedTodos.length > 0 && (
-              <div className="intelligence-sub-section">
-                <div className="intelligence-sub-title">ABANDONED TASKS</div>
-                <div className="intelligence-sub-list">
-                  {forgetting.abandonedTodos.slice(0, 3).map(todo => (
-                    <div key={todo.id} className="intelligence-item" onClick={() => navigate(`/app/page/${todo.pageId}`)}>
-                      <span className="intelligence-item-text">{getPlainText(todo.content)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {forgetting.stalePages.length === 0 && forgetting.abandonedTodos.length === 0 && (
-              <div className="intelligence-empty-state">Your memory is synchronized.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Weekly Focus */}
-        <div className="intelligence-card glass card-weekly-focus">
-          <div className="intelligence-card-header">
-            <TrendingUp size={18} />
-            <h3>What matters this week?</h3>
-          </div>
-          <div className="intelligence-card-content">
-            {weeklyFocus ? (
-              <div className="weekly-focus-stats">
-                <div className="focus-stat-card">
-                  <div className="focus-stat-value">{weeklyFocus.activePages}</div>
-                  <div className="focus-stat-label">Active Nodes this week</div>
-                </div>
-                <div className="focus-trackers-section">
-                  <div className="intelligence-sub-title">TOP TRACKERS</div>
-                  <div className="focus-trackers-list">
-                    {weeklyFocus.trackerStats.map(stat => (
-                      <div key={stat.id} className="focus-tracker-tag">
-                        <span className="tracker-name">{stat.name}</span>
-                        <span className="tracker-count">{stat.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="intelligence-empty-state">Insufficient data for this week.</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Logic for Feedback Loop */}
-      <div className="intelligence-card growth-card">
-        <div className="growth-header">
-          <h3 className="growth-title">Knowledge Growth Curve</h3>
-          <span className="growth-depth-badge">Level {knowledgeVelocity?.depthLevel || 1} Depth</span>
-        </div>
-        <div className="growth-chart-container">
-          {(knowledgeVelocity?.dailyActivity || [5, 5, 5, 5, 5, 5, 5]).map((h, i) => (
-            <div 
-              key={i} 
-              className="growth-chart-bar" 
-              style={{ 
-                height: `${h}%`,
-                '--bar-index': i
-              } as React.CSSProperties}
-              title={`Day ${i+1}: ${h}%`}
-            />
-          ))}
-        </div>
-        <p className="growth-footer">
-          Maniac is becoming more personalized as you add more nodes. Current personalization depth is optimized.
-        </p>
-      </div>
+      </main>
     </div>
   );
 }
 
 // ==========================================
-// Hero Greeting Component
+// WorkspaceTab (Tactical Workstation)
 // ==========================================
-function HeroGreeting({ pages }) {
-  const [greeting, setGreeting] = useState('');
-  const [tagline, setTagline] = useState('');
-
-  useEffect(() => {
-    const hrs = new Date().getHours();
-    let text = 'Good evening';
-    if (hrs < 12) text = 'Good morning';
-    else if (hrs < 18) text = 'Good afternoon';
-    setGreeting(text);
-
-    const taglines = [
-      'Your private, local-first workspace.',
-      'Organize thoughts, notes, and relational data.',
-      'Fast, encrypted, distraction-free productivity.'
-    ];
-    let currentIndex = 0;
-    setTagline(taglines[0]);
-
-    const interval = setInterval(() => {
-      currentIndex = (currentIndex + 1) % taglines.length;
-      setTagline(taglines[currentIndex]);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const totalNodes = pages.length;
-  const activeWeekNodes = pages.filter(p => {
-    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return new Date(p.updatedAt).getTime() > oneWeekAgo;
-  }).length;
-
-  return (
-    <div className="dashboard-hero-section">
-      <div className="dashboard-hero-logo">
-        <ManiacLogo size="lg" />
-      </div>
-      <div className="dashboard-hero-content">
-        <h1 className="dashboard-hero-title">{greeting}</h1>
-        <p className="dashboard-hero-tagline">{tagline}</p>
-
-        <div className="dashboard-status-strip">
-          <div className="status-item">
-            <span className="status-dot" />
-            <span className="status-label">Local Encrypted</span>
-          </div>
-          <div className="status-divider" />
-          <div className="status-item">
-            <span className="status-value">{totalNodes}</span>
-            <span className="status-label">Pages</span>
-          </div>
-          <div className="status-divider" />
-          <div className="status-item">
-            <span className="status-value">{activeWeekNodes}</span>
-            <span className="status-label">Active This Week</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface WorkspaceTabProps {
+  pages: any[];
+  navigate: (path: string) => void;
 }
 
-// ==========================================
-// WorkspaceTab
-// ==========================================
-function WorkspaceTab({ pages, navigate }) {
-  const [recentPages, setRecentPages] = useState([]);
-  const [pinnedPages, setPinnedPages] = useState([]);
+function WorkspaceTab({ pages, navigate }: WorkspaceTabProps) {
+  const [recentPages, setRecentPages] = useState<any[]>([]);
+  const [pinnedPages, setPinnedPages] = useState<any[]>([]);
+  const [leadPageSnippet, setLeadPageSnippet] = useState<string>('');
+  const [leadBlockCount, setLeadBlockCount] = useState<number>(0);
+  
   const lastVisitedPageId = useUIStore(s => s.lastVisitedPageId);
   const onboardingStatus = useUIStore(s => s.onboardingStatus);
-  const lastVisitedPage = lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId) : null;
+  const openCommandPalette = useUIStore(s => s.openCommandPalette);
+  const addPage = usePageStore(s => s.addPage);
+  
+  const lastVisitedPage = useMemo(() => {
+    return lastVisitedPageId ? pages.find(p => p.id === lastVisitedPageId && !p.isArchived) : null;
+  }, [lastVisitedPageId, pages]);
+
   const key = useSecurityStore(s => s.derivedKey);
-  const { nextActions, analyze } = useIntelligenceStore();
+  const { nextActions, analyze, knowledgeVelocity } = useIntelligenceStore();
 
   useEffect(() => {
     analyze();
-  }, [key]);
+  }, [key, analyze]);
 
+  // Load Pinned, Recent, and Lead Excerpt
   useEffect(() => {
-    const fetchPages = async () => {
-      try {
-        const recent = await db.pages.orderBy('updatedAt').reverse().limit(6).toArray();
-        const pinned = await db.pages.orderBy('createdAt').limit(4).toArray();
+    let isCancelled = false;
 
-        // Decrypt titles if needed
-        const decryptTitles = async (list) => {
+    const fetchWorkspaceData = async () => {
+      try {
+        const activePages = await db.pages.filter(p => !p.isArchived).toArray();
+
+        // Determine Pinned: Explicit Favorites first, or top root active pages
+        const favorites = activePages.filter(p => p.isFavorite && !p.isDatabaseRow);
+        const pinnedList = favorites.length > 0 
+          ? favorites.slice(0, 5) 
+          : activePages.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 4);
+
+        // Recent: ordered by updatedAt descending
+        const recent = await db.pages
+          .filter(p => !p.isArchived && !p.isDatabaseRow)
+          .reverse()
+          .sortBy('updatedAt');
+
+        const recentList = recent.slice(0, 6);
+
+        // Title Decryption Helper
+        const decryptPageList = async (list: any[]) => {
           return Promise.all(list.map(async p => {
             if (key && p._isEncrypted && p.title) {
               try {
                 const decrypted = await SecurityService.decrypt(p.title, key);
-                return { ...p, title: decrypted || '🔒 Decryption Failed' };
+                return { ...p, title: decrypted || '🔒 Encrypted Node' };
               } catch {
                 return { ...p, title: '🔒 Decryption Failed' };
               }
@@ -440,182 +317,445 @@ function WorkspaceTab({ pages, navigate }) {
           }));
         };
 
-        setRecentPages(await decryptTitles(recent));
-        setPinnedPages(await decryptTitles(pinned));
+        const [decryptedPinned, decryptedRecent] = await Promise.all([
+          decryptPageList(pinnedList),
+          decryptPageList(recentList)
+        ]);
+
+        if (isCancelled) return;
+
+        setPinnedPages(decryptedPinned);
+        setRecentPages(decryptedRecent);
+
+        // Fetch lead card details if pinned pages exist
+        if (decryptedPinned.length > 0) {
+          const leadId = decryptedPinned[0].id;
+          const blocks = await db.blocks.where('pageId').equals(leadId).toArray();
+          if (isCancelled) return;
+          
+          setLeadBlockCount(blocks.length);
+
+          const textBlock = blocks.find(b => b.content && typeof b.content === 'string' && b.content.trim().length > 0);
+          if (textBlock) {
+            let content = textBlock.content;
+            if (key && textBlock._isEncrypted) {
+              try {
+                content = (await SecurityService.decrypt(content, key)) || '';
+              } catch {
+                content = '';
+              }
+            }
+            setLeadPageSnippet(getPlainText(content));
+          } else {
+            setLeadPageSnippet('');
+          }
+        }
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load workspace data', err);
       }
     };
-    fetchPages();
-  }, [key, pages.length]); // Re-run when new pages are created
+
+    fetchWorkspaceData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [key, pages.length]);
+
+  // Compute metrics
+  const totalActiveNodes = useMemo(() => pages.filter(p => !p.isArchived).length, [pages]);
+  const activeWeekNodes = useMemo(() => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return pages.filter(p => !p.isArchived && new Date(p.updatedAt).getTime() > oneWeekAgo).length;
+  }, [pages]);
+
+  const dueSrsCount = useMemo(() => {
+    const srsPages = pages.filter(p => p.srsEnabled && !p.isArchived);
+    return srsPages.filter(p => p.srsNextReview && p.srsNextReview <= Date.now()).length;
+  }, [pages]);
+
+  const handleCreateNew = async () => {
+    const page = await addPage();
+    if (page?.id) {
+      navigate(`/app/page/${page.id}`);
+    }
+  };
 
   return (
     <div className="workspace-tab-container">
-      {/* Hero Greeting Panel */}
-      <HeroGreeting pages={pages} />
+      {/* Executive Telemetry Header */}
+      <section className="dashboard-telemetry-header">
+        <div className="telemetry-top-row">
+          <div className="telemetry-stamp">
+            <Shield size={12} className="telemetry-stamp-icon" />
+            <span>VAULT OS // RUNNING IN LOCAL MEMORY // ZERO CLOUD LEAK</span>
+          </div>
+          <div className="telemetry-time-stamp">
+            <span>SYS_TIME: {new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+          </div>
+        </div>
 
-      {/* Smart Resurfacing */}
+        <div className="telemetry-content-row">
+          <div className="telemetry-headline-group">
+            <h1 className="telemetry-heading">Workspace Central</h1>
+            <p className="telemetry-subheading">
+              Local-first encrypted knowledge graph, relational databases, and tactical focus.
+            </p>
+          </div>
+
+          <div className="telemetry-controls-group">
+            <button className="telemetry-btn primary" onClick={handleCreateNew}>
+              <Plus size={15} />
+              <span>Create Note</span>
+            </button>
+            <button className="telemetry-btn secondary" onClick={() => openCommandPalette()}>
+              <Search size={14} />
+              <span>Index</span>
+              <kbd>⌘K</kbd>
+            </button>
+          </div>
+        </div>
+
+        {/* 4-Metric Machine HUD */}
+        <div className="telemetry-hud-strip">
+          <div className="hud-metric-tile">
+            <span className="hud-metric-label">TOTAL NODES</span>
+            <div className="hud-metric-value-row">
+              <span className="hud-metric-value">{totalActiveNodes}</span>
+              <span className="hud-metric-delta">PAGES</span>
+            </div>
+          </div>
+
+          <div className="hud-divider" />
+
+          <div className="hud-metric-tile">
+            <span className="hud-metric-label">ACTIVE (7D)</span>
+            <div className="hud-metric-value-row">
+              <span className="hud-metric-value">{activeWeekNodes}</span>
+              <span className="hud-metric-delta text-success">
+                {totalActiveNodes > 0 ? `${Math.round((activeWeekNodes / totalActiveNodes) * 100)}%` : '0%'}
+              </span>
+            </div>
+          </div>
+
+          <div className="hud-divider" />
+
+          <div className="hud-metric-tile">
+            <span className="hud-metric-label">BLOCK FOOTPRINT</span>
+            <div className="hud-metric-value-row">
+              <span className="hud-metric-value">{knowledgeVelocity?.totalBlocks || 0}</span>
+              <span className="hud-metric-delta">BLOCKS</span>
+            </div>
+          </div>
+
+          <div className="hud-divider" />
+
+          <div className="hud-metric-tile">
+            <span className="hud-metric-label">RECALL STATUS</span>
+            <div className="hud-metric-value-row">
+              <span className={`hud-metric-value ${dueSrsCount > 0 ? 'text-amber' : 'text-success'}`}>
+                {dueSrsCount > 0 ? dueSrsCount : 'OK'}
+              </span>
+              <span className="hud-metric-delta">
+                {dueSrsCount > 0 ? 'DUE CHECKS' : 'SYNCHRONIZED'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Fast-Resume Active Session Dock */}
       {lastVisitedPage && (
-        <div className="continue-pill-wrapper">
-          <div
-            className="continue-pill"
-            onClick={() => navigate(`/app/page/${lastVisitedPage.id}`)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${lastVisitedPage.id}`); } }}
-          >
-            <RotateCcw size={14} className="continue-icon" />
-            <span>Continue {lastVisitedPage.title || 'Untitled'}</span>
-            <ChevronRight size={14} className="continue-chevron" />
+        <div 
+          className="resume-dock-bar" 
+          onClick={() => navigate(`/app/page/${lastVisitedPage.id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigate(`/app/page/${lastVisitedPage.id}`);
+            }
+          }}
+        >
+          <div className="resume-dock-left">
+            <div className="resume-beacon">
+              <span className="resume-beacon-dot" />
+              <span className="resume-beacon-label">RESUME SESSION</span>
+            </div>
+            <div className="resume-dock-node">
+              <EmojiIcon emoji={lastVisitedPage.icon || '📄'} size="18px" />
+              <span className="resume-dock-title">{lastVisitedPage.title || 'Untitled'}</span>
+            </div>
+          </div>
+
+          <div className="resume-dock-right">
+            <span className="resume-dock-meta">
+              Updated {formatRelativeTime(lastVisitedPage.updatedAt)}
+            </span>
+            <button 
+              className="resume-dock-btn button-tactile-sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/app/page/${lastVisitedPage.id}`);
+              }}
+            >
+              <span>Continue</span>
+              <ArrowRight size={13} />
+            </button>
           </div>
         </div>
       )}
 
-      {/* Onboarding Narrative Widget */}
+      {/* Mastering MANIAC Onboarding Spec (If Not Dismissed) */}
       {!onboardingStatus?.isComplete && (
         <OnboardingNarrative onComplete={() => useUIStore.getState().updateOnboarding('isComplete')} />
       )}
 
-      {/* Asymmetrical Split Pane */}
+      {/* Asymmetrical Workstation Split Grid */}
       <div className="dashboard-split-pane">
-
-        {/* LEFT PANE: Pinned & Recent */}
+        
+        {/* LEFT COLUMN: Pinned Bento & Activity Ledger */}
         <div className="dashboard-pane-left">
-
-          {/* Pinned Nodes Bento Grid */}
-          <div className="bento-container">
-            <div className="section-header">
-              <Pin size={16} />
-              <h3>Pinned Nodes</h3>
+          
+          {/* Priority Pinned Bento Grid */}
+          <section className="workstation-section">
+            <div className="section-header-machined">
+              <div className="section-header-title-group">
+                <Pin size={14} className="section-header-icon" />
+                <h2 className="section-header-text">Priority Nodes</h2>
+              </div>
+              <span className="section-header-tag">
+                {pinnedPages.length} {pinnedPages.length === 1 ? 'NODE' : 'NODES'}
+              </span>
             </div>
-            
-            <div className="bento-grid">
-              {pinnedPages.length > 0 ? pinnedPages.map((page, index) => {
-                // Determine size based on index to create an interlocking bento layout
-                let sizeClass = '';
-                if (index === 0) sizeClass = 'bento-large';
-                else if (index === 1) sizeClass = 'bento-tall';
-                else if (index === 2) sizeClass = 'bento-wide';
 
-                return (
-                  <div
+            {pinnedPages.length > 0 ? (
+              <div className="bento-matrix">
+                {/* Lead Card (Span 2 col) */}
+                <article 
+                  className="bento-tile bento-lead"
+                  onClick={() => navigate(`/app/page/${pinnedPages[0].id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/app/page/${pinnedPages[0].id}`);
+                    }
+                  }}
+                >
+                  <div className="bento-tile-top">
+                    <div className="bento-node-badge">
+                      <EmojiIcon emoji={pinnedPages[0].icon || '📄'} size="20px" />
+                      <span className="bento-index-stamp">LEAD // 01</span>
+                    </div>
+                    <span className="bento-timestamp">
+                      {formatRelativeTime(pinnedPages[0].updatedAt)}
+                    </span>
+                  </div>
+
+                  <div className="bento-lead-content">
+                    <h3 className="bento-lead-title">
+                      {pinnedPages[0].title || 'Untitled Node'}
+                    </h3>
+                    <p className="bento-lead-snippet">
+                      {leadPageSnippet || 'Open this node to structure notes, relational tables, and research.'}
+                    </p>
+                  </div>
+
+                  <div className="bento-lead-footer">
+                    <span className="bento-tag">
+                      <FileText size={11} />
+                      <span>{leadBlockCount} BLOCKS</span>
+                    </span>
+                    <span className="bento-open-link">
+                      <span>Open Note</span>
+                      <ArrowUpRight size={13} />
+                    </span>
+                  </div>
+                </article>
+
+                {/* Secondary Pinned Cards */}
+                {pinnedPages.slice(1).map((page, idx) => (
+                  <article
                     key={page.id}
-                    className={`bento-item ${sizeClass}`}
+                    className="bento-tile bento-sub"
                     onClick={() => navigate(`/app/page/${page.id}`)}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${page.id}`); } }}
-                  >
-                    <div className="bento-content-top">
-                      <div className="bento-icon-wrapper">
-                        <EmojiIcon emoji={page.icon || '📄'} size={sizeClass === 'bento-large' ? '28px' : '20px'} />
-                      </div>
-                      <div className="bento-title">
-                        {page.title || 'Untitled'}
-                      </div>
-                    </div>
-                    {sizeClass === 'bento-large' && (
-                      <div className="bento-meta">
-                        <Clock size={12} /> <span>{new Date(page.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              }) : (
-                <div className="bento-item bento-wide empty-bento" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '24px' }}>
-                  <Pin size={20} style={{ opacity: 0.4 }} />
-                  <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No pinned nodes yet</span>
-                  <button 
-                    className="btn btn-secondary btn-sm"
-                    onClick={async () => {
-                      const page = await usePageStore.getState().addPage();
-                      navigate(`/app/page/${page.id}`);
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/app/page/${page.id}`);
+                      }
                     }}
-                    style={{ marginTop: '4px' }}
                   >
-                    <Plus size={13} /> Create Page
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+                    <div className="bento-tile-top">
+                      <div className="bento-sub-icon">
+                        <EmojiIcon emoji={page.icon || '📄'} size="16px" />
+                      </div>
+                      <span className="bento-index-stamp">0{idx + 2}</span>
+                    </div>
 
-          {/* Recent Pages Timeline */}
-          <div className="timeline-container-el">
-            <div className="section-header">
-              <Clock size={16} />
-              <h3>Recent Activity</h3>
+                    <h4 className="bento-sub-title">
+                      {page.title || 'Untitled Node'}
+                    </h4>
+
+                    <div className="bento-sub-footer">
+                      <Clock size={11} />
+                      <span>{formatRelativeTime(page.updatedAt)}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="bento-empty-machined">
+                <Pin size={24} className="bento-empty-icon" />
+                <h3 className="bento-empty-title">No priority nodes docked</h3>
+                <p className="bento-empty-text">
+                  Star or favorite key documents from the page options menu to dock them on your priority station.
+                </p>
+                <button className="telemetry-btn primary" onClick={handleCreateNew}>
+                  <Plus size={14} />
+                  <span>Create First Node</span>
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* Chronological Activity Ledger */}
+          <section className="workstation-section" style={{ marginTop: '28px' }}>
+            <div className="section-header-machined">
+              <div className="section-header-title-group">
+                <Clock size={14} className="section-header-icon" />
+                <h2 className="section-header-text">Chronological Ledger</h2>
+              </div>
+              <span className="section-header-tag">RECENT EDITS</span>
             </div>
-            
-            <div className="timeline">
-              {recentPages.length > 0 ? recentPages.map(page => (
-                <div
-                  key={page.id}
-                  className="timeline-item"
-                  onClick={() => navigate(`/app/page/${page.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/app/page/${page.id}`); } }}
-                >
-                  <div className="timeline-dot"></div>
-                  <div className="timeline-item-content">
-                    <div className="timeline-icon-box">
-                      <EmojiIcon emoji={page.icon || '📄'} size="16px" />
+
+            <div className="ledger-container">
+              {recentPages.length > 0 ? (
+                <div className="ledger-table" role="list">
+                  {recentPages.map((page) => (
+                    <div
+                      key={page.id}
+                      className="ledger-row"
+                      role="listitem"
+                      onClick={() => navigate(`/app/page/${page.id}`)}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/app/page/${page.id}`);
+                        }
+                      }}
+                    >
+                      <div className="ledger-cell-main">
+                        <div className="ledger-icon-box">
+                          <EmojiIcon emoji={page.icon || '📄'} size="15px" />
+                        </div>
+                        <div className="ledger-title-group">
+                          <span className="ledger-title">{page.title || 'Untitled'}</span>
+                          <span className="ledger-id-stamp">#{page.id.slice(0, 6)}</span>
+                        </div>
+                      </div>
+
+                      <div className="ledger-cell-meta">
+                        <span className="ledger-timestamp">
+                          {formatRelativeTime(page.updatedAt)}
+                        </span>
+                        <ArrowRight size={13} className="ledger-arrow" />
+                      </div>
                     </div>
-                    <div className="timeline-text-box">
-                      <span className="timeline-item-title">{page.title || 'Untitled'}</span>
-                      <span className="timeline-item-date">Modified {new Date(page.updatedAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )) : (
-                <div className="timeline-empty" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                  <Clock size={16} style={{ opacity: 0.5 }} />
-                  <span>No recent activity. Create or edit pages to see them here.</span>
+              ) : (
+                <div className="ledger-empty">
+                  <span>No recent activity logged in this workspace session.</span>
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
         </div>
 
-        {/* RIGHT PANE: Actions & Graph */}
+        {/* RIGHT COLUMN: Tactical Action Radar & Neural Graph */}
         <div className="dashboard-pane-right">
-
-          {/* Action Chips */}
-          <div className="actions-section">
-            <div className="section-header header-ember">
-              <Zap size={16} />
-              <h3>Suggested Actions</h3>
+          
+          {/* Tactical Action Radar */}
+          <section className="workstation-section">
+            <div className="section-header-machined">
+              <div className="section-header-title-group">
+                <Zap size={14} className="section-header-icon text-amber" />
+                <h2 className="section-header-text">Tactical Queue</h2>
+              </div>
+              <span className="section-header-tag text-amber">
+                {nextActions.length} PENDING
+              </span>
             </div>
 
-            <div className="action-chips-container">
-              {nextActions.slice(0, 5).map(action => (
-                <div
-                  key={action.id}
-                  className="action-chip"
-                  onClick={() => navigate(`/app/page/${action.pageId}`)}
-                >
-                  {action.priority > 0 && <span className="action-priority-marker">!</span>}
-                  <span className="action-chip-text">{getPlainText(action.content)}</span>
+            <div className="action-radar-container">
+              {nextActions.length > 0 ? (
+                nextActions.slice(0, 5).map((action) => (
+                  <div
+                    key={action.id}
+                    className="tactical-item"
+                    onClick={() => navigate(`/app/page/${action.pageId}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/app/page/${action.pageId}`);
+                      }
+                    }}
+                  >
+                    <div className="tactical-item-head">
+                      <span className={`priority-pill priority-${action.priority || 1}`}>
+                        {action.priority === 3 ? 'CRITICAL' : action.priority === 2 ? 'ELEVATED' : 'ACTIVE'}
+                      </span>
+                      <span className="tactical-source">GO TO SOURCE →</span>
+                    </div>
+
+                    <p className="tactical-item-text">
+                      {action.content}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="tactical-empty-card">
+                  <CheckCircle2 size={24} className="text-success" />
+                  <span className="tactical-empty-title">All tasks cleared</span>
+                  <span className="tactical-empty-sub">
+                    No active or uncompleted todos detected across your workspace.
+                  </span>
                 </div>
-              ))}
-              {nextActions.length === 0 && (
-                <div className="action-empty">No immediate actions needed.</div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Circular/Bleeding Network Graph */}
-          <div className="network-container">
-            <div className="section-header">
-              <Activity size={16} />
-              <h3>Network</h3>
+          {/* Neural Knowledge Constellation */}
+          <section className="workstation-section" style={{ marginTop: '28px' }}>
+            <div className="section-header-machined">
+              <div className="section-header-title-group">
+                <Activity size={14} className="section-header-icon text-primary" />
+                <h2 className="section-header-text">Neural Topology</h2>
+              </div>
+              <span className="section-header-tag">INTERACTIVE</span>
             </div>
-            <div className="graph-wrapper">
-              <GraphView pages={pages} />
+
+            <div className="bezel-instrument-frame">
+              <div className="bezel-corner corner-tl">+</div>
+              <div className="bezel-corner corner-tr">+</div>
+              <div className="bezel-corner corner-bl">+</div>
+              <div className="bezel-corner corner-br">+</div>
+
+              <div className="bezel-graph-content">
+                <GraphView pages={pages} />
+              </div>
             </div>
-          </div>
+          </section>
 
         </div>
       </div>
@@ -624,26 +764,358 @@ function WorkspaceTab({ pages, navigate }) {
 }
 
 // ==========================================
-// Calendar Tab
+// Intelligence Tab (Cognitive OS & Spaced Repetition)
 // ==========================================
-function CalendarTab({ pages, navigate }) {
+interface IntelligenceTabProps {
+  navigate: (path: string) => void;
+}
+
+function IntelligenceTab({ navigate }: IntelligenceTabProps) {
+  const { nextActions, forgetting, weeklyFocus, knowledgeVelocity, analyze, isAnalyzing } = useIntelligenceStore();
+  const key = useSecurityStore(s => s.derivedKey);
+  const pages = usePageStore(s => s.pages);
+  const updatePage = usePageStore(s => s.updatePage);
+  const srsStreak = useSettingsStore(s => s.srsStreak);
+  const [srsModalOpen, setSrsModalOpen] = useState(false);
+
+  const srsPages = useMemo(() => pages.filter(p => p.srsEnabled && !p.isArchived), [pages]);
+  const duePages = useMemo(() => srsPages.filter(p => p.srsNextReview && p.srsNextReview <= Date.now()), [srsPages]);
+
+  useEffect(() => {
+    analyze();
+  }, [key, analyze]);
+
+  // Generate 7-day activity chart labels
+  const last7DaysLabels = useMemo(() => {
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        label: dayNames[d.getDay()],
+        isToday: i === 6
+      };
+    });
+  }, []);
+
+  if (isAnalyzing && !nextActions.length) {
+    return (
+      <div className="intelligence-loading-state">
+        <div className="machined-spinner" />
+        <h3 className="loading-title">Analyzing Workspace Synapses...</h3>
+        <p className="loading-desc">Calculating memory decay, spaced repetition queues, and relational density.</p>
+      </div>
+    );
+  }
+
+  const retentionScore = srsPages.length > 0 
+    ? Math.round(((srsPages.length - duePages.length) / srsPages.length) * 100)
+    : 100;
+
+  return (
+    <div className="intelligence-view-container animate-fade-in">
+      {/* Intelligence Header */}
+      <header className="intelligence-os-header">
+        <div className="intelligence-title-row">
+          <Brain size={22} className="intelligence-os-icon" />
+          <h2 className="intelligence-os-title">Cognitive Diagnostics & Review</h2>
+        </div>
+        <p className="intelligence-os-subtitle">
+          Spaced repetition retention queue, memory decay prevention, and knowledge growth velocity.
+        </p>
+      </header>
+
+      {/* Active Recall Station */}
+      <section className="srs-instrument-bay">
+        <div className="srs-bay-header">
+          <div className="srs-bay-info">
+            <div className="srs-bay-icon-box">
+              <Brain size={20} />
+            </div>
+            <div>
+              <div className="srs-bay-title-group">
+                <h3 className="srs-bay-title">Active Recall Station</h3>
+                <span className="srs-bay-badge">
+                  {srsPages.length} ENROLLED
+                </span>
+              </div>
+              <p className="srs-bay-description">
+                {srsPages.length === 0
+                  ? 'Enable Spaced Repetition on your notes to activate automated cognitive recall schedules.'
+                  : duePages.length === 0
+                    ? 'All recall queues are synchronized. Synaptic memory traces are reinforced and stable.'
+                    : `${duePages.length} ${duePages.length === 1 ? 'note requires' : 'notes require'} memory recall checks today.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="srs-streak-chassis">
+            <Flame size={16} className="text-amber" />
+            <span className="srs-streak-label">STREAK:</span>
+            <span className="srs-streak-num">{srsStreak || 0}d</span>
+          </div>
+        </div>
+
+        {srsPages.length > 0 && (
+          <div className="srs-telemetry-row">
+            <div className="srs-progress-chassis">
+              <div 
+                className="srs-progress-bar-fill"
+                style={{ width: `${retentionScore}%` }}
+              />
+              <div className="srs-tick-mark tick-25" />
+              <div className="srs-tick-mark tick-50" />
+              <div className="srs-tick-mark tick-75" />
+            </div>
+            <div className="srs-retention-metric">
+              <span className="srs-retention-val">{retentionScore}%</span>
+              <span className="srs-retention-tag">RETENTION STABILITY</span>
+            </div>
+          </div>
+        )}
+
+        <div className="srs-bay-actions">
+          {duePages.length > 0 ? (
+            <button 
+              className="telemetry-btn primary"
+              onClick={() => setSrsModalOpen(true)}
+            >
+              <Brain size={15} />
+              <span>Launch Recall Session ({duePages.length} Due)</span>
+            </button>
+          ) : srsPages.length === 0 ? (
+            <div className="srs-manual-hint">
+              <span>HOW TO ENROLL: Open any page and toggle "Active Recall" in the header menu.</span>
+            </div>
+          ) : (
+            <button 
+              className="telemetry-btn secondary"
+              onClick={() => setSrsModalOpen(true)}
+            >
+              <RefreshCw size={14} />
+              <span>Review All ({srsPages.length} Total)</span>
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* Recall Challenge Modal */}
+      {srsModalOpen && (
+        <RecallChallengeModal 
+          duePages={duePages.length > 0 ? duePages : srsPages} 
+          updatePage={updatePage} 
+          onClose={() => setSrsModalOpen(false)} 
+        />
+      )}
+
+      {/* Tri-Fold Cognitive Matrix */}
+      <div className="intelligence-matrix-grid">
+        {/* Col 1: Tactical Priorities */}
+        <section className="intel-card">
+          <div className="intel-card-header">
+            <Zap size={15} className="text-amber" />
+            <h3 className="intel-card-title">What should I execute next?</h3>
+          </div>
+          <div className="intel-card-body">
+            {nextActions.length > 0 ? (
+              nextActions.slice(0, 5).map(action => (
+                <div
+                  key={action.id}
+                  className="intel-item-row"
+                  onClick={() => navigate(`/app/page/${action.pageId}`)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <span className={`intel-priority-badge p-${action.priority || 1}`}>
+                    P{action.priority || 1}
+                  </span>
+                  <span className="intel-item-text">{action.content}</span>
+                  <ArrowRight size={12} className="intel-row-arrow" />
+                </div>
+              ))
+            ) : (
+              <div className="intel-empty-block">No pending tasks detected.</div>
+            )}
+          </div>
+        </section>
+
+        {/* Col 2: Memory Decay & Stale Nodes */}
+        <section className="intel-card">
+          <div className="intel-card-header">
+            <AlertCircle size={15} className="text-warning" />
+            <h3 className="intel-card-title">What am I forgetting?</h3>
+          </div>
+          <div className="intel-card-body">
+            {forgetting?.stalePages?.length > 0 && (
+              <div className="intel-sub-group">
+                <span className="intel-group-label">STALE NODES (&gt;7 DAYS)</span>
+                {forgetting.stalePages.slice(0, 3).map((page: any) => (
+                  <div 
+                    key={page.id} 
+                    className="intel-item-row" 
+                    onClick={() => navigate(`/app/page/${page.id}`)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <EmojiIcon emoji={page.icon || '📄'} size="13px" />
+                    <span className="intel-item-text">{page.title || 'Untitled'}</span>
+                    <span className="intel-stale-stamp">STALE</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {forgetting?.abandonedTodos?.length > 0 && (
+              <div className="intel-sub-group" style={{ marginTop: '12px' }}>
+                <span className="intel-group-label">ABANDONED TODOS (&gt;14 DAYS)</span>
+                {forgetting.abandonedTodos.slice(0, 3).map((todo: any) => (
+                  <div 
+                    key={todo.id} 
+                    className="intel-item-row" 
+                    onClick={() => navigate(`/app/page/${todo.pageId}`)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <Clock size={12} className="text-tertiary" />
+                    <span className="intel-item-text">{todo.content}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(!forgetting?.stalePages?.length && !forgetting?.abandonedTodos?.length) && (
+              <div className="intel-empty-block">All active knowledge nodes are fresh.</div>
+            )}
+          </div>
+        </section>
+
+        {/* Col 3: Weekly Focus & Trackers */}
+        <section className="intel-card">
+          <div className="intel-card-header">
+            <TrendingUp size={15} className="text-success" />
+            <h3 className="intel-card-title">What matters this week?</h3>
+          </div>
+          <div className="intel-card-body">
+            {weeklyFocus ? (
+              <div className="weekly-intel-summary">
+                <div className="weekly-active-tile">
+                  <span className="weekly-val">{weeklyFocus.activePages}</span>
+                  <span className="weekly-sub">Active nodes modified this week</span>
+                </div>
+
+                {weeklyFocus.trackerStats?.length > 0 && (
+                  <div className="weekly-trackers-wrap">
+                    <span className="intel-group-label">TOP TRACKER ACTIVITY</span>
+                    <div className="tracker-tag-cloud">
+                      {weeklyFocus.trackerStats.map((stat: any) => (
+                        <div key={stat.id} className="tracker-pill-chip">
+                          <span className="tracker-chip-name">{stat.name}</span>
+                          <span className="tracker-chip-count">{stat.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="intel-empty-block">Insufficient telemetry logged this week.</div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Knowledge Velocity & Vault Diagnostics Engine */}
+      <section className="velocity-engine-card">
+        <div className="velocity-header-row">
+          <div className="velocity-title-group">
+            <BarChart3 size={18} className="text-primary" />
+            <h3 className="velocity-title">Knowledge Velocity Matrix</h3>
+          </div>
+          <div className="velocity-depth-chip">
+            <span className="depth-dot" />
+            <span>DEPTH LEVEL {knowledgeVelocity?.depthLevel || 1} // {
+              (knowledgeVelocity?.depthLevel || 1) >= 4 ? 'MONOLITH GRAPH' :
+              (knowledgeVelocity?.depthLevel || 1) === 3 ? 'SYNAPTIC NETWORK' :
+              (knowledgeVelocity?.depthLevel || 1) === 2 ? 'STRUCTURED TAXONOMY' : 'INCUBATING VAULT'
+            }</span>
+          </div>
+        </div>
+
+        {/* Telemetry Numbers Grid */}
+        <div className="velocity-stats-grid">
+          <div className="velocity-stat-cell">
+            <span className="stat-label">TOTAL BLOCKS</span>
+            <span className="stat-value">{knowledgeVelocity?.totalBlocks || 0}</span>
+          </div>
+          <div className="velocity-stat-cell">
+            <span className="stat-label">24H ACTIVITY</span>
+            <span className="stat-value">{knowledgeVelocity?.dayBlocks || 0}</span>
+          </div>
+          <div className="velocity-stat-cell">
+            <span className="stat-label">7D VELOCITY</span>
+            <span className="stat-value">{knowledgeVelocity?.weekBlocks || 0}</span>
+          </div>
+          <div className="velocity-stat-cell">
+            <span className="stat-label">GRAPH RELATIONS</span>
+            <span className="stat-value">{knowledgeVelocity?.totalRelations || 0}</span>
+          </div>
+        </div>
+
+        {/* Daily Distribution Chart */}
+        <div className="velocity-chart-wrapper">
+          <div className="velocity-bars-container">
+            {(knowledgeVelocity?.dailyActivity || [10, 15, 20, 25, 30, 40, 50]).map((h: number, i: number) => {
+              const dayMeta = last7DaysLabels[i] || { label: `D${i+1}`, isToday: false };
+              return (
+                <div key={i} className={`velocity-bar-col ${dayMeta.isToday ? 'today-col' : ''}`}>
+                  <div className="bar-track">
+                    <div 
+                      className="bar-fill" 
+                      style={{ height: `${Math.max(8, h)}%` }} 
+                      title={`${dayMeta.label}: ${h}% capacity`}
+                    />
+                  </div>
+                  <span className="bar-day-label">{dayMeta.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ==========================================
+// Calendar Tab (Production Matrix & Time Map)
+// ==========================================
+interface CalendarTabProps {
+  pages: any[];
+  navigate: (path: string) => void;
+}
+
+function CalendarTab({ pages, navigate }: CalendarTabProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
   const daysInMonth = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth());
   const firstDay = getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth());
 
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthNames = [
+    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+  ];
+  const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
   // Map pages to dates
-  const activitiesByDate = {};
+  const activitiesByDate: Record<number, any[]> = {};
   pages.forEach(p => {
+    if (p.isArchived) return;
     const d = new Date(p.createdAt);
     if (d.getFullYear() === currentDate.getFullYear() && d.getMonth() === currentDate.getMonth()) {
       const day = d.getDate();
@@ -652,57 +1124,79 @@ function CalendarTab({ pages, navigate }) {
     }
   });
 
-  return (
-    <div className="calendar-tab-container">
-      <div className="calendar-header">
-        <div className="calendar-title-section">
-          <h2 className="calendar-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
-          <p className="calendar-subtitle">Activity tracking and creation logs</p>
-        </div>
-        <div className="calendar-controls">
-          <button onClick={prevMonth} className="calendar-ctrl-btn">
-            <ChevronLeft size={18} />
-          </button>
-          <button onClick={() => setCurrentDate(new Date())} className="calendar-today-btn">
-            Today
-          </button>
-          <button onClick={nextMonth} className="calendar-ctrl-btn">
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
+  const totalEventsInMonth = Object.values(activitiesByDate).reduce((acc, curr) => acc + curr.length, 0);
 
-      <div className="calendar-grid-labels">
+  return (
+    <div className="calendar-view-container animate-fade-in">
+      {/* Calendar Header */}
+      <header className="calendar-control-header">
+        <div className="calendar-title-group">
+          <div className="calendar-stamp-row">
+            <CalendarIcon size={14} className="calendar-stamp-icon" />
+            <span>TIME SERIES MATRIX // CHRONO LOG</span>
+          </div>
+          <h2 className="calendar-month-heading">
+            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h2>
+          <span className="calendar-meta-sub">
+            {totalEventsInMonth} {totalEventsInMonth === 1 ? 'node' : 'nodes'} created in this cycle
+          </span>
+        </div>
+
+        <div className="calendar-stepper-group">
+          <button onClick={prevMonth} className="stepper-btn" aria-label="Previous month">
+            <ChevronLeft size={16} />
+          </button>
+          <button onClick={() => setCurrentDate(new Date())} className="stepper-today-btn">
+            TODAY
+          </button>
+          <button onClick={nextMonth} className="stepper-btn" aria-label="Next month">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* Weekday Labels */}
+      <div className="calendar-weekday-strip">
         {dayNames.map(d => (
-          <div key={d} className="calendar-grid-label">{d}</div>
+          <div key={d} className="calendar-weekday-cell">{d}</div>
         ))}
       </div>
 
-      <div className="calendar-grid">
+      {/* Days Matrix */}
+      <div className="calendar-matrix-grid">
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} className="calendar-day empty"></div>
+          <div key={`empty-${i}`} className="calendar-matrix-cell empty" />
         ))}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
           const activities = activitiesByDate[day] || [];
-          const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
+          const isToday = day === new Date().getDate() && 
+            currentDate.getMonth() === new Date().getMonth() && 
+            currentDate.getFullYear() === new Date().getFullYear();
 
           return (
-            <div key={day} className={`calendar-day ${isToday ? 'today' : ''} ${activities.length > 0 ? 'has-events' : ''}`}>
-              <div className="calendar-day-header">
-                <span className="day-number">{day}</span>
-                {activities.length > 0 && <span className="day-badge">{activities.length}</span>}
+            <div 
+              key={day} 
+              className={`calendar-matrix-cell ${isToday ? 'cell-today' : ''} ${activities.length > 0 ? 'has-activity' : ''}`}
+            >
+              <div className="cell-header">
+                <span className="cell-day-num">{day}</span>
+                {activities.length > 0 && (
+                  <span className="cell-event-pill">{activities.length}</span>
+                )}
               </div>
-              <div className="calendar-events">
+
+              <div className="cell-events-list">
                 {activities.map(a => (
                   <button
                     key={a.id}
                     onClick={() => navigate(`/app/page/${a.id}`)}
-                    className="calendar-event-btn"
+                    className="cell-event-chip"
                     title={a.title || 'Untitled'}
                   >
-                    <EmojiIcon emoji={a.icon || '📄'} size="12px" />
-                    <span className="event-title">{a.title || 'Untitled'}</span>
+                    <EmojiIcon emoji={a.icon || '📄'} size="11px" />
+                    <span className="cell-event-title">{a.title || 'Untitled'}</span>
                   </button>
                 ))}
               </div>
@@ -715,10 +1209,16 @@ function CalendarTab({ pages, navigate }) {
 }
 
 // ==========================================
-// Archives Tab
+// Archives Tab (Deep Vault Quarantine)
 // ==========================================
-function ArchivesTab({ archivedPages, restore, permaDelete }) {
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+interface ArchivesTabProps {
+  archivedPages: any[];
+  restore: (id: string) => Promise<any>;
+  permaDelete: (id: string) => Promise<any>;
+}
+
+function ArchivesTab({ archivedPages, restore, permaDelete }: ArchivesTabProps) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (confirmDeleteId) {
@@ -729,40 +1229,56 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
 
   if (archivedPages.length === 0) {
     return (
-      <div className="empty-state-container">
-        <Trash2 size={48} className="empty-state-icon" />
-        <h3 className="empty-state-title">Archives are empty</h3>
-        <p className="empty-state-desc">Archived pages will appear here. You can permanently delete them or restore them to the workspace.</p>
+      <div className="vault-quarantine-empty animate-fade-in">
+        <Trash2 size={44} className="quarantine-empty-icon" />
+        <h3 className="quarantine-empty-title">Vault Quarantine is Empty</h3>
+        <p className="quarantine-empty-desc">
+          Archived documents are safely stored in local quarantine before permanent destruction. No decommissioned nodes detected.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="archives-tab-container">
-      <div className="archives-header">
-        <h2 className="archives-title">Archives</h2>
-        <p className="archives-subtitle">Review, restore, or permanently delete nodes from your vault.</p>
-      </div>
+    <div className="vault-quarantine-container animate-fade-in">
+      <header className="quarantine-header">
+        <div className="quarantine-stamp-row">
+          <Trash2 size={14} className="text-warning" />
+          <span>VAULT QUARANTINE // TOMBSTONE REGISTRY</span>
+        </div>
+        <h2 className="quarantine-heading">Quarantined Nodes</h2>
+        <p className="quarantine-subheading">
+          {archivedPages.length} {archivedPages.length === 1 ? 'node is' : 'nodes are'} decommissioned in offline storage. Nodes can be restored to active registry or purged permanently.
+        </p>
+      </header>
 
-      <div className="archives-list">
+      <div className="quarantine-list" role="list">
         {archivedPages.map((page) => (
-          <div key={page.id} className="archive-item">
-            <div className="archive-item-info">
-              <div className="archive-item-icon">
-                <EmojiIcon emoji={page.icon || '📄'} size="20px" />
+          <div key={page.id} className="quarantine-row" role="listitem">
+            <div className="quarantine-row-info">
+              <div className="quarantine-icon-box">
+                <EmojiIcon emoji={page.icon || '📄'} size="18px" />
               </div>
-              <div className="archive-item-meta">
-                <div className="archive-item-title">{page.title || 'Untitled'}</div>
-                <div className="archive-item-date">Archived on {new Date(page.updatedAt).toLocaleDateString()}</div>
+              <div className="quarantine-text-group">
+                <h4 className="quarantine-item-title">{page.title || 'Untitled Node'}</h4>
+                <div className="quarantine-meta-line">
+                  <span>Archived {formatRelativeTime(page.updatedAt)}</span>
+                  <span className="quarantine-meta-sep">/</span>
+                  <span className="quarantine-meta-id">ID: #{page.id.slice(0, 8)}</span>
+                </div>
               </div>
             </div>
-            <div className="archive-item-actions">
+
+            <div className="quarantine-actions">
               <button
                 onClick={() => restore(page.id)}
-                className="archive-btn restore"
+                className="quarantine-btn restore"
+                title="Restore node to active workspace"
               >
-                <RotateCcw size={14} /> Restore
+                <RotateCcw size={13} />
+                <span>Restore Node</span>
               </button>
+
               <button
                 onClick={() => {
                   if (confirmDeleteId === page.id) {
@@ -772,9 +1288,11 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
                     setConfirmDeleteId(page.id);
                   }
                 }}
-                className={`archive-btn delete ${confirmDeleteId === page.id ? 'confirming' : ''}`}
+                className={`quarantine-btn purge ${confirmDeleteId === page.id ? 'confirming' : ''}`}
+                title="Permanently remove node from IndexedDB"
               >
-                <Trash2 size={14} /> {confirmDeleteId === page.id ? 'Confirm?' : 'Delete'}
+                <Trash2 size={13} />
+                <span>{confirmDeleteId === page.id ? 'Confirm Purge?' : 'Permanent Purge'}</span>
               </button>
             </div>
           </div>
@@ -785,4 +1303,3 @@ function ArchivesTab({ archivedPages, restore, permaDelete }) {
 }
 
 export default Dashboard;
-

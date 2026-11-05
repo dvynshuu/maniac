@@ -3,7 +3,12 @@ import { useShallow } from 'zustand/react/shallow';
 import { useSortable } from '@dnd-kit/sortable';
 import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, Trash2, ArrowUp, ArrowDown, Copy } from 'lucide-react';
+import { 
+  GripVertical, Plus, Trash2, ArrowUp, ArrowDown, Copy,
+  FileText, Heading1, Heading2, Heading3, CheckSquare,
+  List, ListOrdered, ChevronRight, Code, Lightbulb,
+  Quote, Sigma, Minus, Link2, Palette, RefreshCw
+} from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
 
 // Fast direct imports for common text blocks
@@ -331,11 +336,69 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
     engine.deleteBlock(block.id);
   };
 
+  const handleCopyBlockLink = async () => {
+    try {
+      const url = `${window.location.origin}/app/page/${block.pageId}#${block.id}`;
+      await navigator.clipboard.writeText(url);
+      const { useUIStore } = await import('../../stores/uiStore');
+      useUIStore.getState().addToast('Copied direct link to block', 'success');
+    } catch {
+      const { useUIStore } = await import('../../stores/uiStore');
+      useUIStore.getState().addToast('Failed to copy block link', 'error');
+    }
+  };
+
+  const handleSetTint = (colorKey?: string) => {
+    engine.updateBlock(block.id, {
+      properties: { ...block.properties, color: colorKey }
+    });
+  };
+
   const menuItems = [
+    {
+      label: 'Turn into...',
+      icon: RefreshCw,
+      children: [
+        { label: 'Text', icon: FileText, action: () => engine.convertType(block.id, 'text') },
+        { label: 'Heading 1', icon: Heading1, action: () => engine.convertType(block.id, 'heading1') },
+        { label: 'Heading 2', icon: Heading2, action: () => engine.convertType(block.id, 'heading2') },
+        { label: 'Heading 3', icon: Heading3, action: () => engine.convertType(block.id, 'heading3') },
+        'divider',
+        { label: 'To-do List', icon: CheckSquare, action: () => engine.convertType(block.id, 'todo') },
+        { label: 'Bulleted List', icon: List, action: () => engine.convertType(block.id, 'bullet') },
+        { label: 'Numbered List', icon: ListOrdered, action: () => engine.convertType(block.id, 'numbered') },
+        { label: 'Toggle List', icon: ChevronRight, action: () => engine.convertType(block.id, 'toggle') },
+        'divider',
+        { label: 'Code Block', icon: Code, action: () => engine.convertType(block.id, 'code') },
+        { label: 'Callout', icon: Lightbulb, action: () => engine.convertType(block.id, 'callout') },
+        { label: 'Quote', icon: Quote, action: () => engine.convertType(block.id, 'quote') },
+        { label: 'Math Equation', icon: Sigma, action: () => engine.convertType(block.id, 'math') },
+        { label: 'Divider', icon: Minus, action: () => engine.convertType(block.id, 'divider') },
+      ]
+    },
+    {
+      label: 'Color Tint...',
+      icon: Palette,
+      children: [
+        { label: 'Default (Clear)', action: () => handleSetTint(undefined) },
+        'divider',
+        { label: 'Gray Tint', action: () => handleSetTint('gray_background') },
+        { label: 'Brown Tint', action: () => handleSetTint('brown_background') },
+        { label: 'Orange Tint', action: () => handleSetTint('orange_background') },
+        { label: 'Yellow Tint', action: () => handleSetTint('yellow_background') },
+        { label: 'Green Tint', action: () => handleSetTint('green_background') },
+        { label: 'Blue Tint', action: () => handleSetTint('blue_background') },
+        { label: 'Purple Tint', action: () => handleSetTint('purple_background') },
+        { label: 'Pink Tint', action: () => handleSetTint('pink_background') },
+        { label: 'Red Tint', action: () => handleSetTint('red_background') },
+      ]
+    },
+    'divider',
+    { label: 'Copy Block Link', icon: Link2, action: handleCopyBlockLink },
+    { label: 'Duplicate', icon: Copy, action: handleDuplicate },
+    'divider',
     { label: 'Move Up', icon: ArrowUp, action: handleMoveUp },
     { label: 'Move Down', icon: ArrowDown, action: handleMoveDown },
-    'divider',
-    { label: 'Duplicate', icon: Copy, action: handleDuplicate },
     'divider',
     { label: 'Delete', icon: Trash2, action: handleDelete, danger: true },
   ];

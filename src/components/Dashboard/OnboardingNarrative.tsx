@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { FileText, Database, Activity, X, Zap } from 'lucide-react';
-import ManiacLogo from '../Common/ManiacLogo';
+import { FileText, Database, Activity, X, Terminal, ArrowUpRight } from 'lucide-react';
 
-export function OnboardingNarrative({ onComplete }) {
+interface OnboardingNarrativeProps {
+  onComplete?: () => void;
+}
+
+export function OnboardingNarrative({ onComplete }: OnboardingNarrativeProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   if (!isVisible) return null;
@@ -13,58 +16,80 @@ export function OnboardingNarrative({ onComplete }) {
   };
 
   return (
-    <div className="onboarding-widget">
-      <div className="onboarding-header">
-        <div className="onboarding-title-section">
-          <div className="onboarding-title-row">
-            <ManiacLogo size="sm" />
-            <h3 className="onboarding-title">Mastering MANIAC</h3>
+    <div className="onboarding-spec-widget" role="region" aria-label="Curator Architecture Guide">
+      <div className="onboarding-spec-header">
+        <div className="onboarding-spec-title-group">
+          <div className="onboarding-spec-badge">
+            <Terminal size={12} />
+            <span>OPERATIONAL PRIMITIVES // CURATOR V1</span>
           </div>
-          <p className="onboarding-description">
-            To get the most out of your vault, it helps to know when to use each tool. Here is a quick guide to the core primitives.
+          <h3 className="onboarding-spec-title">Mastering the Vault Architecture</h3>
+          <p className="onboarding-spec-desc">
+            Maniac structures local intelligence into three distinct computational primitives. Deploy the appropriate primitive based on data structure and velocity.
           </p>
         </div>
         <button 
           onClick={handleDismiss}
           className="onboarding-dismiss-btn"
-          aria-label="Dismiss onboarding guide"
+          aria-label="Dismiss architectural guide"
+          title="Dismiss guide"
         >
           <X size={14} />
         </button>
       </div>
 
-      <div className="onboarding-grid">
-        <div className="onboarding-card">
-          <div className="onboarding-icon-wrapper val-primary">
-            <FileText size={20} />
+      <div className="onboarding-spec-grid">
+        <div className="onboarding-primitive-card">
+          <div className="primitive-card-head">
+            <span className="primitive-id">01 // UNSTRUCTURED</span>
+            <div className="primitive-icon val-primary">
+              <FileText size={16} />
+            </div>
           </div>
-          <h4 className="onboarding-card-title">Pages</h4>
-          <p className="onboarding-card-text">
-            Use for free-form thinking, long-form writing, and unstructured notes. Like Notion documents.
+          <h4 className="primitive-title">Pages & Knowledge Trees</h4>
+          <p className="primitive-body">
+            Nonlinear thinking, conceptual synthesis, and hierarchical markdown notes. Type <kbd className="spec-kbd">/</kbd> to summon block types, LaTeX formulas, code snippets, and active recall cards.
           </p>
+          <div className="primitive-footer">
+            <span className="primitive-tag">Rich Text Engine</span>
+            <span className="primitive-tag">Spaced Repetition</span>
+          </div>
         </div>
 
-        <div className="onboarding-card">
-          <div className="onboarding-icon-wrapper val-secondary">
-            <Database size={20} />
+        <div className="onboarding-primitive-card">
+          <div className="primitive-card-head">
+            <span className="primitive-id">02 // STRUCTURED</span>
+            <div className="primitive-icon val-secondary">
+              <Database size={16} />
+            </div>
           </div>
-          <h4 className="onboarding-card-title">Databases</h4>
-          <p className="onboarding-card-text">
-            Use for structured collections, entity tracking, and tabular data. Like Airtable bases.
+          <h4 className="primitive-title">Relational Databases</h4>
+          <p className="primitive-body">
+            Strict property schemas, typed attributes, and multi-view aggregation (Table, Kanban, Gallery, Calendar). Ideal for structured project tracking, task logs, and asset registries.
           </p>
+          <div className="primitive-footer">
+            <span className="primitive-tag">Typed Schemas</span>
+            <span className="primitive-tag">Multi-View Grid</span>
+          </div>
         </div>
 
-        <div className="onboarding-card">
-          <div className="onboarding-icon-wrapper val-success">
-            <Activity size={20} />
+        <div className="onboarding-primitive-card">
+          <div className="primitive-card-head">
+            <span className="primitive-id">03 // LONGITUDINAL</span>
+            <div className="primitive-icon val-success">
+              <Activity size={16} />
+            </div>
           </div>
-          <h4 className="onboarding-card-title">Trackers</h4>
-          <p className="onboarding-card-text">
-            Use for daily habits, quantitative logging, and analyzing trends over time. Like Streak.
+          <h4 className="primitive-title">Telemetry & Habit Trackers</h4>
+          <p className="primitive-body">
+            Quantitative time-series logging, cognitive discipline tracking, and habit streak analytics. Visualize your habits, logging velocity, and performance over time without cloud telemetry.
           </p>
+          <div className="primitive-footer">
+            <span className="primitive-tag">Time Series</span>
+            <span className="primitive-tag">Streak Analytics</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
