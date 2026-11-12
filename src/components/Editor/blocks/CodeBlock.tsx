@@ -50,7 +50,7 @@ export default function CodeBlock({ block }: { block: any }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const preRef = useRef<HTMLPreElement | null>(null);
   
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
   const focusBlockId = useBlockStore(s => s.focusBlockId);
 
   useEffect(() => {

@@ -1,30 +1,12 @@
 import React from 'react';
-import { EditorContent } from '@tiptap/react';
-import { useBlockEditor } from '../../../hooks/useBlockEditor';
+import UniversalTextEditor from './UniversalTextEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { Check, Flag } from 'lucide-react';
-
-function ActiveTodoBlock({ block, checked }: { block: any; checked: boolean }) {
-  const editor = useBlockEditor(block, {
-    placeholder: 'To-do task...',
-    newBlockType: 'todo',
-    backspaceAction: 'convert',
-  });
-
-  if (!editor) return null;
-
-  return (
-    <EditorContent
-      editor={editor}
-      className={`block-text block-todo-content ${checked ? 'checked' : ''}`}
-    />
-  );
-}
 
 export default function TodoBlock({ block }: { block: any }) {
   const checked = block.properties?.checked || false;
   const priority = block.properties?.priority || 0; // 0: None, 1: Normal, 2: High, 3: Critical
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
 
   const toggleChecked = () => {
     engine.startTransaction()
@@ -70,8 +52,14 @@ export default function TodoBlock({ block }: { block: any }) {
         </button>
       )}
 
-      {/* Editable Todo Text */}
-      <ActiveTodoBlock block={block} checked={checked} />
+      {/* Text Editor with Slash and Mention Menu support */}
+      <UniversalTextEditor
+        block={block}
+        placeholder="To-do task..."
+        className={`block-text block-todo-content ${checked ? 'checked' : ''}`}
+        newBlockType="todo"
+        backspaceAction="convert"
+      />
 
       {/* Subtle Priority Trigger on Hover */}
       {!checked && priority === 0 && (

@@ -8,6 +8,14 @@ import { RichTextSpan, RichTextAnnotation } from '../types/block';
 
 // ─── HTML → RichTextSpan[] ───────────────────────────────────────
 
+let _cachedParser: DOMParser | null = null;
+function getDOMParser(): DOMParser | null {
+  if (!_cachedParser && typeof DOMParser !== 'undefined') {
+    _cachedParser = new DOMParser();
+  }
+  return _cachedParser;
+}
+
 /**
  * Parse an HTML string into an array of RichTextSpan objects.
  * Handles nested formatting tags, links, colored spans, and inline code.
@@ -19,13 +27,19 @@ export function parseHtmlToRichText(html: string | null | undefined): RichTextSp
   const trimmed = html.trim();
   if (!trimmed) return [];
 
+  // Fast path: if content contains no HTML markup tags, bypass DOMParser entirely
+  if (!trimmed.includes('<')) {
+    return [{ text: trimmed, annotations: createAnnotations(), href: null }];
+  }
+
   // In Node/test environments without DOMParser, return plain span directly
-  if (typeof DOMParser === 'undefined') {
+  const parser = getDOMParser();
+  if (!parser) {
     return [{ text: trimmed.replace(/<[^>]+>/g, ''), annotations: createAnnotations(), href: null }];
   }
 
-  // Use DOMParser for correct HTML interpretation
-  const doc = new DOMParser().parseFromString(
+  // Use cached DOMParser for correct HTML interpretation
+  const doc = parser.parseFromString(
     `<body>${trimmed}</body>`,
     'text/html'
   );

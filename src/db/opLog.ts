@@ -36,7 +36,13 @@ export type EntityTypeValue = typeof EntityType[keyof typeof EntityType];
 
 // ─── Operation Factory ──────────────────────────────────────────
 
-let _lamportClock = 0;
+let _lamportClock = Date.now();
+
+export function advanceLamport(remoteClock: number): void {
+  if (remoteClock > _lamportClock) {
+    _lamportClock = remoteClock + 1;
+  }
+}
 
 /**
  * Creates an operation record. Does NOT persist it — use appendOp.

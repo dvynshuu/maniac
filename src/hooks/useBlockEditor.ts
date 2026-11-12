@@ -18,6 +18,7 @@ import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
 import { useEditorEngine } from './useEditorEngine';
 import { useSelectionStore } from '../core/editor/selectionStore';
 import { getBlockFragment, waitForDoc } from '../core/crdtManager';
+import { undo, redo } from '../core/commandBus';
 
 const CustomHighlight = Mark.create({
   name: 'customHighlight',
@@ -119,7 +120,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     disableExtensions = [],
   } = options;
 
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
   const setSelection = useSelectionStore(s => s.setSelection);
   const isFocusedTarget = useBlockStore(s => s.focusBlockId === block.id);
 
@@ -182,6 +183,22 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
         spellcheck: 'true',
       },
       handleKeyDown: (view, event) => {
+        // Undo (Mod+Z) and Redo (Mod+Y or Mod+Shift+Z) delegated to unified CommandBus
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          if (event.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return true;
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+          event.preventDefault();
+          redo();
+          return true;
+        }
+
         // Space — auto-convert markdown prefixes at start of block
         if (event.key === ' ' && editor) {
           const { selection } = editor.state;

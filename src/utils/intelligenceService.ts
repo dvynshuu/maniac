@@ -122,7 +122,7 @@ export class IntelligenceService {
       return { ...page, title };
     };
 
-    const decryptedPages = await Promise.all(stalePages.map(p => decryptPage(p, key)));
+    const decryptedPages = key ? await batchDecrypt(stalePages, key, decryptPage, 10) : stalePages;
 
     const twoWeeksAgo = now - (14 * 24 * 60 * 60 * 1000);
     const abandonedTodosRaw = await db.blocks
@@ -147,7 +147,7 @@ export class IntelligenceService {
       return { ...todo, properties: props, content };
     };
 
-    const decryptedTodos = await Promise.all(abandonedTodosRaw.map(t => decryptTodo(t, key)));
+    const decryptedTodos = key ? await batchDecrypt(abandonedTodosRaw, key, decryptTodo, 10) : abandonedTodosRaw;
     const abandonedTodos = decryptedTodos
       .filter((t: any) => {
         if (t.properties?.checked) return false;
@@ -205,7 +205,7 @@ export class IntelligenceService {
       return { ...page, title };
     };
 
-    const decryptedPages = await Promise.all(recentPages.map(p => decryptPage(p, key)));
+    const decryptedPages = key ? await batchDecrypt(recentPages, key, decryptPage, 10) : recentPages;
     
     const trackers = await db.trackers.toArray();
     const trackerStats = trackers.map(t => {

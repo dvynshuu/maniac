@@ -1,41 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
-import { useShallow } from 'zustand/react/shallow';
-import { getPlainText } from '../../../utils/helpers';
-import { ListTree, Hash, ArrowUpRight } from 'lucide-react';
-
-interface TocHeading {
-  id: string;
-  text: string;
-  level: number;
-}
+import { selectHeadings, TocHeading } from '../../../core/derivedCache';
+import { ListTree, ArrowUpRight } from 'lucide-react';
 
 export default function TableOfContentsBlock({ block }: { block: any }) {
-  const blocks = useBlockStore(
-    useShallow((s) => s.blockOrder.map((id) => s.blockMap[id]).filter(Boolean))
-  );
+  // Scoped derivedCache selector: returns cached array instance unless headings actually changed,
+  // preventing re-render thrashing and IntersectionObserver resets during typing in paragraphs.
+  const headings = useBlockStore(selectHeadings);
 
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
-
-  const headings = useMemo<TocHeading[]>(() => {
-    const list: TocHeading[] = [];
-    for (const b of blocks) {
-      let level = 0;
-      if (b.type === 'heading1' || b.type === 'toggle_heading1') level = 1;
-      else if (b.type === 'heading2' || b.type === 'toggle_heading2') level = 2;
-      else if (b.type === 'heading3' || b.type === 'toggle_heading3') level = 3;
-
-      if (level > 0) {
-        const text = getPlainText(b.content || '').trim();
-        list.push({
-          id: b.id,
-          text: text || `Untitled Heading ${level}`,
-          level,
-        });
-      }
-    }
-    return list;
-  }, [blocks]);
 
   // Track active section in viewport
   useEffect(() => {

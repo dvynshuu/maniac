@@ -117,10 +117,15 @@ export function useBlockVirtualizer(
         pinnedRef.current.clear();
         elementMapRef.current.clear();
 
-        // Pre-populate renderSet with ALL block IDs (root + children) so every block
-        // renders immediately.
+        // Pre-populate renderSet with only the initial viewport window + pinned focus target
+        // to prevent mounting hundreds of editor instances synchronously on page open.
         const allBlockIds = useBlockStore.getState().blockOrder;
-        renderSetRef.current = new Set(allBlockIds);
+        const initialVisibleCount = Math.min(25, allBlockIds.length);
+        const initialBlockIds = allBlockIds.slice(0, initialVisibleCount);
+        renderSetRef.current = new Set(initialBlockIds);
+        if (focusBlockIdRef.current) {
+          renderSetRef.current.add(focusBlockIdRef.current);
+        }
 
         notify();
       }

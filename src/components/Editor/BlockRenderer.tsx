@@ -65,7 +65,7 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
   }));
   // Performance: incremental child map instead of O(n) filter
   const childBlockIds = useChildBlockIds(blockId);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block?.pageId);
   const virtualizer = useVirtualizerContext();
   const { activeId, overId, dropPosition } = useContext(DragDropContext);
 

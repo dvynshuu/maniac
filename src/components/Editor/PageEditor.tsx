@@ -80,8 +80,9 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
     }
   }, [isTypewriterMode, activeBlockId]);
 
-  // Block virtualization — only renders blocks within viewport + overscan
-  const virtualizer = useBlockVirtualizer(scrollElement, rootBlockIds, pageId);
+  // Block virtualization — virtualizes both root blocks and deeply nested children (toggles, columns)
+  const allBlockOrder = useBlockStore((s) => s.blockOrder);
+  const virtualizer = useBlockVirtualizer(scrollElement, allBlockOrder, pageId);
 
   // dnd-kit sensors
   const sensors = useSensors(

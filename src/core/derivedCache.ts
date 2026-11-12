@@ -4,6 +4,8 @@
  */
 
 import { useMemo } from 'react';
+import { getPlainText } from '../utils/helpers';
+import type { Block } from '../types/block';
 
 export interface CacheEntry {
   value: any;
@@ -119,4 +121,68 @@ export function useDerivedCache<T>(
   );
 
   return useMemo(() => cachedFn(), deps);
+}
+
+// ─── Scoped Derived Selectors ──────────────────────────────────
+
+export interface TocHeading {
+  id: string;
+  text: string;
+  level: number;
+}
+
+export const getCachedHeadings = createDerivedCache<TocHeading[]>(
+  'toc_headings',
+  ['headings'],
+  (blockOrder: string[], blockMap: Record<string, Block>) => {
+    const list: TocHeading[] = [];
+    if (!blockOrder || !blockMap) return list;
+    for (const id of blockOrder) {
+      const b = blockMap[id];
+      if (!b) continue;
+      let level = 0;
+      if (b.type === 'heading1' || b.type === 'toggle_heading1') level = 1;
+      else if (b.type === 'heading2' || b.type === 'toggle_heading2') level = 2;
+      else if (b.type === 'heading3' || b.type === 'toggle_heading3') level = 3;
+
+      if (level > 0) {
+        const text = getPlainText(b.content || '').trim();
+        list.push({
+          id: b.id,
+          text: text || `Untitled Heading ${level}`,
+          level,
+        });
+      }
+    }
+    return list;
+  }
+);
+
+export const getCachedSyncedCounts = createDerivedCache<Record<string, number>>(
+  'synced_counts',
+  ['synced'],
+  (blockOrder: string[], blockMap: Record<string, Block>) => {
+    const counts: Record<string, number> = {};
+    if (!blockOrder || !blockMap) return counts;
+    for (const id of blockOrder) {
+      const b = blockMap[id];
+      if (!b) continue;
+      if (b.type === 'synced_block' || b.type === 'synced_reference') {
+        const sid = b.properties?.sourceBlockId || b.id;
+        counts[sid] = (counts[sid] || 0) + 1;
+      }
+    }
+    return counts;
+  }
+);
+
+export function selectHeadings(state: { blockOrder: string[]; blockMap: Record<string, Block> }): TocHeading[] {
+  return getCachedHeadings(state.blockOrder, state.blockMap);
+}
+
+export function selectSyncedCount(sourceId: string) {
+  return (state: { blockOrder: string[]; blockMap: Record<string, Block> }): number => {
+    const counts = getCachedSyncedCounts(state.blockOrder, state.blockMap);
+    return counts[sourceId] || 1;
+  };
 }

@@ -26,7 +26,7 @@ export default function FieldRenderer({ field, value, onChange, readonly }: { fi
                     type="text" 
                     className="input" 
                     value={value || ''} 
-                    onChange={e => onChange(e.target.value)} 
+                    onChange={e => onChange?.(e.target.value)} 
                     placeholder="Enter text..."
                 />
             );
@@ -37,7 +37,7 @@ export default function FieldRenderer({ field, value, onChange, readonly }: { fi
                     type="number" 
                     className="input" 
                     value={value || ''} 
-                    onChange={e => onChange(e.target.value)} 
+                    onChange={e => onChange?.(e.target.value)} 
                     placeholder="Enter number..."
                 />
             );
@@ -46,18 +46,17 @@ export default function FieldRenderer({ field, value, onChange, readonly }: { fi
             return (
                 <button 
                     className={`toggle-switch ${value ? 'active' : ''}`}
-                    onClick={() => onChange(!value)}
+                    onClick={() => onChange?.(!value)}
                 />
             );
             
         case TRACKER_FIELD_TYPES.SELECT:
-            // Very simplified: uses plain text input for tags in V1, could be dropdown
             return (
                 <input 
                     type="text" 
                     className="input" 
                     value={value || ''} 
-                    onChange={e => onChange(e.target.value)} 
+                    onChange={e => onChange?.(e.target.value)} 
                     placeholder="Enter tag..."
                 />
             );
@@ -68,7 +67,7 @@ export default function FieldRenderer({ field, value, onChange, readonly }: { fi
                     type="date" 
                     className="input" 
                     value={value || ''} 
-                    onChange={e => onChange(e.target.value)} 
+                    onChange={e => onChange?.(e.target.value)} 
                 />
             );
             

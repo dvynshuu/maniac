@@ -3,12 +3,11 @@
  * Canonical domain entity definitions matching the consolidated MANIAC architecture.
  */
 
-import { nanoid } from 'nanoid';
+import { createId } from '../ids/identity';
+import { getActorId } from '../../db/actorId';
 import type { Block, Page, BlockType, DatabaseRow, DatabaseCell } from '../../types';
 
-export function createId(): string {
-  return nanoid();
-}
+export { createId };
 
 // ─── Entity Type Constants ──────────────────────────────────────
 
@@ -131,7 +130,7 @@ export function createPage(overrides: Partial<Page> = {}): Page {
     coverImage: overrides.coverImage !== undefined ? overrides.coverImage : null,
     fullWidth: overrides.fullWidth !== undefined ? overrides.fullWidth : true,
     isArchived: !!overrides.isArchived,
-    createdBy: overrides.createdBy || 'local-actor',
+    createdBy: overrides.createdBy || getActorId(),
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
     lastViewedAt: overrides.lastViewedAt || now,
@@ -154,7 +153,7 @@ export function createBlock(pageId: string, type: BlockType = 'text', overrides:
     properties: overrides.properties ? { ...overrides.properties } : {},
     richText: overrides.richText || [],
     version: overrides.version !== undefined ? overrides.version : 1,
-    actorId: overrides.actorId || 'local-actor',
+    actorId: overrides.actorId || getActorId(),
     updatedLogical: overrides.updatedLogical !== undefined ? overrides.updatedLogical : now,
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
@@ -291,7 +290,7 @@ export function normalizePage(raw: any): Page {
     sortOrder,
     orderKey: sortOrder,
     isArchived: !!raw.isArchived,
-    createdBy: String(raw.createdBy || 'local-actor'),
+    createdBy: String(raw.createdBy || getActorId()),
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : now,
     updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : now,
     lastViewedAt: typeof raw.lastViewedAt === 'number' ? raw.lastViewedAt : now,

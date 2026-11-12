@@ -13,7 +13,7 @@ export default function TrackerBlock({ block }) {
     const addTracker = useTrackerStore(s => s.addTracker);
     const updateTracker = useTrackerStore(s => s.updateTracker);
     
-    const engine = useEditorEngine();
+    const engine = useEditorEngine(block.pageId);
     
     const trackerId = block.properties?.trackerId;
     const tracker = trackers.find(t => t.id === trackerId);

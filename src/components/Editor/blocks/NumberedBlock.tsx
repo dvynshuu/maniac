@@ -1,44 +1,31 @@
-import { EditorContent } from '@tiptap/react';
-import { useBlockEditor } from '../../../hooks/useBlockEditor';
+import React, { useMemo } from 'react';
+import UniversalTextEditor from './UniversalTextEditor';
 import { useBlockStore } from '../../../stores/blockStore';
-import { isEmptyContent } from '../../../utils/helpers';
-import { useShallow } from 'zustand/react/shallow';
-
-function ActiveNumberedBlock({ block }) {
-  const editor = useBlockEditor(block, {
-    placeholder: 'List item',
-    newBlockType: 'numbered',
-    backspaceAction: 'convert',
-  });
-
-  if (!editor) return null;
-
-  return <EditorContent editor={editor} className="block-text" />;
-}
+import { useChildBlockIds } from '../../../hooks/useChildBlockIds';
 
 export default function NumberedBlock({ block, index }: { block: any; index?: number }) {
   const depth = block.properties?.depth || 0;
+  // Subscribe strictly to direct siblings list, avoiding full-page O(N) cascades on typing
+  const siblingIds = useChildBlockIds(block.parentId);
 
-  const listIndex = useBlockStore(useShallow(s => {
+  const listIndex = useMemo(() => {
     if (block.properties?.listIndex) return block.properties.listIndex;
 
-    const { blockOrder, blockMap } = s;
-    const myIdx = blockOrder.indexOf(block.id);
-    if (myIdx === -1) return index + 1;
+    const myIdx = siblingIds.indexOf(block.id);
+    if (myIdx === -1) return (index ?? 0) + 1;
 
+    const { blockMap } = useBlockStore.getState();
     let count = 1;
     for (let i = myIdx - 1; i >= 0; i--) {
-      const sibling = blockMap[blockOrder[i]];
-      if (!sibling) break;
-      if (sibling.type !== 'numbered') break;
-      if ((sibling.parentId || null) !== (block.parentId || null)) break;
+      const sibling = blockMap[siblingIds[i]];
+      if (!sibling || sibling.type !== 'numbered') break;
       count++;
     }
     return count;
-  }));
+  }, [siblingIds, block.id, block.properties?.listIndex, index]);
 
   // Notion cycles: 1/2/3 → a/b/c → i/ii/iii
-  const formatNumber = (num, d) => {
+  const formatNumber = (num: number, d: number) => {
     const style = d % 3;
     if (style === 0) return `${num}.`;
     if (style === 1) return `${String.fromCharCode(96 + ((num - 1) % 26) + 1)}.`;
@@ -49,7 +36,13 @@ export default function NumberedBlock({ block, index }: { block: any; index?: nu
   return (
     <div className="block-numbered">
       <div className="block-numbered-marker">{formatNumber(listIndex, depth)}</div>
-      <ActiveNumberedBlock block={block} />
+      <UniversalTextEditor
+        block={block}
+        placeholder="List item"
+        className="block-text"
+        newBlockType="numbered"
+        backspaceAction="convert"
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import BlockRenderer from '../BlockRenderer';
 
 export default function ColumnListBlock({ block }: { block: any }) {
   const childBlockIds = useChildBlockIds(block.id);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const count = childBlockIds.length;

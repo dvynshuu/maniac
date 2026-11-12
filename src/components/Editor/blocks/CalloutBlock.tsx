@@ -45,7 +45,7 @@ export default function CalloutBlock({ block }: { block: any }) {
   const color = block.properties?.color || 'default';
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
 
   const handleSelectIcon = (newEmoji: string) => {
     engine.updateBlock(block.id, {

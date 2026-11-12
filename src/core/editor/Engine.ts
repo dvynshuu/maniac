@@ -7,15 +7,16 @@
 import { Transaction } from './Transaction';
 import { useBlockStore } from '../../stores/blockStore';
 import { undo, redo } from '../commandBus';
+import { getActorId } from '../../db/actorId';
 import type { BlockType } from '../../types';
 
 export class EditorEngine {
   pageId: string;
   actorId: string;
 
-  constructor(pageId: string, actorId = 'local-user') {
+  constructor(pageId: string, actorId?: string) {
     this.pageId = pageId;
-    this.actorId = actorId;
+    this.actorId = actorId || getActorId();
   }
 
   startTransaction(): Transaction {

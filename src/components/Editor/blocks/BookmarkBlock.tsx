@@ -11,7 +11,7 @@ export default function BookmarkBlock({ block }: { block: any }) {
   const [inputUrl, setInputUrl] = useState(url);
   const [isEditing, setIsEditing] = useState(!url);
   const [copied, setCopied] = useState(false);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
 
   const getHostname = (rawUrl: string) => {
     try {

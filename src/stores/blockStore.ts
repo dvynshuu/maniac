@@ -84,6 +84,8 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
 
       set({ blockMap: initialMap, blockOrder: initialOrder });
       invalidateStore('blockStore');
+      invalidateStore('headings');
+      invalidateStore('synced');
 
       // Decrypt encrypted blocks in background
       if (needsDecryption.length > 0 && key) {
@@ -196,3 +198,55 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
     return descendants;
   },
 }));
+
+// Performance listener: tracks fine-grained changes to invalidate derived caches
+useBlockStore.subscribe((state, prevState) => {
+  invalidateStore('blockStore');
+
+  // Structural changes (insert, delete, reorder) invalidate both
+  if (state.blockOrder !== prevState.blockOrder) {
+    invalidateStore('headings');
+    invalidateStore('synced');
+    return;
+  }
+
+  // Content or property updates: check whether headings or synced blocks were touched
+  if (state.blockMap !== prevState.blockMap) {
+    let headingChanged = false;
+    let syncedChanged = false;
+
+    for (const id of state.blockOrder) {
+      const cur = state.blockMap[id];
+      const prev = prevState.blockMap[id];
+      if (cur !== prev) {
+        if (!prev) {
+          headingChanged = true;
+          syncedChanged = true;
+          break;
+        }
+        if (cur.type !== prev.type) {
+          headingChanged = true;
+          syncedChanged = true;
+          break;
+        }
+        const isHeading =
+          cur.type === 'heading1' ||
+          cur.type === 'heading2' ||
+          cur.type === 'heading3' ||
+          cur.type === 'toggle_heading1' ||
+          cur.type === 'toggle_heading2' ||
+          cur.type === 'toggle_heading3';
+        if (isHeading && (cur.content !== prev.content || cur.properties?.level !== prev.properties?.level)) {
+          headingChanged = true;
+        }
+        const isSynced = cur.type === 'synced_block' || cur.type === 'synced_reference';
+        if (isSynced && (cur.properties?.sourceBlockId !== prev.properties?.sourceBlockId || cur.properties?.isOriginal !== prev.properties?.isOriginal)) {
+          syncedChanged = true;
+        }
+      }
+    }
+
+    if (headingChanged) invalidateStore('headings');
+    if (syncedChanged) invalidateStore('synced');
+  }
+});

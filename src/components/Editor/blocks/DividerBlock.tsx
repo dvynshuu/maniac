@@ -4,7 +4,7 @@ import { useEditorEngine } from '../../../hooks/useEditorEngine';
 
 export default function DividerBlock({ block }: { block: any }) {
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
   const focusBlockId = useBlockStore((s) => s.focusBlockId);
 
   useEffect(() => {

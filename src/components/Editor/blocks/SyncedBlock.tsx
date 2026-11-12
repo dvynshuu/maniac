@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { useChildBlockIds } from '../../../hooks/useChildBlockIds';
 import { useShallow } from 'zustand/react/shallow';
+import { selectSyncedCount } from '../../../core/derivedCache';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import BlockRenderer from '../BlockRenderer';
 import { RefreshCw, Unlink, Copy, Check, Plus, ExternalLink } from 'lucide-react';
@@ -13,21 +14,12 @@ export default function SyncedBlock({ block }: { block: any }) {
   
   const sourceBlock = useBlockStore(useShallow(s => s.blockMap[sourceId]));
   const childBlockIds = useChildBlockIds(sourceId);
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
   const [copied, setCopied] = useState(false);
 
-  // Count how many synced references exist for this source
-  const referenceCount = useBlockStore(
-    useShallow(s => {
-      let count = 0;
-      for (const b of Object.values(s.blockMap)) {
-        if (b.properties?.sourceBlockId === sourceId || b.id === sourceId) {
-          count++;
-        }
-      }
-      return count;
-    })
-  );
+  // Scoped derivedCache selector: computes reference counts via fine-grained store invalidations
+  const selectCount = useCallback(selectSyncedCount(sourceId), [sourceId]);
+  const referenceCount = useBlockStore(selectCount);
 
   const handleCopySync = async () => {
     try {

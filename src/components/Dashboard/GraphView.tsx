@@ -10,6 +10,7 @@ import { useBacklinkStore } from '../../stores/backlinkStore';
 import { useNavigate } from 'react-router-dom';
 import { Maximize2, Minimize2, Network, Search, X, SlidersHorizontal, Layers, Focus } from 'lucide-react';
 import { detectCommunities } from '../../utils/louvain';
+import { workerDetectCommunities } from '../../core/transformWorker';
 
 // ─── Color Palette & Deterministic Generator ──────────────────────────────
 const PALETTE = {
@@ -268,6 +269,35 @@ export default function GraphView({ pages }: GraphViewProps) {
     hasInitialZoomedRef.current = false;
   }, [pages.length, linkFilter, colorMode]);
 
+  // Offload Louvain Community Detection to Web Worker to prevent UI freezes
+  const [workerCommunityMap, setWorkerCommunityMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (colorMode !== 'community') return;
+    let isCancelled = false;
+    const activePages = pages.filter(p => !p.isArchived);
+    const validNodeIds = new Set(activePages.map(n => n.id));
+    const linksList: Array<{ source: string; target: string }> = [];
+
+    Object.entries(forwardLinks).forEach(([source, targets]) => {
+      if (validNodeIds.has(source)) {
+        targets.forEach(target => {
+          if (validNodeIds.has(target) && source !== target) {
+            linksList.push({ source, target });
+          }
+        });
+      }
+    });
+
+    workerDetectCommunities(activePages, linksList).then(res => {
+      if (!isCancelled && res) {
+        setWorkerCommunityMap(res);
+      }
+    });
+
+    return () => { isCancelled = true; };
+  }, [colorMode, pages, forwardLinks]);
+
   // ─── Build Graph Data with Full Determinism & Filtering ─────
   const { graphData, communityMetadata } = useMemo(() => {
     const activePages = pages.filter(p => !p.isArchived);
@@ -310,9 +340,9 @@ export default function GraphView({ pages }: GraphViewProps) {
       return linkFilter.semantic;
     });
 
-    // 4. Run Louvain Community Detection
+    // 4. Run Louvain Community Detection (worker-cached with sync fallback)
     const communities = colorMode === 'community'
-      ? detectCommunities(activePages, filteredLinks)
+      ? (Object.keys(workerCommunityMap).length > 0 ? workerCommunityMap : detectCommunities(activePages, filteredLinks))
       : {};
 
     const communityColors: Record<string, string> = {};

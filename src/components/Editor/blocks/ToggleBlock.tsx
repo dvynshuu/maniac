@@ -1,16 +1,17 @@
+import React from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor } from '../../../hooks/useBlockEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
-import { useBlockStore } from '../../../stores/blockStore';
-import { isEmptyContent } from '../../../utils/helpers';
 import { ChevronRight } from 'lucide-react';
 import BlockRenderer from '../BlockRenderer';
-import { useShallow } from 'zustand/react/shallow';
+import { useChildBlockIds } from '../../../hooks/useChildBlockIds';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-function ActiveToggleTitle({ block, expanded, engine }) {
+function ActiveToggleTitle({ block, level, expanded, engine }: { block: any; level?: number; expanded: boolean; engine: any }) {
+  const placeholder = level ? `Toggle Heading ${level}` : 'Toggle heading';
   const editor = useBlockEditor(block, {
-    placeholder: 'Toggle heading',
+    placeholder,
+    newBlockType: 'text',
     backspaceAction: 'convert',
     onEnter: () => {
       if (editor) {
@@ -29,35 +30,46 @@ function ActiveToggleTitle({ block, expanded, engine }) {
 
   if (!editor) return null;
 
-  return <EditorContent editor={editor} className="block-text block-toggle-title" />;
+  const headingClass = level ? ` block-heading${level} block-toggle-heading-title` : ' block-toggle-title';
+  return <EditorContent editor={editor} className={`block-text${headingClass}`} />;
 }
 
-export default function ToggleBlock({ block }) {
+export default function ToggleBlock({ block }: { block: any }) {
+  const isHeading = block.type === 'toggle_heading1' || block.type === 'toggle_heading2' || block.type === 'toggle_heading3';
+  const level = isHeading ? (block.type === 'toggle_heading1' ? 1 : block.type === 'toggle_heading2' ? 2 : 3) : undefined;
   const expanded = block.properties?.expanded ?? true;
   
-  const engine = useEditorEngine();
+  const engine = useEditorEngine(block.pageId);
+  const childBlockIds = useChildBlockIds(block.id);
 
-  const childBlockIds = useBlockStore(useShallow(s => 
-    s.blockOrder.filter(id => s.blockMap[id]?.parentId === block.id)
-  ));
-
-  const toggleExpanded = () => {
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
     engine.updateBlock(block.id, {
       properties: { ...block.properties, expanded: !expanded }
     });
   };
 
+  const chevronSize = level === 1 ? 20 : level === 2 ? 18 : 16;
+  const containerClasses = level
+    ? `block-toggle block-toggle-heading block-toggle-h${level}`
+    : 'block-toggle';
+  const headerClasses = level
+    ? 'block-toggle-header block-toggle-heading-header'
+    : 'block-toggle-header';
+
   return (
-    <div className="block-toggle">
-      <div className="block-toggle-header">
+    <div className={containerClasses}>
+      <div className={headerClasses}>
         <button
           className={`block-toggle-arrow ${expanded ? 'expanded' : ''}`}
           onClick={toggleExpanded}
           contentEditable={false}
+          title={expanded ? 'Click to collapse' : 'Click to expand'}
+          style={level ? { marginTop: level === 1 ? '10px' : level === 2 ? '6px' : '4px' } : undefined}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={chevronSize} />
         </button>
-        <ActiveToggleTitle block={block} expanded={expanded} engine={engine} />
+        <ActiveToggleTitle block={block} level={level} expanded={expanded} engine={engine} />
       </div>
       {expanded && (
         <div className="block-children toggle-children-blocks">

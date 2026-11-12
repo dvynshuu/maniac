@@ -90,6 +90,97 @@ const WORKER_CODE = `
     return changes;
   }
 
+  // Pure Louvain Community Detection algorithm for graphs
+  function detectCommunities(nodes, links) {
+    if (!nodes || nodes.length === 0) return {};
+    const nodeIds = nodes.map(n => n.id);
+    const communities = {};
+    const adj = {};
+    const degrees = {};
+
+    nodeIds.forEach(id => {
+      communities[id] = id;
+      adj[id] = {};
+      degrees[id] = 0;
+    });
+
+    links.forEach(link => {
+      const s = typeof link.source === 'object' ? link.source.id : link.source;
+      const t = typeof link.target === 'object' ? link.target.id : link.target;
+      if (adj[s] !== undefined && adj[t] !== undefined && s !== t) {
+        adj[s][t] = (adj[s][t] || 0) + 1;
+        adj[t][s] = (adj[t][s] || 0) + 1;
+      }
+    });
+
+    let doubleM = 0;
+    nodeIds.forEach(id => {
+      let deg = 0;
+      const neighbors = adj[id];
+      for (const neighbor in neighbors) {
+        deg += neighbors[neighbor];
+      }
+      degrees[id] = deg;
+      doubleM += deg;
+    });
+
+    if (doubleM === 0) return communities;
+
+    const commTotWeights = {};
+    nodeIds.forEach(id => {
+      commTotWeights[id] = degrees[id];
+    });
+
+    const orderedNodes = [...nodeIds].sort((a, b) => (degrees[b] - degrees[a]) || a.localeCompare(b));
+    let improvement = true;
+    let iterations = 0;
+    const maxIterations = 15;
+
+    while (improvement && iterations < maxIterations) {
+      improvement = false;
+      iterations++;
+
+      for (let i = 0; i < orderedNodes.length; i++) {
+        const nodeId = orderedNodes[i];
+        const k_i = degrees[nodeId];
+        if (k_i === 0) continue;
+
+        const currentComm = communities[nodeId];
+        const neighbors = adj[nodeId];
+        const commWeights = {};
+        for (const neighborId in neighbors) {
+          const neighborComm = communities[neighborId];
+          commWeights[neighborComm] = (commWeights[neighborComm] || 0) + neighbors[neighborId];
+        }
+
+        commTotWeights[currentComm] = (commTotWeights[currentComm] || 0) - k_i;
+        const k_i_current = commWeights[currentComm] || 0;
+        const sigma_current = commTotWeights[currentComm] || 0;
+        let bestGain = k_i_current - (sigma_current * k_i) / doubleM;
+        let bestComm = currentComm;
+
+        for (const candidateComm in commWeights) {
+          if (candidateComm === currentComm) continue;
+          const k_i_candidate = commWeights[candidateComm];
+          const sigma_candidate = commTotWeights[candidateComm] || 0;
+          const candidateGain = k_i_candidate - (sigma_candidate * k_i) / doubleM;
+
+          if (candidateGain > bestGain + 1e-9) {
+            bestGain = candidateGain;
+            bestComm = candidateComm;
+          }
+        }
+
+        communities[nodeId] = bestComm;
+        commTotWeights[bestComm] = (commTotWeights[bestComm] || 0) + k_i;
+        if (bestComm !== currentComm) {
+          improvement = true;
+        }
+      }
+    }
+    return communities;
+  }
+
   // ─── Message Handler ──────────────────────────────────────────
 
   self.onmessage = function(e) {
@@ -109,6 +200,9 @@ const WORKER_CODE = `
           break;
         case 'computeDiff':
           result = computeDiff(payload.before, payload.after);
+          break;
+        case 'detectCommunities':
+          result = detectCommunities(payload.nodes, payload.links);
           break;
         default:
           throw new Error('Unknown transform type: ' + type);
@@ -202,6 +296,26 @@ export function workerBatchSortKeys(count: number): Promise<string[]> {
  */
 export function workerComputeDiff(before: any, after: any): Promise<Record<string, any>> {
   return postTransform('computeDiff', { before, after });
+}
+
+/**
+ * Offload Louvain Community Detection to worker to keep the main thread fluid.
+ */
+export async function workerDetectCommunities(
+  nodes: Array<{ id: string }>,
+  links: Array<{ source: string | { id: string }; target: string | { id: string } }>
+): Promise<Record<string, string>> {
+  if (typeof Worker === 'undefined') {
+    const { detectCommunities } = await import('../utils/louvain');
+    return detectCommunities(nodes, links);
+  }
+  try {
+    return await postTransform('detectCommunities', { nodes, links });
+  } catch (err) {
+    console.warn('[TransformWorker] Falling back to synchronous detectCommunities:', err);
+    const { detectCommunities } = await import('../utils/louvain');
+    return detectCommunities(nodes, links);
+  }
 }
 
 /**

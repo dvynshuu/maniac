@@ -127,7 +127,13 @@ async function compactPage(pageId: string): Promise<{ compacted: boolean; pageId
         const sortedOrder = [...currentBlockOrder].sort((a, b) => 
           compareSortOrder(newBlockMap[a]?.sortOrder, newBlockMap[b]?.sortOrder)
         );
-        useBlockStore.setState({ blockMap: newBlockMap, blockOrder: sortedOrder });
+        // If relative order of block IDs is unchanged by compaction, preserve array reference
+        // to avoid thrashing useChildBlockIds and SortableContext subscribers.
+        const isOrderEqual = sortedOrder.length === currentBlockOrder.length &&
+          sortedOrder.every((id, idx) => id === currentBlockOrder[idx]);
+        const finalBlockOrder = isOrderEqual ? currentBlockOrder : sortedOrder;
+
+        useBlockStore.setState({ blockMap: newBlockMap, blockOrder: finalBlockOrder });
       }
     }
   }

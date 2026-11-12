@@ -1,4 +1,5 @@
 import { sanitize, sanitizeObject } from './sanitizer';
+import { normalizeBlock, normalizePage, validateBlock as canonicalValidateBlock, validatePage as canonicalValidatePage } from '../core/model/schemas';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -17,21 +18,13 @@ function isValidBoolean(val: any): val is boolean {
 function validatePage(page: any): Record<string, any> | null {
   if (!page || typeof page !== 'object') return null;
   if (!isValidString(page.id)) return null;
-  
+
+  const normalized = normalizePage(page);
   return {
-    id: page.id,
-    parentId: isValidString(page.parentId) ? page.parentId : null,
-    title: isValidString(page.title) ? sanitize(page.title) : '',
-    icon: isValidString(page.icon) ? sanitize(page.icon) : '📝',
-    coverImage: isValidString(page.coverImage) ? sanitize(page.coverImage) : null,
-    sortOrder: isValidString(page.sortOrder) ? page.sortOrder
-             : isValidNumber(page.sortOrder) ? String(page.sortOrder)
-             : 'm',
-    isArchived: isValidBoolean(page.isArchived) ? page.isArchived : false,
-    isFavorite: isValidBoolean(page.isFavorite) ? page.isFavorite : false,
-    createdAt: isValidNumber(page.createdAt) ? page.createdAt : Date.now(),
-    updatedAt: isValidNumber(page.updatedAt) ? page.updatedAt : Date.now(),
-    _isEncrypted: isValidBoolean(page._isEncrypted) ? page._isEncrypted : false
+    ...normalized,
+    title: isValidString(normalized.title) ? sanitize(normalized.title) : '',
+    icon: isValidString(normalized.icon) ? sanitize(normalized.icon) : '📝',
+    coverImage: isValidString(normalized.coverImage) ? sanitize(normalized.coverImage) : null,
   };
 }
 
@@ -39,21 +32,15 @@ function validateBlock(block: any): Record<string, any> | null {
   if (!block || typeof block !== 'object') return null;
   if (!isValidString(block.id)) return null;
   if (!isValidString(block.pageId)) return null;
-  
-  const cleanProperties = sanitizeObject(block.properties) || {};
+
+  const normalized = normalizeBlock(block, block.pageId);
+  const cleanProperties = sanitizeObject(normalized.properties) || {};
 
   return {
-    id: block.id,
-    pageId: block.pageId,
-    type: isValidString(block.type) ? sanitize(block.type) : 'text',
-    content: isValidString(block.content) ? sanitize(block.content) : '',
+    ...normalized,
+    type: isValidString(normalized.type) ? sanitize(normalized.type) : 'text',
+    content: isValidString(normalized.content) ? sanitize(normalized.content) : '',
     properties: cleanProperties,
-    sortOrder: isValidString(block.sortOrder) ? block.sortOrder
-             : isValidNumber(block.sortOrder) ? String(block.sortOrder)
-             : 'm',
-    createdAt: isValidNumber(block.createdAt) ? block.createdAt : Date.now(),
-    updatedAt: isValidNumber(block.updatedAt) ? block.updatedAt : Date.now(),
-    _isEncrypted: isValidBoolean(block._isEncrypted) ? block._isEncrypted : false
   };
 }
 
