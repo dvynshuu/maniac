@@ -1,22 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Check, 
   X, 
   ArrowRight, 
   Shield, 
-  Zap, 
   Brain, 
   Database, 
-  Lock, 
-  HardDrive, 
   ChevronDown,
-  Sparkles,
-  Layers,
-  ArrowUpRight,
-  FolderTree,
-  Table,
-  Kanban
+  Sparkles
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
@@ -64,8 +56,7 @@ export default function ObsidianAlternative() {
         structuredData={structuredData}
       />
 
-      {/* Atmospheric Backgrounds */}
-      <div className="obs-ambient-glow" aria-hidden="true" />
+      {/* Background Grid */}
       <div className="obs-grid-bg" aria-hidden="true" />
 
       {/* Header Navigation */}

@@ -1,9 +1,7 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Compass, ArrowRight, LayoutTemplate, Sparkles, Brain, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LayoutTemplate, Sparkles, Brain, FileText } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
-import { SITE_URL } from '../seo/constants';
 import './NotFound.css';
 
 export default function NotFound() {
@@ -16,8 +14,7 @@ export default function NotFound() {
         robots="noindex, nofollow"
       />
 
-      {/* Atmospheric Ambient Glows & Grid */}
-      <div className="not-found-ambient" aria-hidden="true" />
+      {/* Grid */}
       <div className="not-found-grid" aria-hidden="true" />
 
       <main className="not-found-card">

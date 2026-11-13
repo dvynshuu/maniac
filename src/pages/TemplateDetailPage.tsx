@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Download, 
@@ -9,11 +9,7 @@ import {
   CheckCircle2, 
   ChevronDown, 
   Clock, 
-  BarChart, 
-  Shield, 
-  Zap, 
-  ArrowLeft,
-  Share2
+  BarChart
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';

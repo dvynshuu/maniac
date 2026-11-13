@@ -153,65 +153,6 @@ function walkNode(node: Node, annotations: RichTextAnnotation, href: string | nu
   }
 }
 
-// ─── RichTextSpan[] → HTML ───────────────────────────────────────
-
-/**
- * Convert structured RichTextSpan array back to HTML string.
- * Used to feed content into TipTap editor.
- */
-export function richTextToHtml(spans: RichTextSpan[]): string {
-  if (!spans || spans.length === 0) return '';
-
-  let html = '';
-  for (const span of spans) {
-    let text = escapeHtml(span.text);
-    const a: Partial<RichTextAnnotation> = (span.annotations || {}) as any;
-
-    // Apply formatting wrappers (innermost first)
-    if (a.code) text = `<code>${text}</code>`;
-    if (a.strikethrough) text = `<s>${text}</s>`;
-    if (a.underline) text = `<u>${text}</u>`;
-    if (a.italic) text = `<em>${text}</em>`;
-    if (a.bold) text = `<strong>${text}</strong>`;
-
-    // Color wrapping
-    const styles: string[] = [];
-    if (a.color && a.color !== 'default') {
-      styles.push(`color: var(--notion-${a.color})`);
-    }
-    if (a.backgroundColor && a.backgroundColor !== 'default') {
-      styles.push(`background: var(--notion-${a.backgroundColor})`);
-    }
-
-    if (styles.length > 0) {
-      text = `<span style="${styles.join('; ')}">${text}</span>`;
-    }
-
-    // Highlight (mark)
-    if (a.backgroundColor && a.backgroundColor !== 'default' && !styles.length) {
-      text = `<mark>${text}</mark>`;
-    }
-
-    // Link wrapping
-    if (span.href) {
-      text = `<a href="${escapeHtml(span.href)}" rel="noopener noreferrer">${text}</a>`;
-    }
-
-    html += text;
-  }
-
-  // Wrap in paragraph tag for TipTap compatibility
-  return `<p>${html}</p>`;
-}
-
-/**
- * Convert rich text spans to plain text (no formatting).
- */
-export function richTextToPlainText(spans: RichTextSpan[]): string {
-  if (!spans || spans.length === 0) return '';
-  return spans.map(s => s.text).join('');
-}
-
 // ─── Span Merging ────────────────────────────────────────────────
 
 /**

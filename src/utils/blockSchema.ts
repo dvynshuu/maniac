@@ -5,54 +5,6 @@
 import { createId } from './helpers';
 import type { Block, BlockType, RichTextAnnotation, RichTextSpan, BlockProperties } from '../types';
 
-// ─── Notion Color Palette ────────────────────────────────────────
-
-export const NOTION_COLORS: Record<string, string> = {
-  default: 'inherit',
-  gray: 'rgba(155,154,151,1)',
-  brown: 'rgba(186,133,111,1)',
-  orange: 'rgba(199,125,72,1)',
-  yellow: 'rgba(202,152,73,1)',
-  green: 'rgba(82,158,114,1)',
-  blue: 'rgba(94,135,201,1)',
-  purple: 'rgba(144,101,176,1)',
-  pink: 'rgba(193,76,138,1)',
-  red: 'rgba(212,76,71,1)',
-};
-
-export const NOTION_BACKGROUND_COLORS: Record<string, string> = {
-  default: 'transparent',
-  gray_background: 'rgba(241,241,239,0.13)',
-  brown_background: 'rgba(244,238,238,0.13)',
-  orange_background: 'rgba(251,236,221,0.13)',
-  yellow_background: 'rgba(251,243,219,0.13)',
-  green_background: 'rgba(237,243,236,0.13)',
-  blue_background: 'rgba(231,243,248,0.13)',
-  purple_background: 'rgba(244,240,247,0.13)',
-  pink_background: 'rgba(249,238,243,0.13)',
-  red_background: 'rgba(253,235,236,0.13)',
-};
-
-// ─── Callout Color Presets (dark-mode tuned) ─────────────────────
-
-export interface CalloutColorScheme {
-  bg: string;
-  border: string;
-}
-
-export const CALLOUT_COLORS: Record<string, CalloutColorScheme> = {
-  default: { bg: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.08)' },
-  gray_background: { bg: 'rgba(155,154,151,0.1)', border: 'rgba(155,154,151,0.2)' },
-  brown_background: { bg: 'rgba(186,133,111,0.1)', border: 'rgba(186,133,111,0.2)' },
-  orange_background: { bg: 'rgba(199,125,72,0.1)', border: 'rgba(199,125,72,0.2)' },
-  yellow_background: { bg: 'rgba(202,152,73,0.1)', border: 'rgba(202,152,73,0.2)' },
-  green_background: { bg: 'rgba(82,158,114,0.1)', border: 'rgba(82,158,114,0.2)' },
-  blue_background: { bg: 'rgba(94,135,201,0.1)', border: 'rgba(94,135,201,0.2)' },
-  purple_background: { bg: 'rgba(144,101,176,0.1)', border: 'rgba(144,101,176,0.2)' },
-  pink_background: { bg: 'rgba(193,76,138,0.1)', border: 'rgba(193,76,138,0.2)' },
-  red_background: { bg: 'rgba(212,76,71,0.1)', border: 'rgba(212,76,71,0.2)' },
-};
-
 // ─── Emoji → Callout Color Inference ─────────────────────────────
 
 export const EMOJI_COLOR_MAP: Record<string, string> = {
@@ -132,9 +84,9 @@ export const BLOCK_PROPERTY_DEFAULTS: Record<string, BlockProperties> = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'sleekdark',
-      bgColor: '#17171e',
-      textColor: '#f3f3f4',
+      theme: 'card',
+      bgColor: 'var(--color-surface-2)',
+      textColor: 'var(--color-fg)',
       title: 'Left in This Month',
       targetDate: '',
       workTime: 25,
@@ -148,9 +100,9 @@ export const BLOCK_PROPERTY_DEFAULTS: Record<string, BlockProperties> = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'sleekdark',
-      bgColor: '#17171e',
-      textColor: '#f3f3f4',
+      theme: 'card',
+      bgColor: 'var(--color-surface-2)',
+      textColor: 'var(--color-fg)',
       title: 'Focus Timer',
       targetDate: '',
       workTime: 25,
@@ -164,9 +116,9 @@ export const BLOCK_PROPERTY_DEFAULTS: Record<string, BlockProperties> = {
     height: '140px',
     caption: '',
     widgetSettings: {
-      theme: 'sleekdark',
-      bgColor: '#17171e',
-      textColor: '#f3f3f4',
+      theme: 'card',
+      bgColor: 'var(--color-surface-2)',
+      textColor: 'var(--color-fg)',
       title: 'Goal Tracker',
       targetDate: '',
       workTime: 25,

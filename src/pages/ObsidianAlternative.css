@@ -8,10 +8,7 @@
   overflow-x: hidden;
 }
 
-.obs-ambient-glow {
-  display: none;
-}
-
+/* Background Grid */
 .obs-grid-bg {
   position: absolute;
   top: 0;
@@ -369,7 +366,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-fg-secondary);;
+  color: var(--color-fg-secondary);
 }
 
 /* Feature 3-Grid */

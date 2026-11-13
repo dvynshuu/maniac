@@ -236,7 +236,7 @@
 }
 
 .sb-todo input[type="checkbox"] {
-  accent-color: color: var(--color-fg-secondary);;
+  accent-color: var(--color-fg-secondary);
   width: 16px;
   height: 16px;
 }
@@ -247,7 +247,7 @@
 }
 
 .sb-quote {
-  border-left: 3px solid color: var(--color-fg-secondary);;
+  border-left: 3px solid var(--color-fg-secondary);
   margin: 8px 0;
   padding: 6px 0 6px 16px;
   color: rgba(255, 255, 255, 0.7);

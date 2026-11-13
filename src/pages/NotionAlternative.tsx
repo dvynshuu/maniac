@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Check, 
@@ -7,14 +7,9 @@ import {
   Shield, 
   Zap, 
   Brain, 
-  Database, 
-  Lock, 
   Upload, 
-  HardDrive, 
   ChevronDown,
-  Sparkles,
-  Layers,
-  ArrowUpRight
+  Sparkles
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
@@ -62,8 +57,7 @@ export default function NotionAlternative() {
         structuredData={structuredData}
       />
 
-      {/* Atmospheric Backgrounds */}
-      <div className="alt-ambient-glow" aria-hidden="true" />
+      {/* Background Grid */}
       <div className="alt-grid-bg" aria-hidden="true" />
 
       {/* Header Navigation */}

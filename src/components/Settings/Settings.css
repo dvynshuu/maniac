@@ -262,15 +262,6 @@
   transform: scale(1.15);
 }
 
-.setting-slider-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  min-width: 48px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ─── Action Button ────────────────────── */
 
 .setting-action-btn {

@@ -59,19 +59,6 @@ export async function loadBlobUrl(ref: string | null | undefined): Promise<strin
 }
 
 /**
- * Revokes a previously created object URL and removes it from cache.
- */
-export function revokeBlob(ref: string | null | undefined): void {
-  if (!ref || !ref.startsWith('blob://')) return;
-  const hash = ref.slice(7);
-  const url = urlCache.get(hash);
-  if (url) {
-    URL.revokeObjectURL(url);
-    urlCache.delete(hash);
-  }
-}
-
-/**
  * Checks if a string is a blob reference.
  */
 export function isBlobRef(src: any): boolean {

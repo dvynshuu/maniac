@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Brain, 
@@ -10,10 +10,7 @@ import {
   Repeat, 
   CheckCircle2, 
   Calendar, 
-  TrendingUp, 
-  Layers, 
   ChevronDown,
-  RotateCcw,
   BookOpen
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
@@ -71,8 +68,7 @@ export default function ActiveRecallNotes() {
         structuredData={structuredData}
       />
 
-      {/* Atmospheric Glow */}
-      <div className="srs-ambient-glow" aria-hidden="true" />
+      {/* Background Grid */}
       <div className="srs-grid-bg" aria-hidden="true" />
 
       {/* Navigation Header */}

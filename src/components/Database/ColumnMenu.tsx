@@ -5,7 +5,7 @@ import { useBlockStore } from '../../stores/blockStore';
 import { db } from '../../db/database';
 import { createId } from '../../utils/helpers';
 import { resolveDynamicIcon } from '../Common/IconResolver';
-import { Trash2, Type, Hash, Tag, Tags, Calendar, CheckSquare, Link, Mail, Phone, Clock, ChevronRight } from 'lucide-react';
+import { Trash2, Type, Tags, Calendar, CheckSquare, Link, Mail, Phone, Clock, ChevronRight } from 'lucide-react';
 
 const ROLLUP_CALCULATIONS = [
   { value: 'show_original', label: 'Show original' },

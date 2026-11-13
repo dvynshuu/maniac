@@ -17,9 +17,9 @@ export default function EmbedBlock({ block }) {
   
   // Widget settings
   const widgetSettings = block.properties?.widgetSettings || {
-    theme: 'sleekdark',
-    bgColor: '#0a0a0a',
-    textColor: '#fafafa',
+    theme: 'card',
+    bgColor: 'var(--color-surface-2)',
+    textColor: 'var(--color-fg)',
     title: '',
     targetDate: '',
     workTime: 25,
@@ -259,13 +259,15 @@ export default function EmbedBlock({ block }) {
     resizeStartRef.current = null;
   };
 
-  // Theme styling calculations
-  const themeClass = widgetSettings.theme === 'glassmorphism' 
-    ? 'widget-theme-glassmorphism' 
-    : (widgetSettings.theme === 'sleekdark' ? 'widget-theme-sleekdark' : 'widget-theme-neobrutalist');
+  // Theme styling calculations (Canonical Architectural Styles)
+  const themeClass = (widgetSettings.theme === 'minimal' || widgetSettings.theme === 'neobrutalist')
+    ? 'widget-theme-minimal'
+    : (widgetSettings.theme === 'elevated' || widgetSettings.theme === 'glassmorphism')
+      ? 'widget-theme-elevated'
+      : 'widget-theme-card';
 
-  const textColor = widgetSettings.theme === 'neobrutalist' ? widgetSettings.textColor : 'inherit';
-  const bgColor = widgetSettings.theme === 'neobrutalist' ? widgetSettings.bgColor : 'transparent';
+  const textColor = widgetSettings.theme === 'custom' ? widgetSettings.textColor : 'inherit';
+  const bgColor = widgetSettings.theme === 'custom' ? widgetSettings.bgColor : 'transparent';
 
   const defaultHeight = isWidgetBlock ? '140px' : (effectiveType === 'youtube' ? '360px' : 'auto');
   const displayHeight = block.properties?.height || defaultHeight;
@@ -432,12 +434,12 @@ export default function EmbedBlock({ block }) {
               <label className="customizer-label">Widget Theme</label>
               <select 
                 className="customizer-select"
-                value={widgetSettings.theme}
+                value={widgetSettings.theme === 'sleekdark' ? 'card' : (widgetSettings.theme === 'neobrutalist' ? 'minimal' : (widgetSettings.theme === 'glassmorphism' ? 'elevated' : widgetSettings.theme))}
                 onChange={(e) => updateWidgetSetting('theme', e.target.value)}
               >
-                <option value="neobrutalist">Neobrutalist (Mockup Style)</option>
-                <option value="glassmorphism">Glassmorphism Blur</option>
-                <option value="sleekdark">Sleek Dark Gradient</option>
+                <option value="card">Surface Card (Default)</option>
+                <option value="minimal">Minimal Outline</option>
+                <option value="elevated">Elevated Panel</option>
               </select>
             </div>
 

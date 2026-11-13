@@ -9,7 +9,7 @@ export const SITE_TAGLINE = 'Turn chaos into a system.';
 export const DEFAULT_TITLE = 'MANIAC — Turn Chaos into a System | Local-First Workspace';
 export const DEFAULT_DESCRIPTION = 'Turn chaos into a system. MANIAC is a local-first workspace for notes, knowledge, tasks, trackers, databases, active recall, and sovereign personal computing.';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
-export const THEME_COLOR = '#050508';
+export const THEME_COLOR = '#000000';
 export const TWITTER_HANDLE = '@maniacc_app';
 
 export const SEO_TOPICS = [

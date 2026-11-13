@@ -50,8 +50,8 @@ function RestorePreviewModal() {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-dialog, 12px)', width: '480px', maxWidth: '90vw', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), var(--shadow-modal)', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--color-overlay)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-dialog, 10px)', width: '480px', maxWidth: '90vw', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}>
         
         {/* Header */}
         <div style={{ padding: '24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '16px' }}>

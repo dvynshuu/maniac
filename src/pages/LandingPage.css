@@ -16,16 +16,8 @@
 }
 
 /* --------------------------------------------------------------------------
-   Atmospheric Gradients & Ambient Shaders
+   Background Grid
    -------------------------------------------------------------------------- */
-.landing-ambient-glow {
-  display: none;
-}
-
-.landing-ambient-glow-secondary {
-  display: none;
-}
-
 .landing-grid-bg {
   position: absolute;
   inset: 0;
@@ -56,8 +48,6 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   background: var(--color-bg);
   border-bottom: 1px solid var(--border-subtle);
   transition: border-color var(--transition-fast);
@@ -129,13 +119,15 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   text-decoration: none;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.12);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  box-shadow: none;
 }
 
 .btn-nav-primary:hover {
   transform: none;
-  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.25);
+  background: var(--color-primary-bg-hover);
+  border-color: var(--color-primary-bg-hover);
+  box-shadow: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -1154,10 +1146,6 @@
   box-shadow: none;
   position: relative;
   overflow: hidden;
-}
-
-.landing-cta-card::before {
-  display: none;
 }
 
 /* --------------------------------------------------------------------------

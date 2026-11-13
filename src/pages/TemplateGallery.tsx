@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Download, 
   Copy, 
   Check, 
   ArrowRight, 
-  Sparkles,
-  ExternalLink,
-  BookOpen
+  Sparkles
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';

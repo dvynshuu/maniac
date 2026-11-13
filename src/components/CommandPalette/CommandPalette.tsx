@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
 import { db } from '../../db/database';
-import { Search, FileText, Plus, Star, Type, Hash, Lock } from 'lucide-react';
+import { Search, FileText, Plus, Star, Type } from 'lucide-react';
 import { useSecurityStore } from '../../stores/securityStore';
 import DOMPurify from 'dompurify';
 

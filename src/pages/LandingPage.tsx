@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Shield,
-  Zap,
   Brain,
   Database,
   Share2,
@@ -15,24 +14,15 @@ import {
   ChevronRight,
   Layers,
   Flame,
-  Activity,
   FolderTree,
-  Repeat,
   Upload,
   Calendar,
   FileText,
   Check,
   X,
-  Code2,
   Table,
   Kanban,
-  Sliders,
-  Cpu,
   ArrowUpRight,
-  Eye,
-  Key,
-  GripVertical,
-  Plus,
   Copy
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
@@ -85,9 +75,6 @@ export default function LandingPage() {
     <div className="landing-page">
       <SEO structuredData={structuredData} />
 
-      {/* Atmospheric Ambient Glows */}
-      <div className="landing-ambient-glow" aria-hidden="true" />
-      <div className="landing-ambient-glow-secondary" aria-hidden="true" />
       <div className="landing-grid-bg" aria-hidden="true" />
 
       {/* ====================================================================

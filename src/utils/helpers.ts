@@ -265,10 +265,3 @@ export function mergeHTML(html1: string | null | undefined, html2: string | null
 
   return body1.innerHTML;
 }
-
-export function isEmptyContent(html: string | null | undefined): boolean {
-  if (!html) return true;
-  const clean = html.replace(/<[^>]*>/g, '').trim();
-  const decoded = clean.replace(/&nbsp;/g, ' ').trim();
-  return decoded === '';
-}

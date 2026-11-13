@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -6,11 +6,11 @@ import { useSecurityStore } from '../../stores/securityStore';
 import { db } from '../../db/database';
 import { SecurityService } from '../../utils/securityService';
 import { 
-  Settings, Bell, User, Clock, HardDrive, Zap, Pin, Maximize2, 
+  Settings, Bell, User, Clock, Zap, Pin, 
   RotateCcw, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
-  Check, Plus, Activity, Brain, AlertCircle, TrendingUp, Search, Flame,
-  FileText, Database, Shield, ArrowUpRight, CheckCircle2, Layers,
-  Compass, BarChart3, Radio, RefreshCw, Eye, Sparkles, Filter, Lock,
+  Plus, Activity, Brain, AlertCircle, TrendingUp, Search, Flame,
+  FileText, Shield, ArrowUpRight, CheckCircle2,
+  BarChart3, RefreshCw,
   Terminal, ArrowRight
 } from 'lucide-react';
 import './Dashboard.css';
@@ -23,7 +23,6 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import { OnboardingNarrative } from './OnboardingNarrative';
 import RecallChallengeModal from './RecallChallengeModal';
 import GraphView from './GraphView';
-import ManiacLogo from '../Common/ManiacLogo';
 import EmojiIcon from '../Common/EmojiIcon';
 import { getPlainText } from '../../utils/helpers';
 

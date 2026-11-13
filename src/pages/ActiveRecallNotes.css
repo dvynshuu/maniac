@@ -8,10 +8,7 @@
   overflow-x: hidden;
 }
 
-.srs-ambient-glow {
-  display: none;
-}
-
+/* Background Grid */
 .srs-grid-bg {
   position: absolute;
   top: 0;
@@ -567,7 +564,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-fg-secondary);;
+  color: var(--color-fg-secondary);
 }
 
 /* FAQ */

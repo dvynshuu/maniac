@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, Database, Activity, X, Terminal, ArrowUpRight } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Database, Activity, X, Terminal } from 'lucide-react';
 
 interface OnboardingNarrativeProps {
   onComplete?: () => void;

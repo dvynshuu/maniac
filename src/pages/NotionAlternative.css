@@ -12,10 +12,7 @@
 }
 
 /* Atmospheric Glows & Kinetic Grid */
-.alt-ambient-glow {
-  display: none;
-}
-
+/* Background Grid */
 .alt-grid-bg {
   position: absolute;
   top: 0;

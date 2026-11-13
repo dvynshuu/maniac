@@ -356,7 +356,7 @@
   border-radius: 50%;
 }
 
-.tpl-window-dots .dot.red { background: color: var(--color-fg-secondary);; opacity: 0.8; }
+.tpl-window-dots .dot.red { background: var(--color-surface-3); opacity: 0.8; }
 .tpl-window-dots .dot.yellow { background: var(--color-surface-3); }
 .tpl-window-dots .dot.green { background: var(--color-surface-2); }
 

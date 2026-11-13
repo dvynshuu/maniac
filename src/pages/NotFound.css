@@ -18,10 +18,7 @@
 }
 
 /* Atmospheric Background */
-.not-found-ambient {
-  display: none;
-}
-
+/* Grid */
 .not-found-grid {
   position: absolute;
   inset: 0;

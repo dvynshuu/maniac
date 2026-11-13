@@ -1,5 +1,5 @@
 import { sanitize, sanitizeObject } from './sanitizer';
-import { normalizeBlock, normalizePage, validateBlock as canonicalValidateBlock, validatePage as canonicalValidatePage } from '../core/model/schemas';
+import { normalizeBlock, normalizePage } from '../core/model/schemas';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 

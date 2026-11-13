@@ -8,7 +8,6 @@ export interface SettingsStore {
   animationsEnabled: boolean;
   fontFamily: string;
   fontSize: string;
-  accentColor: string;
   startupPage: string;
   spellCheck: boolean;
   autoSaveInterval: number;
@@ -46,7 +45,6 @@ export const useSettingsStore = create<SettingsStore>()(
       animationsEnabled: true,
       fontFamily: 'Inter',         // 'Inter' | 'JetBrains Mono' | 'System'
       fontSize: 'default',        // 'compact' | 'default' | 'comfortable'
-      accentColor: '#2E5BFF',     // hex color for accent
 
       // ─── System ──────────────────────────────────────
       startupPage: 'dashboard',   // 'dashboard' | 'last-visited'
@@ -82,7 +80,6 @@ export const useSettingsStore = create<SettingsStore>()(
         animationsEnabled: true,
         fontFamily: 'Inter',
         fontSize: 'default',
-        accentColor: '#2E5BFF',
         startupPage: 'dashboard',
         spellCheck: true,
         autoSaveInterval: 2,

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PROPERTY_TYPES, PROPERTY_COLORS } from '../../utils/constants';
-import { formatDate, formatDateTime, debounce } from '../../utils/helpers';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { PROPERTY_TYPES } from '../../utils/constants';
+import { formatDate, debounce } from '../../utils/helpers';
 
-import { ExternalLink, Mail, Phone, Clock, Calendar, CheckSquare, Square, Type, Hash, Tag, Tags, Check } from 'lucide-react';
+import { ExternalLink, Mail, Phone, CheckSquare, Square, Check } from 'lucide-react';
 import SelectDropdown from './SelectDropdown';
 import DatePicker from './DatePicker';
 import { useDatabaseStore } from '../../stores/databaseStore';

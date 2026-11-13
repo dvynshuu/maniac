@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Brain, Flame, ArrowRight, Award, Check } from 'lucide-react';
+import { X, Brain, Flame, Award } from 'lucide-react';
 import { useSecurityStore } from '../../stores/securityStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { db } from '../../db/database';
@@ -253,8 +253,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(5, 5, 6, 0.85)',
-        backdropFilter: 'blur(16px)',
+        background: 'var(--color-overlay)',
         zIndex: 5000,
         display: 'flex',
         alignItems: 'center',
@@ -272,7 +271,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
           maxWidth: '520px',
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-dialog, 12px)',
+          borderRadius: 'var(--radius-dialog, 10px)',
           padding: '24px',
           boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), var(--shadow-modal)',
           position: 'relative',
@@ -441,8 +440,8 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
               You have completed all your active recall checks for today. Your memory traces are successfully reinforced!
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '20px', fontSize: '14px', color: 'var(--color-fg)', fontWeight: 'bold' }}>
-              <Flame size={16} fill="var(--color-fg)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm, 4px)', fontSize: '13px', color: 'var(--color-fg)', fontWeight: 600 }}>
+              <Flame size={15} fill="var(--color-fg)" />
               <span>Current Streak: {srsStreak} Days</span>
             </div>
 
@@ -451,14 +450,14 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
               style={{
                 marginTop: '12px',
                 width: '100%',
-                padding: '12px',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                color: 'var(--text-primary)',
+                padding: '10px 16px',
+                background: 'var(--color-primary-bg)',
+                border: '1px solid var(--color-primary-bg)',
+                borderRadius: 'var(--radius-md, 6px)',
+                fontWeight: 600,
+                color: 'var(--color-primary-fg)',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all var(--duration-fast)'
               }}
             >
               Back to Dashboard
