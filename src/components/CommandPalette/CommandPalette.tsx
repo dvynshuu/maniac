@@ -199,7 +199,7 @@ export default function CommandPalette({ onClose }) {
         <div className="command-palette-overlay" onClick={onClose}>
             <div className="command-palette" onClick={e => e.stopPropagation()}>
                 <div className="command-palette-input-wrapper">
-                    <Search className="text-tertiary" size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                    <Search className="text-tertiary" size={18} style={{ color: 'var(--color-fg-tertiary)', flexShrink: 0 }} />
                     <input
                         ref={inputRef}
                         className="command-palette-input"

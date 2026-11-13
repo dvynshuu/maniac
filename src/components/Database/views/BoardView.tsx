@@ -227,9 +227,9 @@ function CoverImageModal({ isOpen, onClose, currentUrl, onSelectCover }) {
               }}
               style={{
                 marginLeft: 'auto',
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: '#f87171',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
+                background: 'var(--color-surface-2)',
+                color: 'var(--color-fg-muted)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '6px',
                 padding: '2px 8px',
                 fontSize: '11px',
@@ -371,7 +371,7 @@ export default function BoardView({
 
   // Group columns for Kanban mode
   const columns = useMemo(() => {
-    if (!groupProperty) return [{ key: '__all', label: 'All Items', rows, color: 'var(--text-secondary)', bg: 'rgba(255, 255, 255, 0.05)' }];
+    if (!groupProperty) return [{ key: '__all', label: 'All Items', rows, color: 'var(--text-secondary)', bg: 'var(--color-surface-2)' }];
 
     const cols = [];
     const isSelect = groupProperty.type === PROPERTY_TYPES.SELECT || groupProperty.type === 'status';
@@ -382,8 +382,8 @@ export default function BoardView({
       groupProperty.config.options.forEach(opt => {
         const key = typeof opt === 'string' ? opt : opt.value || opt.name;
         const label = typeof opt === 'string' ? opt : opt.name || opt.value;
-        const color = opt.color || 'var(--accent-primary)';
-        const bg = opt.bg || 'rgba(99, 102, 241, 0.15)';
+        const color = opt.color || 'var(--color-fg)';
+        const bg = opt.bg || 'var(--color-surface-2)';
         cols.push({
           key,
           label,
@@ -397,7 +397,7 @@ export default function BoardView({
         key: '__empty',
         label: 'No ' + (groupProperty.name || 'Status'),
         color: 'var(--text-tertiary)',
-        bg: 'rgba(255, 255, 255, 0.04)',
+        bg: 'var(--color-surface-2)',
         rows: rows.filter(r => !r.values[groupProperty.id] || r.values[groupProperty.id] === '')
       });
     } else if (isCheckbox) {
@@ -405,14 +405,14 @@ export default function BoardView({
         key: 'false',
         label: 'To Do',
         color: 'var(--text-secondary)',
-        bg: 'rgba(255, 255, 255, 0.05)',
+        bg: 'var(--color-surface-2)',
         rows: rows.filter(r => !r.values[groupProperty.id])
       });
       cols.push({
         key: 'true',
         label: 'Completed',
-        color: 'var(--success)',
-        bg: 'rgba(16, 185, 129, 0.15)',
+        color: 'var(--color-fg)',
+        bg: 'var(--color-surface-3)',
         rows: rows.filter(r => !!r.values[groupProperty.id])
       });
     } else {
@@ -428,15 +428,15 @@ export default function BoardView({
         key: '__empty',
         label: 'No ' + (groupProperty.name || 'Value'),
         color: 'var(--text-tertiary)',
-        bg: 'rgba(255, 255, 255, 0.04)',
+        bg: 'var(--color-surface-2)',
         rows: rows.filter(r => !r.values[groupProperty.id] || r.values[groupProperty.id] === '')
       });
       uniqueVals.forEach(val => {
         cols.push({
           key: val,
           label: val,
-          color: 'var(--accent-primary)',
-          bg: 'rgba(99, 102, 241, 0.12)',
+          color: 'var(--color-fg)',
+          bg: 'var(--color-surface-2)',
           rows: rows.filter(r => String(r.values[groupProperty.id]) === val)
         });
       });

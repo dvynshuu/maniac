@@ -4,25 +4,25 @@ import { storeBlob } from '../../utils/blobService';
 
 const COVER_PRESETS = [
   {
-    category: 'Gradients',
+    category: 'Monochrome Gradients',
     items: [
-      { id: 'grad-ember', name: 'Scarlet Ember', value: 'linear-gradient(135deg, #f97316 0%, #ef4444 50%, #f43f5e 100%)' },
-      { id: 'grad-cosmic', name: 'Cosmic Indigo', value: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%)' },
-      { id: 'grad-emerald', name: 'Emerald Aurora', value: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)' },
-      { id: 'grad-sunset', name: 'Golden Sunset', value: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)' },
-      { id: 'grad-ocean', name: 'Deep Ocean', value: 'linear-gradient(135deg, #06b6d4 0%, #0284c7 50%, #1e40af 100%)' },
-      { id: 'grad-midnight', name: 'Midnight Void', value: 'linear-gradient(135deg, #1e1e2f 0%, #11111b 50%, #0a0a0f 100%)' },
-      { id: 'grad-rose', name: 'Pastel Dusk', value: 'linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #fda4af 100%)' },
-      { id: 'grad-cyber', name: 'Cyber Neon', value: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #06b6d4 100%)' },
+      { id: 'grad-obsidian', name: 'Obsidian Noir', value: 'linear-gradient(135deg, #1f1f1f 0%, #000000 100%)' },
+      { id: 'grad-carbon', name: 'Carbon Graphite', value: 'linear-gradient(135deg, #2a2a2a 0%, #0d0d0d 100%)' },
+      { id: 'grad-slate', name: 'Neutral Slate', value: 'linear-gradient(135deg, #3d3d3d 0%, #171717 100%)' },
+      { id: 'grad-silver', name: 'Silver Tone', value: 'linear-gradient(135deg, #5a5a5a 0%, #222222 100%)' },
+      { id: 'grad-platinum', name: 'Platinum Mist', value: 'linear-gradient(135deg, #71717a 0%, #27272a 100%)' },
+      { id: 'grad-contrast', name: 'High Contrast', value: 'linear-gradient(180deg, #171717 0%, #050505 100%)' },
+      { id: 'grad-monolith', name: 'Monolith', value: 'linear-gradient(135deg, #141414 0%, #080808 100%)' },
+      { id: 'grad-radial', name: 'Center Spotlight', value: 'radial-gradient(circle at 50% 30%, #262626 0%, #050505 100%)' },
     ]
   },
   {
     category: 'Minimalist Patterns',
     items: [
-      { id: 'pat-grid', name: 'Subtle Matrix', value: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.12) 1px, transparent 0) 0 0/24px 24px, linear-gradient(135deg, #181824 0%, #0d0d12 100%)' },
-      { id: 'pat-mesh', name: 'Dark Mesh', value: 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0/32px 32px, linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0/32px 32px, #0f0f15' },
-      { id: 'pat-warm-grid', name: 'Warm Grid', value: 'radial-gradient(circle at 1px 1px, rgba(249,115,22,0.2) 1px, transparent 0) 0 0/20px 20px, linear-gradient(135deg, #1a120c 0%, #0a0806 100%)' },
-      { id: 'pat-blueprint', name: 'Blueprint', value: 'linear-gradient(rgba(59,130,246,0.15) 1px, transparent 1px) 0 0/20px 20px, linear-gradient(90deg, rgba(59,130,246,0.15) 1px, transparent 1px) 0 0/20px 20px, #0b1329' },
+      { id: 'pat-grid', name: 'Subtle Matrix', value: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.12) 1px, transparent 0) 0 0/24px 24px, #000000' },
+      { id: 'pat-mesh', name: 'Precision Mesh', value: 'linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0/32px 32px, linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0/32px 32px, #080808' },
+      { id: 'pat-hairline', name: 'Hairline Rule', value: 'repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(255,255,255,0.06) 24px), #000000' },
+      { id: 'pat-dots', name: 'Technical Dot', value: 'radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px) 0 0/16px 16px, #050505' },
     ]
   }
 ];

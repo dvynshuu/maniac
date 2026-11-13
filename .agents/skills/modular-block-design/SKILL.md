@@ -11,6 +11,8 @@ description: >-
 
 This skill guides the creation of **document-first, modular block interfaces**. It defines the typographic scales, muted pastel color systems, block mechanics, progressive disclosure micro-interactions, database views, and distraction-free layout patterns that power modern, tactile, high-productivity workspaces.
 
+> **Visual Architecture Notice:** Per `Maniac-DESIGN.md`, the product UI is **strictly monochrome** (black, white, and neutral greys only). Legacy pastel tints are superseded by architectural hairlines and neutral surface luminance steps.
+
 ---
 
 ## 1. Core Philosophy: The Modular Canvas Paradigm
@@ -19,45 +21,45 @@ A modular block interface is built upon four primary tenets:
 
 1. **The Canvas is a Document**: Everything is an atomic block. Paragraphs, headings, callouts, databases, images, and embeds share a consistent modular DNA and drag-and-drop affordance.
 2. **Distraction-Free Zen**: UI chrome (toolbars, drag grips, delete buttons) remains invisible by default and emerges smoothly on hover or keyboard intent (**Progressive Disclosure**).
-3. **Calm, High-Readability Palette**: Instead of harsh, aggressive saturation, the system uses warm, muted text colors paired with translucent 10–15% tinted backgrounds and delicate hairline borders.
+3. **Strict Monochrome Precision**: Clean neutral luminance hierarchy (`--color-surface-1` through `--color-surface-4`), 1px hairline borders, and zero glassmorphic blurs or decorative glows.
 4. **Keyboard-First Agility**: Every block type, formatting option, and navigation action provides instant keyboard triggers (`/` slash command, markdown shortcuts `>` / `#` / `[]`, arrow key navigation).
 
 ---
 
-## 2. Color Architecture & Token System
+## 2. Color Architecture & Token System (Maniac Canonical Monochrome)
 
-### 10-Tone Semantic Tint System (Dark & Light Mode)
+Maniac uses high-contrast monochrome tokens defined in `Maniac-DESIGN.md`:
 
-Pairs muted foreground text with soft translucent pastel backgrounds:
-
-| Color Name | Dark Mode Text | Dark Mode Background (12% tint) | Light Mode Text | Light Mode Background (10% tint) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Default** | `rgba(255, 255, 255, 0.9)` | `rgba(255, 255, 255, 0.05)` | `#37352f` | `transparent` |
-| **Gray** | `rgba(155, 154, 151, 1)` | `rgba(155, 154, 151, 0.12)` | `#787774` | `rgba(227, 226, 224, 0.5)` |
-| **Brown** | `rgba(186, 133, 111, 1)` | `rgba(186, 133, 111, 0.12)` | `#9f6b53` | `rgba(238, 224, 218, 0.5)` |
-| **Orange** | `rgba(199, 125, 72, 1)` | `rgba(199, 125, 72, 0.12)` | `#d9730d` | `rgba(250, 235, 221, 0.5)` |
-| **Yellow** | `rgba(202, 152, 73, 1)` | `rgba(202, 152, 73, 0.12)` | `#cb912f` | `rgba(253, 245, 213, 0.5)` |
-| **Green** | `rgba(82, 158, 114, 1)` | `rgba(82, 158, 114, 0.12)` | `#448361` | `rgba(219, 237, 219, 0.5)` |
-| **Blue** | `rgba(94, 135, 201, 1)` | `rgba(94, 135, 201, 0.12)` | `#337ea9` | `rgba(211, 229, 239, 0.5)` |
-| **Purple** | `rgba(144, 101, 176, 1)` | `rgba(144, 101, 176, 0.12)` | `#9065b0` | `rgba(232, 222, 238, 0.5)` |
-| **Pink** | `rgba(193, 76, 138, 1)` | `rgba(193, 76, 138, 0.12)` | `#c14c8a` | `rgba(244, 223, 235, 0.5)` |
-| **Red** | `rgba(212, 76, 71, 1)` | `rgba(212, 76, 71, 0.12)` | `#d44c47` | `rgba(251, 228, 228, 0.5)` |
+| Token | Dark Mode (Default) | Light Mode | Usage |
+| :--- | :--- | :--- | :--- |
+| `--color-bg` | `#000000` | `#FFFFFF` | Document canvas and root app |
+| `--color-surface-1` | `#000000` | `#FFFFFF` | Primary surface |
+| `--color-surface-2` | `#050505` | `#FAFAFA` | Quiet structural panels, callouts |
+| `--color-surface-3` | `#0A0A0A` | `#F4F4F5` | Hovered rows, secondary items |
+| `--color-surface-4` | `#111111` | `#EEEEF0` | Inputs, selected states |
+| `--color-surface-popover` | `#090909` | `#FFFFFF` | Slash menu, command palette |
+| `--color-fg` | `#FAFAFA` | `#09090B` | Primary text and icons |
+| `--color-fg-secondary` | `#A1A1AA` | `#52525B` | Secondary text |
+| `--color-border` | `#1A1A1A` | `#E4E4E7` | 1px hairline borders |
+| `--color-border-strong` | `#3F3F46` | `#A1A1AA` | Active / focused borders |
 
 ### CSS Custom Properties Template
 
 ```css
 :root {
   /* Typography */
-  --block-font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --block-font-serif: Lyon-Text, Georgia, YuMincho, "Yu Mincho", serif;
-  --block-font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", Courier, monospace;
+  --block-font-sans: "Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --block-font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
 
   /* Surfaces & Borders */
-  --block-bg-page: #191919;
-  --block-bg-sidebar: #202020;
-  --block-bg-hover: rgba(255, 255, 255, 0.055);
-  --block-bg-active: rgba(255, 255, 255, 0.08);
-  --block-border-subtle: rgba(255, 255, 255, 0.09);
+  --block-bg-page: var(--color-bg);
+  --block-bg-sidebar: var(--color-surface-2);
+  --block-bg-hover: var(--color-surface-3);
+  --block-bg-active: var(--color-surface-4);
+  --block-border-subtle: var(--color-border);
+  --block-border-strong: var(--color-border-strong);
+}
+```
   --block-border-strong: rgba(255, 255, 255, 0.16);
 
   /* Shadows */
@@ -291,8 +293,8 @@ Modular databases switch seamlessly between 4 essential view layouts:
 
 ### Floating Selection Formatting Toolbar
 - Appears floating above highlighted text (`top: -38px`).
-- Pill buttons: **B** (Bold), *I* (Italic), <u>U</u> (Underline), ~~S~~ (Strikethrough), `<>` (Code), 🔗 (Link), 🎨 (Color Tint Dropdown).
-- Dark glass styling (`backdrop-filter: blur(16px)`).
+- Neutral popover styling with 1px hairline border (`var(--color-border)`).
+- Action buttons: **B** (Bold), *I* (Italic), <u>U</u> (Underline), ~~S~~ (Strikethrough), `<>` (Code), 🔗 (Link), Subtle Highlight.
 
 ---
 
@@ -301,10 +303,10 @@ Modular databases switch seamlessly between 4 essential view layouts:
 Before shipping any modular document or block component, verify:
 
 - [ ] **Distraction-Free Chrome**: Are action buttons hidden until hover/focus?
-- [ ] **Soft Pastel Badges**: Are tags/colors using 10–15% translucency rather than solid neon fills?
-- [ ] **Hairline Precision**: Are borders soft hairlines (`rgba(255,255,255,0.08)` or `rgba(55,53,47,0.09)`)?
-- [ ] **Drag & Drop Affordance**: Does the 6-dot grip (`⋮⋮`) appear on block hover?
+- [ ] **Strict Monochrome Palette**: Are surfaces, borders, and badges using canonical monochrome tokens (`var(--color-bg)`, `var(--color-surface-2..4)`)?
+- [ ] **Hairline Precision**: Are borders 1px hairlines (`var(--color-border)`) without glassmorphic blurs or drop shadows?
+- [ ] **Drag & Drop Affordance**: Does the 6-dot grip (`⋮⋮`) appear quietly in neutral grayscale on block hover?
 - [ ] **Emoji / Icon Alignment**: Are icons crisp and properly aligned with text baselines?
 - [ ] **Content-First Width**: Is reading width comfortably constrained to `720px` by default with a wide-mode toggle?
 - [ ] **Keyboard Fluidity**: Can users navigate, format, and create blocks without touching the mouse?
-- [ ] **Dark & Light Mode Harmony**: Does the interface look equally refined in dark and light modes?
+- [ ] **Dark & Light Mode Parity**: Does the interface invert cleanly without muddy contrast?

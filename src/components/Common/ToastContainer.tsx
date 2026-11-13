@@ -13,7 +13,7 @@ function ToastContainer() {
           key={toast.id}
           className={`toast-pill ${toast.type}`}
         >
-          <div style={{ color: getToastColor(toast.type), display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ color: 'var(--color-fg, #FAFAFA)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {getToastIcon(toast.type)}
           </div>
           <span className="toast-pill-message">{toast.message}</span>
@@ -34,8 +34,6 @@ function ToastContainer() {
           >
             <X size={14} />
           </button>
-
-          {toast.action && <div className="toast-progress-bar" />}
         </div>
       ))}
     </div>
@@ -44,21 +42,11 @@ function ToastContainer() {
 
 function getToastIcon(type) {
   switch (type) {
-    case 'success': return <CheckCircle size={16} />;
-    case 'error': return <AlertCircle size={16} />;
-    case 'info': return <Info size={16} />;
-    default: return <Info size={16} />;
-  }
-}
-
-function getToastColor(type) {
-  switch (type) {
-    case 'success': return 'var(--success)';
-    case 'error': return 'var(--error)';
-    case 'info': return 'var(--accent-primary)';
-    default: return 'var(--text-secondary)';
+    case 'success': return <CheckCircle size={15} />;
+    case 'error': return <AlertCircle size={15} />;
+    case 'info': return <Info size={15} />;
+    default: return <Info size={15} />;
   }
 }
 
 export default ToastContainer;
-

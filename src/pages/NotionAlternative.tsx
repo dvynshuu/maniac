@@ -223,7 +223,7 @@ export default function NotionAlternative() {
 
             <div className="alt-reasons-grid">
               <div className="alt-reason-card">
-                <div className="reason-icon-wrap ember">
+                <div className="reason-icon-wrap">
                   <Zap size={22} />
                 </div>
                 <h3>Zero Latency Architecture</h3>
@@ -231,7 +231,7 @@ export default function NotionAlternative() {
               </div>
 
               <div className="alt-reason-card">
-                <div className="reason-icon-wrap blue">
+                <div className="reason-icon-wrap">
                   <Shield size={22} />
                 </div>
                 <h3>Sovereign Privacy</h3>
@@ -239,7 +239,7 @@ export default function NotionAlternative() {
               </div>
 
               <div className="alt-reason-card">
-                <div className="reason-icon-wrap emerald">
+                <div className="reason-icon-wrap">
                   <Brain size={22} />
                 </div>
                 <h3>Active Recall Integration</h3>

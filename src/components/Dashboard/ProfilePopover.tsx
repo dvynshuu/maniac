@@ -229,15 +229,14 @@ export function ProfilePopover({ onClose, onOpenSettings }) {
               <button 
                 onClick={handleSave}
                 style={{ 
-                  background: 'var(--accent-primary)', 
+                  background: 'var(--color-primary-bg)', 
                   border: 'none', 
-                  color: '#fff',
+                  color: 'var(--color-primary-fg)',
                   fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   padding: '4px 12px',
                   borderRadius: '4px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
                 onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
                 onMouseLeave={e => e.currentTarget.style.filter = 'none'}
@@ -256,8 +255,8 @@ export function ProfilePopover({ onClose, onOpenSettings }) {
                 style={{ 
                   width: 40, 
                   height: 40, 
-                  background: 'var(--accent-primary-subtle)', 
-                  color: 'var(--accent-primary)',
+                  background: 'var(--color-surface-2)', 
+                  color: 'var(--color-fg)',
                   padding: 0,
                   overflow: 'hidden',
                   display: 'flex',
@@ -307,7 +306,7 @@ export function ProfilePopover({ onClose, onOpenSettings }) {
             <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{storageData.usage} MB</span>
           </div>
           <div style={{ width: '100%', height: '4px', background: 'var(--bg-tertiary)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ width: `${storageData.percentage}%`, height: '100%', background: 'var(--accent-primary)', transition: 'width 0.3s ease' }}></div>
+            <div style={{ width: `${storageData.percentage}%`, height: '100%', background: 'var(--color-primary-bg)', transition: 'width 0.3s ease' }}></div>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
             {totalNodes} Total Nodes Encrypted

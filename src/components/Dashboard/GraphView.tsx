@@ -14,43 +14,43 @@ import { workerDetectCommunities } from '../../core/transformWorker';
 
 // ─── Color Palette & Deterministic Generator ──────────────────────────────
 const PALETTE = {
-  nodePrimary: '#6366F1',     // indigo-500
-  nodeSecondary: '#8B5CF6',   // violet-500 (Hub nodes)
-  nodeFavorite: '#F59E0B',    // amber-500
-  nodeOrphan: '#64748B',      // slate-500
-  linkDefault: 'rgba(99, 102, 241, 0.15)',
-  linkHighlight: 'rgba(139, 92, 246, 0.7)',
-  labelBg: 'rgba(15, 15, 20, 0.92)',
-  labelText: 'rgba(243, 243, 244, 0.95)',
-  particleColor: '#A78BFA',
+  nodePrimary: '#E5E5E5',     // Crisp neutral light
+  nodeSecondary: '#FAFAFA',   // High-luminance hub nodes
+  nodeFavorite: '#FFFFFF',    // Pure white favorite
+  nodeOrphan: '#737373',      // Muted neutral orphan
+  linkDefault: 'rgba(255, 255, 255, 0.12)',
+  linkHighlight: 'rgba(255, 255, 255, 0.75)',
+  labelBg: 'rgba(10, 10, 10, 0.95)',
+  labelText: 'rgba(250, 250, 250, 0.98)',
+  particleColor: 'rgba(255, 255, 255, 0.6)',
 } as const;
 
-// 24 Hand-tuned high-contrast hex colors for community detection
+// 24 Hand-tuned high-contrast monochrome luminance levels for community detection
 const COMMUNITY_PALETTE: readonly string[] = [
-  '#6366F1', // Indigo
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#8B5CF6', // Violet
-  '#F97316', // Orange
-  '#3B82F6', // Blue
-  '#14B8A6', // Teal
-  '#84CC16', // Lime
-  '#E11D48', // Rose
-  '#D946EF', // Fuchsia
-  '#0EA5E9', // Sky
-  '#22C55E', // Green
-  '#EAB308', // Yellow
-  '#A855F7', // Purple
-  '#F43F5E', // Red
-  '#2DD4BF', // Mint
-  '#FB7185', // Coral
-  '#38BDF8', // Light Sky
-  '#A3E635', // Light Lime
-  '#C084FC', // Light Violet
-  '#F472B6', // Light Pink
-  '#94A3B8', // Slate
+  '#FAFAFA',
+  '#E5E5E5',
+  '#D4D4D4',
+  '#A3A3A3',
+  '#737373',
+  '#F5F5F5',
+  '#E0E0E0',
+  '#CCCCCC',
+  '#999999',
+  '#666666',
+  '#FFFFFF',
+  '#EEEEEE',
+  '#DDDDDD',
+  '#BBBBBB',
+  '#888888',
+  '#555555',
+  '#F0F0F0',
+  '#D8D8D8',
+  '#BFBFBF',
+  '#9E9E9E',
+  '#757575',
+  '#EAEAEA',
+  '#C7C7C7',
+  '#8A8A8A',
 ];
 
 // Fallback deterministic HSL-to-Hex converter for >24 communities
@@ -365,7 +365,7 @@ export default function GraphView({ pages }: GraphViewProps) {
           color = COMMUNITY_PALETTE[idx];
         } else {
           const hue = (idx * 137.5) % 360;
-          color = hslToHex(hue, 75, 60);
+          color = hslToHex(0, 0, 40 + Math.floor(hue % 55));
         }
         communityColors[commId] = color;
         if (sizes[commId] > 1 && topCommunities.length < 5) {
@@ -891,9 +891,9 @@ export default function GraphView({ pages }: GraphViewProps) {
               aria-pressed={linkFilter.structural}
               onClick={() => setLinkFilter(prev => ({ ...prev, structural: !prev.structural }))}
               style={{
-                background: linkFilter.structural ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                border: '1px solid ' + (linkFilter.structural ? 'rgba(99, 102, 241, 0.45)' : 'transparent'),
-                color: linkFilter.structural ? '#A5B4FC' : 'var(--text-tertiary)',
+                background: linkFilter.structural ? 'var(--color-surface-3)' : 'transparent',
+                border: '1px solid ' + (linkFilter.structural ? 'var(--color-border-strong)' : 'transparent'),
+                color: linkFilter.structural ? 'var(--color-fg)' : 'var(--text-tertiary)',
                 borderRadius: '14px',
                 padding: '3px 7px',
                 fontSize: '9px',
@@ -915,9 +915,9 @@ export default function GraphView({ pages }: GraphViewProps) {
               aria-pressed={linkFilter.semantic}
               onClick={() => setLinkFilter(prev => ({ ...prev, semantic: !prev.semantic }))}
               style={{
-                background: linkFilter.semantic ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
-                border: '1px solid ' + (linkFilter.semantic ? 'rgba(139, 92, 246, 0.45)' : 'transparent'),
-                color: linkFilter.semantic ? '#C084FC' : 'var(--text-tertiary)',
+                background: linkFilter.semantic ? 'var(--color-surface-3)' : 'transparent',
+                border: '1px solid ' + (linkFilter.semantic ? 'var(--color-border-strong)' : 'transparent'),
+                color: linkFilter.semantic ? 'var(--color-fg)' : 'var(--text-tertiary)',
                 borderRadius: '14px',
                 padding: '3px 7px',
                 fontSize: '9px',
@@ -941,9 +941,9 @@ export default function GraphView({ pages }: GraphViewProps) {
               aria-pressed={colorMode === 'community'}
               onClick={() => setColorMode(prev => prev === 'standard' ? 'community' : 'standard')}
               style={{
-                background: colorMode === 'community' ? 'rgba(16, 185, 129, 0.22)' : 'transparent',
-                border: '1px solid ' + (colorMode === 'community' ? 'rgba(16, 185, 129, 0.45)' : 'transparent'),
-                color: colorMode === 'community' ? '#34D399' : 'var(--text-tertiary)',
+                background: colorMode === 'community' ? 'var(--color-surface-3)' : 'transparent',
+                border: '1px solid ' + (colorMode === 'community' ? 'var(--color-border-strong)' : 'transparent'),
+                color: colorMode === 'community' ? 'var(--color-fg)' : 'var(--text-tertiary)',
                 borderRadius: '14px',
                 padding: '3px 7px',
                 fontSize: '9px',

@@ -327,14 +327,14 @@ export default function CellRenderer({
     const label = `${prefix}${formattedNum}${suffix}`;
 
     // Get hex color mapping
-    const colorsMap = {
-      blue: 'var(--accent-primary)',
-      green: 'var(--success)',
-      purple: '#a78bfa',
-      orange: 'var(--warning)',
-      red: '#f87171'
+    const colorsMap: Record<string, string> = {
+      blue: 'var(--color-primary-bg)',
+      green: 'var(--color-primary-bg)',
+      purple: 'var(--color-fg)',
+      orange: 'var(--color-fg)',
+      red: 'var(--color-primary-bg)'
     };
-    const color = colorsMap[progressColor] || 'var(--accent-primary)';
+    const color = colorsMap[progressColor] || 'var(--color-primary-bg)';
 
     if (showAs === 'bar') {
       return (
@@ -342,7 +342,7 @@ export default function CellRenderer({
           <div 
             style={{ 
               height: '6px', 
-              background: 'rgba(255, 255, 255, 0.08)', 
+              background: 'var(--color-surface-3)', 
               borderRadius: '3px', 
               flex: 1, 
               overflow: 'hidden',
@@ -383,7 +383,7 @@ export default function CellRenderer({
               cy="8"
               r={radius}
               fill="transparent"
-              stroke="rgba(255, 255, 255, 0.08)"
+              stroke="var(--color-surface-3)"
               strokeWidth={strokeWidth}
             />
             {/* Colored progress circle */}

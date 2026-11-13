@@ -106,15 +106,15 @@ export interface ColorOption {
 }
 
 export const SELECT_COLORS: ColorOption[] = [
-  { name: 'gray', bg: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.7)' },
-  { name: 'blue', bg: 'rgba(96,165,250,0.15)', text: '#60a5fa' },
-  { name: 'purple', bg: 'rgba(167,139,250,0.15)', text: '#a78bfa' },
-  { name: 'pink', bg: 'rgba(244,114,182,0.15)', text: '#f472b6' },
-  { name: 'red', bg: 'rgba(248,113,113,0.15)', text: '#f87171' },
-  { name: 'orange', bg: 'rgba(251,146,60,0.15)', text: '#fb923c' },
-  { name: 'yellow', bg: 'rgba(250,204,21,0.15)', text: '#facc15' },
-  { name: 'green', bg: 'rgba(74,222,128,0.15)', text: '#4ade80' },
-  { name: 'teal', bg: 'rgba(45,212,191,0.15)', text: '#2dd4bf' },
+  { name: 'gray',   bg: 'var(--color-surface-2)', text: 'var(--color-fg-secondary)' },
+  { name: 'blue',   bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'purple', bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
+  { name: 'pink',   bg: 'var(--color-surface-2)', text: 'var(--color-fg)' },
+  { name: 'red',    bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'orange', bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
+  { name: 'yellow', bg: 'var(--color-surface-2)', text: 'var(--color-fg-secondary)' },
+  { name: 'green',  bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'teal',   bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
 ];
 
 // ---- Database Property Types ----
@@ -154,13 +154,13 @@ export const PROPERTY_TYPE_META: Record<string, BlockMeta> = {
 };
 
 export const PROPERTY_COLORS: ColorOption[] = [
-  { name: 'default', bg: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.7)' },
-  { name: 'blue',    bg: 'rgba(96,165,250,0.18)',  text: '#60a5fa' },
-  { name: 'purple',  bg: 'rgba(167,139,250,0.18)', text: '#a78bfa' },
-  { name: 'pink',    bg: 'rgba(244,114,182,0.18)', text: '#f472b6' },
-  { name: 'red',     bg: 'rgba(248,113,113,0.18)', text: '#f87171' },
-  { name: 'orange',  bg: 'rgba(251,146,60,0.18)',  text: '#fb923c' },
-  { name: 'yellow',  bg: 'rgba(250,204,21,0.18)',  text: '#facc15' },
-  { name: 'green',   bg: 'rgba(74,222,128,0.18)',  text: '#4ade80' },
-  { name: 'teal',    bg: 'rgba(45,212,191,0.18)',  text: '#2dd4bf' },
+  { name: 'default', bg: 'var(--color-surface-2)', text: 'var(--color-fg-secondary)' },
+  { name: 'blue',    bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'purple',  bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
+  { name: 'pink',    bg: 'var(--color-surface-2)', text: 'var(--color-fg)' },
+  { name: 'red',     bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'orange',  bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
+  { name: 'yellow',  bg: 'var(--color-surface-2)', text: 'var(--color-fg-secondary)' },
+  { name: 'green',   bg: 'var(--color-surface-3)', text: 'var(--color-fg)' },
+  { name: 'teal',    bg: 'var(--color-surface-4)', text: 'var(--color-fg)' },
 ];

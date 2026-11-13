@@ -1,7 +1,7 @@
 /* Shared Page Preview Styles */
 .shared-page-container {
   min-height: 100vh;
-  background-color: var(--bg-primary, #050508);
+  background-color: var(--bg-primary, var(--color-bg));
   color: var(--text-primary, rgba(255, 255, 255, 0.9));
   font-family: var(--font-sans, 'Inter', -apple-system, sans-serif);
   display: flex;
@@ -13,10 +13,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 10, 15, 0.82);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .shared-banner-content {
@@ -68,8 +66,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--accent-scar, #ea580c);
-  color: #ffffff;
+  background: var(--color-primary-bg); border: 1px solid var(--color-primary-bg); color: var(--color-primary-fg);
   font-size: 13px;
   font-weight: 600;
   padding: 8px 18px;
@@ -77,19 +74,19 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   cursor: pointer;
   text-decoration: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   transition: all var(--transition-fast, 150ms ease);
 }
 
 .btn-share-primary:hover {
-  transform: translateY(-1px);
-  background: #f97316;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.5);
+  transform: none;
+  background: var(--color-primary-bg-hover);
+  box-shadow: none;
 }
 
 .btn-share-primary:active {
   transform: translateY(1px);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: none;
 }
 
 .btn-share-secondary {
@@ -105,12 +102,12 @@
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   cursor: pointer;
   text-decoration: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: none;
   transition: transform var(--transition-fast, 150ms ease), background var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
 }
 
 .btn-share-secondary:hover {
-  transform: translateY(-1px);
+  transform: none;
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
 }
@@ -133,11 +130,10 @@
 
 /* Document Card */
 .shared-doc-card {
-  background: rgba(18, 18, 26, 0.65);
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg, 12px);
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 .shared-doc-cover {
@@ -240,7 +236,7 @@
 }
 
 .sb-todo input[type="checkbox"] {
-  accent-color: #ef4444;
+  accent-color: color: var(--color-fg-secondary);;
   width: 16px;
   height: 16px;
 }
@@ -251,7 +247,7 @@
 }
 
 .sb-quote {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid color: var(--color-fg-secondary);;
   margin: 8px 0;
   padding: 6px 0 6px 16px;
   color: rgba(255, 255, 255, 0.7);
@@ -266,7 +262,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   overflow-x: auto;
-  color: #38bdf8;
+  color: var(--color-fg);
 }
 
 .sb-callout {
@@ -296,9 +292,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  background: var(--bg-secondary, #0f121a);
+  background: var(--bg-secondary, var(--color-surface-2));
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: none;
   border-radius: var(--radius-lg, 12px);
   padding: 28px 32px;
 }
@@ -307,8 +303,9 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #f97316;
+  background: var(--color-surface-2);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -319,7 +316,7 @@
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 6px 0;
-  color: #ffffff;
+  color: var(--color-fg);
 }
 
 .pitch-copy p {
@@ -333,21 +330,19 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff;
-  color: #050508;
+  background: var(--color-primary-bg); border: 1px solid var(--color-primary-bg); color: var(--color-primary-fg);
+  color: var(--color-primary-fg);
   font-weight: 700;
   font-size: 13px;
   padding: 12px 22px;
   border-radius: var(--radius-md, 6px);
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-  transition: all var(--transition-fast, 150ms ease);
+  transition: opacity var(--transition-fast, 150ms ease);
 }
 
 .btn-pitch-launch:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(255, 255, 255, 0.25);
+  background: var(--color-primary-bg-hover);
 }
 
 /* Loading & Error States */
@@ -361,13 +356,13 @@
 }
 
 .shared-error-card {
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg, 12px);
 }
 
 .error-icon {
-  color: #ef4444;
+  color: var(--color-fg-secondary);
 }
 
 .error-actions {

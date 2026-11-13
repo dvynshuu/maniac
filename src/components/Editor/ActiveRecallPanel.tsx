@@ -194,7 +194,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
       {/* Title Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-          <Brain size={16} color="var(--accent-primary)" />
+          <Brain size={16} color="var(--color-fg)" />
           <span>Active Recall Settings</span>
         </div>
         <button 
@@ -216,7 +216,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
             width: '36px',
             height: '20px',
             borderRadius: '10px',
-            background: srsEnabled ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+            background: srsEnabled ? 'var(--color-primary-bg)' : 'var(--color-surface-3)',
             border: 'none',
             position: 'relative',
             cursor: 'pointer',
@@ -228,7 +228,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
               width: '14px',
               height: '14px',
               borderRadius: '50%',
-              background: '#fff',
+              background: 'var(--color-primary-fg)',
               position: 'absolute',
               top: '3px',
               left: srsEnabled ? '19px' : '3px',
@@ -259,11 +259,11 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
               <div>Interval: <b style={{ color: 'var(--text-secondary)' }}>{page.srsInterval || 1}d</b></div>
               <div>Ease: <b style={{ color: 'var(--text-secondary)' }}>{Number(page.srsEase || 2.5).toFixed(1)}x</b></div>
-              <div style={{ gridColumn: 'span 2' }}>Next Review: <b style={{ color: isDue ? '#f87171' : 'var(--text-secondary)' }}>{formatDate(page.srsNextReview)}</b></div>
+              <div style={{ gridColumn: 'span 2' }}>Next Review: <b style={{ color: isDue ? 'var(--color-fg)' : 'var(--text-secondary)' }}>{formatDate(page.srsNextReview)}</b></div>
             </div>
             {page.srsStreak > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#fb923c', fontWeight: 'bold', marginTop: '6px' }}>
-                <Flame size={12} fill="#fb923c" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--color-fg)', fontWeight: 'bold', marginTop: '6px' }}>
+                <Flame size={12} fill="var(--color-fg)" />
                 <span>Page Streak: {page.srsStreak} reviews</span>
               </div>
             )}
@@ -276,8 +276,8 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
               style={{
                 width: '100%',
                 padding: '8px',
-                background: 'var(--accent-primary)',
-                color: '#fff',
+                background: 'var(--color-primary-bg)',
+                color: 'var(--color-primary-fg)',
                 border: 'none',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -292,7 +292,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
               <Brain size={13} /> Review Due Challenge Now
             </button>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', background: 'rgba(74, 222, 128, 0.05)', border: '1px solid rgba(74, 222, 128, 0.1)', borderRadius: '4px', fontSize: '11px', color: '#4ade80' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '11px', color: 'var(--color-fg)' }}>
               <AlertCircle size={12} />
               <span>Review is scheduled correctly.</span>
             </div>
@@ -327,7 +327,7 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
                 maxHeight: '80px', 
                 overflowY: 'auto',
                 color: 'var(--text-primary)',
-                borderLeft: '2px solid var(--accent-primary)',
+                borderLeft: '2px solid var(--color-border-strong)',
                 fontFamily: 'var(--font-sans)',
                 whiteSpace: 'pre-wrap'
               }}>
@@ -335,10 +335,10 @@ export default function ActiveRecallPanel({ page, updatePage, onClose }) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-                <button onClick={() => gradeReview(1)} style={{ background: '#f87171', color: '#000', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Again</button>
-                <button onClick={() => gradeReview(2)} style={{ background: '#fb923c', color: '#000', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Hard</button>
-                <button onClick={() => gradeReview(3)} style={{ background: '#4ade80', color: '#000', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Good</button>
-                <button onClick={() => gradeReview(4)} style={{ background: '#60a5fa', color: '#000', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Easy</button>
+                <button onClick={() => gradeReview(1)} style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg-secondary)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }}>Again</button>
+                <button onClick={() => gradeReview(2)} style={{ background: 'var(--color-surface-3)', color: 'var(--color-fg)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }}>Hard</button>
+                <button onClick={() => gradeReview(3)} style={{ background: 'var(--color-surface-4)', color: 'var(--color-fg)', border: '1px solid var(--color-border-strong)', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>Good</button>
+                <button onClick={() => gradeReview(4)} style={{ background: 'var(--color-primary-bg)', color: 'var(--color-primary-fg)', border: '1px solid var(--color-primary-bg)', borderRadius: '4px', padding: '6px 0', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>Easy</button>
               </div>
             </div>
           )}

@@ -7,7 +7,7 @@ import {
   GripVertical, Plus, Trash2, ArrowUp, ArrowDown, Copy,
   FileText, Heading1, Heading2, Heading3, CheckSquare,
   List, ListOrdered, ChevronRight, Code, Lightbulb,
-  Quote, Sigma, Minus, Link2, Palette, RefreshCw
+  Quote, Sigma, Minus, Link2, RefreshCw
 } from 'lucide-react';
 import { BLOCK_TYPES } from '../../utils/constants';
 
@@ -348,12 +348,6 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
     }
   };
 
-  const handleSetTint = (colorKey?: string) => {
-    engine.updateBlock(block.id, {
-      properties: { ...block.properties, color: colorKey }
-    });
-  };
-
   const menuItems = [
     {
       label: 'Turn into...',
@@ -374,23 +368,6 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
         { label: 'Quote', icon: Quote, action: () => engine.convertType(block.id, 'quote') },
         { label: 'Math Equation', icon: Sigma, action: () => engine.convertType(block.id, 'math') },
         { label: 'Divider', icon: Minus, action: () => engine.convertType(block.id, 'divider') },
-      ]
-    },
-    {
-      label: 'Color Tint...',
-      icon: Palette,
-      children: [
-        { label: 'Default (Clear)', action: () => handleSetTint(undefined) },
-        'divider',
-        { label: 'Gray Tint', action: () => handleSetTint('gray_background') },
-        { label: 'Brown Tint', action: () => handleSetTint('brown_background') },
-        { label: 'Orange Tint', action: () => handleSetTint('orange_background') },
-        { label: 'Yellow Tint', action: () => handleSetTint('yellow_background') },
-        { label: 'Green Tint', action: () => handleSetTint('green_background') },
-        { label: 'Blue Tint', action: () => handleSetTint('blue_background') },
-        { label: 'Purple Tint', action: () => handleSetTint('purple_background') },
-        { label: 'Pink Tint', action: () => handleSetTint('pink_background') },
-        { label: 'Red Tint', action: () => handleSetTint('red_background') },
       ]
     },
     'divider',

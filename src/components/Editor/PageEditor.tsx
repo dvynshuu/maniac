@@ -369,7 +369,7 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
               className={`editor-toolbar-btn ${isFav ? 'active' : ''}`}
               title={isFav ? 'Remove from favorites' : 'Add to favorites'}
             >
-              <Star size={13} style={isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {}} />
+              <Star size={13} style={isFav ? { color: 'var(--color-fg)', fill: 'var(--color-fg)' } : {}} />
             </button>
 
             {/* Lock Indicator */}
@@ -408,7 +408,7 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
               <Brain size={13} />
               <span>Active Recall</span>
               {page.srsEnabled && page.srsNextReview && page.srsNextReview <= Date.now() && (
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f87171', flexShrink: 0 }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-fg)', flexShrink: 0 }} />
               )}
             </button>
 
@@ -449,7 +449,7 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
                 </>
               ) : (
                 <>
-                  <Cloud size={13} style={{ color: 'var(--success)' }} />
+                  <Cloud size={13} style={{ color: 'var(--color-fg-muted)' }} />
                   <span>Saved</span>
                 </>
               )}

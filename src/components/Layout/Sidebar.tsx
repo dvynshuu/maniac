@@ -326,16 +326,15 @@ function Sidebar() {
           {dragStart && dragCurrent && (
             <div style={{
               position: 'absolute',
-              border: '1px solid rgba(35, 131, 226, 0.8)',
-              background: 'rgba(35, 131, 226, 0.15)',
-              borderRadius: '2px',
+              border: '1px solid var(--color-border-focus)',
+              background: 'var(--color-selection)',
+              borderRadius: 'var(--radius-xs)',
               pointerEvents: 'none',
               zIndex: 100,
               left: Math.min(dragStart.x, dragCurrent.x),
               top: Math.min(dragStart.y, dragCurrent.y),
               width: Math.abs(dragCurrent.x - dragStart.x),
               height: Math.abs(dragCurrent.y - dragStart.y),
-              boxShadow: '0 0 0 1px rgba(255,255,255,0.05)',
             }} />
           )}
 
@@ -359,15 +358,12 @@ function Sidebar() {
                 <div
                   key={page.id}
                   className={`page-item page-item-wrapper ${location.pathname === `/app/page/${page.id}` || location.pathname === `/page/${page.id}` ? 'active' : ''} ${selectedPageIds.includes(page.id) ? 'selected' : ''}`}
-                  style={{
-                    paddingLeft: '32px', marginBottom: 2,
-                    background: selectedPageIds.includes(page.id) ? 'rgba(35, 131, 226, 0.15)' : undefined
-                  }}
+                  style={{ paddingLeft: '32px', marginBottom: 2 }}
                   onClick={() => { setCurrentPage(page.id); navigate(`/app/page/${page.id}`); }}
                   data-page-id={page.id}
                 >
                   <span className="page-item-icon">
-                    <Star size={14} style={{ color: 'var(--warning)', fill: 'var(--warning)' }} />
+                    <Star size={14} style={{ color: 'var(--color-fg)', fill: 'var(--color-fg)' }} />
                   </span>
                   <span className="page-item-title">{page.title || 'Untitled'}</span>
                 </div>

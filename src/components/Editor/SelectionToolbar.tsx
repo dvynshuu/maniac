@@ -8,16 +8,8 @@ import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { sanitizeUrl } from '../../utils/sanitizer';
 
 const COLORS = [
-  { label: 'Default', class: '', color: 'transparent' },
-  { label: 'Gray', class: 'hl-gray', color: 'var(--block-color-gray, #9b9a97)' },
-  { label: 'Brown', class: 'hl-brown', color: 'var(--block-color-brown, #ba856f)' },
-  { label: 'Orange', class: 'hl-orange', color: 'var(--block-color-orange, #c77d48)' },
-  { label: 'Yellow', class: 'hl-yellow', color: 'var(--block-color-yellow, #ca9849)' },
-  { label: 'Green', class: 'hl-green', color: 'var(--block-color-green, #529e72)' },
-  { label: 'Blue', class: 'hl-blue', color: 'var(--block-color-blue, #5e87c9)' },
-  { label: 'Purple', class: 'hl-purple', color: 'var(--block-color-purple, #9065b0)' },
-  { label: 'Pink', class: 'hl-pink', color: 'var(--block-color-pink, #c14c8a)' },
-  { label: 'Red', class: 'hl-red', color: 'var(--block-color-red, #d44c47)' },
+  { label: 'Clear', class: '', color: 'transparent' },
+  { label: 'Highlight', class: 'hl-gray', color: 'var(--color-surface-4)' },
 ];
 
 function SelectionToolbar() {
@@ -282,7 +274,7 @@ function SelectionToolbar() {
             useUIStore.getState().addToast('AI Magic is coming soon!', 'info');
           }}
           title="AI Magic"
-          style={{ color: 'var(--accent-secondary)' }}
+          style={{ color: 'var(--color-fg-secondary)' }}
         >
           <Sparkles size={16} />
         </button>

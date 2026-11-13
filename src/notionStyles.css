@@ -7,74 +7,28 @@
 /* ─── Notion Color Variables ───────────────────────────────────── */
 
 :root {
-  /* Text Colors */
+  /* Text Colors (Monochrome Normalized) */
   --notion-default: inherit;
-  --notion-gray: rgba(155, 154, 151, 1);
-  --notion-brown: rgba(186, 133, 111, 1);
-  --notion-orange: rgba(199, 125, 72, 1);
-  --notion-yellow: rgba(202, 152, 73, 1);
-  --notion-green: rgba(82, 158, 114, 1);
-  --notion-blue: rgba(94, 135, 201, 1);
-  --notion-purple: rgba(144, 101, 176, 1);
-  --notion-pink: rgba(193, 76, 138, 1);
-  --notion-red: rgba(212, 76, 71, 1);
+  --notion-gray: var(--color-fg-secondary);
+  --notion-brown: var(--color-fg-secondary);
+  --notion-orange: var(--color-fg);
+  --notion-yellow: var(--color-fg-secondary);
+  --notion-green: var(--color-fg);
+  --notion-blue: var(--color-fg);
+  --notion-purple: var(--color-fg);
+  --notion-pink: var(--color-fg);
+  --notion-red: var(--color-fg);
 
-  /* Background Colors (dark mode tuned) */
-  --notion-gray_background: rgba(155, 154, 151, 0.12);
-  --notion-brown_background: rgba(186, 133, 111, 0.12);
-  --notion-orange_background: rgba(199, 125, 72, 0.12);
-  --notion-yellow_background: rgba(202, 152, 73, 0.12);
-  --notion-green_background: rgba(82, 158, 114, 0.12);
-  --notion-blue_background: rgba(94, 135, 201, 0.12);
-  --notion-purple_background: rgba(144, 101, 176, 0.12);
-  --notion-pink_background: rgba(193, 76, 138, 0.12);
-  --notion-red_background: rgba(212, 76, 71, 0.12);
-
-  /* Notion Typography Scale */
-  --notion-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
-  --notion-font-mono: 'SFMono-Regular', Menlo, Consolas, 'PT Mono', 'Liberation Mono', Courier, monospace;
-
-  --notion-body-size: 16px;
-  --notion-body-line-height: 1.5;
-  --notion-h1-size: 1.875em;
-  --notion-h1-line-height: 1.3;
-  --notion-h2-size: 1.5em;
-  --notion-h2-line-height: 1.3;
-  --notion-h3-size: 1.25em;
-  --notion-h3-line-height: 1.3;
-
-  /* Notion Block Spacing */
-  --notion-block-gap: 1px;
-  --notion-h1-mt: 2em;
-  --notion-h2-mt: 1.4em;
-  --notion-h3-mt: 1em;
-  --notion-indent: 24px;
-  --notion-block-padding: 3px 2px;
-}
-
-:root[data-theme="light"] {
-  /* Text Colors Light */
-  --notion-default: #37352f;
-  --notion-gray: #787774;
-  --notion-brown: #9f6b53;
-  --notion-orange: #d9730d;
-  --notion-yellow: #cb912f;
-  --notion-green: #448361;
-  --notion-blue: #337ea9;
-  --notion-purple: #9065b0;
-  --notion-pink: #c14c8a;
-  --notion-red: #d44c47;
-
-  /* Background Colors (light mode tuned) */
-  --notion-gray_background: rgba(227, 226, 224, 0.5);
-  --notion-brown_background: rgba(238, 224, 218, 0.5);
-  --notion-orange_background: rgba(250, 235, 221, 0.5);
-  --notion-yellow_background: rgba(253, 245, 213, 0.5);
-  --notion-green_background: rgba(219, 237, 219, 0.5);
-  --notion-blue_background: rgba(211, 229, 239, 0.5);
-  --notion-purple_background: rgba(232, 222, 238, 0.5);
-  --notion-pink_background: rgba(244, 223, 235, 0.5);
-  --notion-red_background: rgba(251, 228, 228, 0.5);
+  /* Background Colors (Monochrome Normalized) */
+  --notion-gray_background: var(--color-surface-2);
+  --notion-brown_background: var(--color-surface-2);
+  --notion-orange_background: var(--color-surface-3);
+  --notion-yellow_background: var(--color-surface-2);
+  --notion-green_background: var(--color-surface-3);
+  --notion-blue_background: var(--color-surface-3);
+  --notion-purple_background: var(--color-surface-4);
+  --notion-pink_background: var(--color-surface-2);
+  --notion-red_background: var(--color-surface-3);
 }
 
 /* ─── Notion Callout Color Variants ───────────────────────────── */
@@ -85,60 +39,33 @@
   border-color: var(--border-subtle);
 }
 
-.block-callout[data-color="gray_background"] {
-  background: rgba(155, 154, 151, 0.1);
-  border-color: rgba(155, 154, 151, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="brown_background"] {
-  background: rgba(186, 133, 111, 0.1);
-  border-color: rgba(186, 133, 111, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="orange_background"] {
-  background: rgba(199, 125, 72, 0.1);
-  border-color: rgba(199, 125, 72, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="yellow_background"] {
-  background: rgba(202, 152, 73, 0.1);
-  border-color: rgba(202, 152, 73, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="green_background"] {
-  background: rgba(82, 158, 114, 0.1);
-  border-color: rgba(82, 158, 114, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="blue_background"] {
-  background: rgba(94, 135, 201, 0.1);
-  border-color: rgba(94, 135, 201, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="purple_background"] {
-  background: rgba(144, 101, 176, 0.1);
-  border-color: rgba(144, 101, 176, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="pink_background"] {
-  background: rgba(193, 76, 138, 0.1);
-  border-color: rgba(193, 76, 138, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-.block-callout[data-color="red_background"] {
-  background: rgba(212, 76, 71, 0.1);
-  border-color: rgba(212, 76, 71, 0.2);
-}
+.block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
-[data-theme="light"] .block-callout[data-color="gray_background"] { background: rgba(227, 226, 224, 0.5); border-color: rgba(155, 154, 151, 0.3); }
-[data-theme="light"] .block-callout[data-color="brown_background"] { background: rgba(238, 224, 218, 0.5); border-color: rgba(186, 133, 111, 0.3); }
-[data-theme="light"] .block-callout[data-color="orange_background"] { background: rgba(250, 235, 221, 0.5); border-color: rgba(199, 125, 72, 0.3); }
-[data-theme="light"] .block-callout[data-color="yellow_background"] { background: rgba(253, 245, 213, 0.5); border-color: rgba(202, 152, 73, 0.3); }
-[data-theme="light"] .block-callout[data-color="green_background"] { background: rgba(219, 237, 219, 0.5); border-color: rgba(82, 158, 114, 0.3); }
-[data-theme="light"] .block-callout[data-color="blue_background"] { background: rgba(211, 229, 239, 0.5); border-color: rgba(94, 135, 201, 0.3); }
-[data-theme="light"] .block-callout[data-color="purple_background"] { background: rgba(232, 222, 238, 0.5); border-color: rgba(144, 101, 176, 0.3); }
-[data-theme="light"] .block-callout[data-color="pink_background"] { background: rgba(244, 223, 235, 0.5); border-color: rgba(193, 76, 138, 0.3); }
-[data-theme="light"] .block-callout[data-color="red_background"] { background: rgba(251, 228, 228, 0.5); border-color: rgba(212, 76, 71, 0.3); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
+[data-theme="light"] .block-callout[data-color] { background: var(--color-surface-2); border-color: var(--color-border); }
 
 .block-callout-emoji-btn {
   background: none;
@@ -679,10 +606,10 @@
 }
 
 .embed-widget-card:hover {
-  background: var(--bg-active);
-  border-color: var(--accent-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--color-surface-3);
+  border-color: var(--color-border-strong);
+  transform: none;
+  box-shadow: none;
 }
 
 .embed-widget-card svg {
@@ -1029,16 +956,16 @@
   background: var(--accent-primary) !important;
 }
 .gradient-forest {
-  background: var(--success) !important;
+  background: var(--color-surface-2) !important;
 }
 .gradient-midnight {
-  background: #6366f1 !important;
+  background: var(--color-surface-3) !important;
 }
 .gradient-gold {
-  background: var(--warning) !important;
+  background: var(--color-surface-4) !important;
 }
 .gradient-lavender {
-  background: var(--accent-primary) !important;
+  background: var(--color-primary-bg) !important;
 }
 
 /* Completion styling */
@@ -1047,12 +974,12 @@
 }
 
 .widget-progress-bar-fill.completed {
-  background: var(--success) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: var(--color-fg) !important;
+  box-shadow: none;
 }
 
 .widget-progress-stats.completed {
-  color: var(--success);
+  color: var(--color-fg);
   font-weight: 800;
 }
 
@@ -1075,7 +1002,7 @@
   color: var(--text-primary);
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1085,9 +1012,9 @@
 }
 
 .widget-progress-btn:hover:not(:disabled) {
-  background: var(--bg-active);
-  border-color: var(--accent-primary);
-  transform: translateY(-1px);
+  background: var(--color-surface-3);
+  border-color: var(--color-border-strong);
+  transform: none;
 }
 
 .widget-progress-btn:active:not(:disabled) {
@@ -1106,7 +1033,7 @@
 }
 
 .widget-progress-celebrate-btn:hover:not(:disabled) {
-  background: rgba(74, 222, 128, 0.2) !important;
+  background: var(--color-surface-3) !important;
   border-color: var(--success) !important;
 }
 
@@ -1315,33 +1242,34 @@
   font-size: 14px;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 .block-embed-input:focus {
-  border-color: var(--accent-primary);
+  border-color: var(--color-border-focus);
   background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 0 3px var(--accent-primary-subtle), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 .block-embed-submit-btn {
-  background: var(--accent-primary);
-  color: white;
-  border: none;
-  border-radius: 10px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary-fg);
+  border: 1px solid var(--color-primary-bg);
+  border-radius: var(--radius-md);
   padding: 0 20px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(46, 91, 255, 0.2);
+  box-shadow: none;
 }
 
 .block-embed-submit-btn:hover {
-  background: var(--accent-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(46, 91, 255, 0.3);
+  background: var(--color-primary-bg-hover);
+  border-color: var(--color-primary-bg-hover);
+  transform: none;
+  box-shadow: none;
 }
 
 .block-embed-submit-btn:active {

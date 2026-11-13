@@ -289,12 +289,12 @@ export default function LandingPage() {
                           <span>•</span>
                           <span>IndexedDB Active</span>
                           <span>•</span>
-                          <span style={{ color: 'var(--accent-ember)', fontWeight: 600 }}>Active Recall Scheduled</span>
+                          <span style={{ color: 'var(--color-fg)', fontWeight: 600 }}>Active Recall Scheduled</span>
                         </div>
                       </div>
 
                       <div className="modular-callout-demo">
-                        <Sparkles size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
+                        <Sparkles size={18} style={{ color: 'var(--color-fg)', flexShrink: 0, marginTop: '2px' }} />
                         <div>
                           <strong>Turn chaos into a system:</strong> Every concept, task, and tracker in Maniac is an atomic block interconnected via bidirectional backlinks.
                         </div>
@@ -370,19 +370,19 @@ export default function LandingPage() {
                             <tr>
                               <td>Active Recall Spaced Repetition</td>
                               <td><span className="demo-status-pill done">● Active</span></td>
-                              <td><span style={{ color: 'var(--accent-ember)', fontWeight: 700 }}>Medium</span></td>
+                              <td><span style={{ color: 'var(--color-fg)', fontWeight: 700 }}>Medium</span></td>
                               <td>Dexie v4</td>
                             </tr>
                             <tr>
                               <td>AES-256-GCM Vault Encryption</td>
                               <td><span className="demo-status-pill done">● Secured</span></td>
-                              <td><span style={{ color: 'var(--error)', fontWeight: 700 }}>Critical</span></td>
+                              <td><span style={{ color: 'var(--color-fg)', fontWeight: 700 }}>Critical</span></td>
                               <td>WebCrypto API</td>
                             </tr>
                             <tr>
                               <td>2D Force Knowledge Graph</td>
                               <td><span className="demo-status-pill progress">● Synchronized</span></td>
-                              <td><span style={{ color: 'var(--info)', fontWeight: 700 }}>Normal</span></td>
+                              <td><span style={{ color: 'var(--color-fg-secondary)', fontWeight: 700 }}>Normal</span></td>
                               <td>Canvas Render</td>
                             </tr>
                           </tbody>
@@ -396,7 +396,7 @@ export default function LandingPage() {
                     <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '14px' }}>
-                          <Brain size={18} style={{ color: 'var(--accent-ember)' }} />
+                          <Brain size={18} style={{ color: 'var(--color-fg)' }} />
                           <span>Spaced Repetition Practice</span>
                         </div>
                         <div className="demo-streak-badge">
@@ -406,7 +406,7 @@ export default function LandingPage() {
                       </div>
 
                       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '24px', textAlign: 'left', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-ember)', fontWeight: 700, marginBottom: '8px' }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-fg-tertiary)', fontWeight: 700, marginBottom: '8px' }}>
                           Recall Prompt (Due Today)
                         </div>
                         <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
@@ -414,7 +414,7 @@ export default function LandingPage() {
                         </div>
 
                         {demoSrsRevealed ? (
-                          <div style={{ padding: '12px 14px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--success)', fontSize: '13.5px', color: 'var(--text-primary)' }}>
+                          <div style={{ padding: '12px 14px', background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-border-strong)', fontSize: '13.5px', color: 'var(--text-primary)' }}>
                             <strong>Answer:</strong> All database reads and writes execute against local IndexedDB (Dexie.js) on the device. No network requests are required to view, create, or search data.
                           </div>
                         ) : (
@@ -434,10 +434,10 @@ export default function LandingPage() {
                             Rate your recall strength to schedule next review ({demoSrsInterval}):
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                            <button type="button" onClick={() => handleSrsRate('1 day')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--block-bg-tint-red)', border: '1px solid rgba(248,113,113,0.3)', color: 'var(--error)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Again (1d)</button>
-                            <button type="button" onClick={() => handleSrsRate('3 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--block-bg-tint-orange)', border: '1px solid rgba(249,115,22,0.3)', color: 'var(--accent-ember)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Hard (3d)</button>
-                            <button type="button" onClick={() => handleSrsRate('7 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--block-bg-tint-blue)', border: '1px solid rgba(59,130,246,0.3)', color: 'var(--info)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Good (7d)</button>
-                            <button type="button" onClick={() => handleSrsRate('14 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--block-bg-tint-green)', border: '1px solid rgba(74,222,128,0.3)', color: 'var(--success)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Easy (14d)</button>
+                            <button type="button" onClick={() => handleSrsRate('1 day')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-fg-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Again (1d)</button>
+                            <button type="button" onClick={() => handleSrsRate('3 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-3)', border: '1px solid var(--color-border)', color: 'var(--color-fg)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Hard (3d)</button>
+                            <button type="button" onClick={() => handleSrsRate('7 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-4)', border: '1px solid var(--color-border-strong)', color: 'var(--color-fg)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Good (7d)</button>
+                            <button type="button" onClick={() => handleSrsRate('14 days')} style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-primary-bg)', border: '1px solid var(--color-primary-bg)', color: 'var(--color-primary-fg)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Easy (14d)</button>
                           </div>
                         </div>
                       )}
@@ -446,10 +446,10 @@ export default function LandingPage() {
 
                   {/* Mode 4: 2D Graph Preview */}
                   {heroMode === 'graph' && (
-                    <div style={{ position: 'relative', height: '360px', background: '#07080e', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', height: '360px', background: 'var(--color-surface-1)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {/* SVG Simulation of Force Graph */}
                       <svg width="100%" height="100%" viewBox="0 0 500 300" style={{ position: 'absolute', inset: 0 }}>
-                        <g stroke="rgba(99,102,241,0.3)" strokeWidth="1.5">
+                        <g stroke="var(--color-border-strong)" strokeWidth="1.5">
                           <line x1="250" y1="150" x2="150" y2="90" />
                           <line x1="250" y1="150" x2="350" y2="80" />
                           <line x1="250" y1="150" x2="170" y2="220" />
@@ -460,26 +460,26 @@ export default function LandingPage() {
                           <line x1="340" y1="210" x2="410" y2="220" />
                         </g>
                         {/* Central Hub */}
-                        <circle cx="250" cy="150" r="14" fill="var(--accent-primary)" />
-                        <text x="250" y="178" fill="#ffffff" fontSize="11" fontWeight="700" textAnchor="middle">Turn chaos into a system</text>
+                        <circle cx="250" cy="150" r="14" fill="var(--color-primary-bg)" />
+                        <text x="250" y="178" fill="var(--color-fg)" fontSize="11" fontWeight="700" textAnchor="middle">Turn chaos into a system</text>
 
                         {/* Connected Nodes */}
-                        <circle cx="150" cy="90" r="10" fill="var(--accent-ember)" />
-                        <text x="150" y="74" fill="var(--text-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Local Storage</text>
+                        <circle cx="150" cy="90" r="10" fill="var(--color-fg-secondary)" />
+                        <text x="150" y="74" fill="var(--color-fg-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Local Storage</text>
 
-                        <circle cx="350" cy="80" r="10" fill="#c084fc" />
-                        <text x="350" y="64" fill="var(--text-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Block Canvas</text>
+                        <circle cx="350" cy="80" r="10" fill="var(--color-fg-secondary)" />
+                        <text x="350" y="64" fill="var(--color-fg-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Block Canvas</text>
 
-                        <circle cx="170" cy="220" r="9" fill="var(--success)" />
-                        <text x="170" y="244" fill="var(--text-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Active Recall</text>
+                        <circle cx="170" cy="220" r="9" fill="var(--color-fg-tertiary)" />
+                        <text x="170" y="244" fill="var(--color-fg-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Active Recall</text>
 
-                        <circle cx="340" cy="210" r="9" fill="var(--info)" />
-                        <text x="340" y="234" fill="var(--text-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Databases</text>
+                        <circle cx="340" cy="210" r="9" fill="var(--color-fg-tertiary)" />
+                        <text x="340" y="234" fill="var(--color-fg-secondary)" fontSize="10" fontWeight="600" textAnchor="middle">Databases</text>
 
-                        <circle cx="80" cy="120" r="6" fill="#818cf8" />
-                        <circle cx="420" cy="110" r="6" fill="#818cf8" />
-                        <circle cx="100" cy="240" r="6" fill="#818cf8" />
-                        <circle cx="410" cy="220" r="6" fill="#818cf8" />
+                        <circle cx="80" cy="120" r="6" fill="var(--color-fg-muted)" />
+                        <circle cx="420" cy="110" r="6" fill="var(--color-fg-muted)" />
+                        <circle cx="100" cy="240" r="6" fill="var(--color-fg-muted)" />
+                        <circle cx="410" cy="220" r="6" fill="var(--color-fg-muted)" />
                       </svg>
                       <div style={{ position: 'absolute', bottom: '12px', right: '14px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--text-tertiary)', boxShadow: 'var(--shadow-sm)' }}>
                         Live 2D Force-Directed Simulation
@@ -527,7 +527,7 @@ export default function LandingPage() {
               </article>
 
               <article className="feature-card">
-                <div className="feature-icon-wrapper ember">
+                <div className="feature-icon-wrapper">
                   <Brain size={22} />
                 </div>
                 <h3 className="feature-title">Active Recall &amp; SRS</h3>
@@ -537,7 +537,7 @@ export default function LandingPage() {
               </article>
 
               <article className="feature-card">
-                <div className="feature-icon-wrapper purple">
+                <div className="feature-icon-wrapper">
                   <Share2 size={22} />
                 </div>
                 <h3 className="feature-title">Bidirectional Knowledge Graph</h3>
@@ -547,7 +547,7 @@ export default function LandingPage() {
               </article>
 
               <article className="feature-card">
-                <div className="feature-icon-wrapper blue">
+                <div className="feature-icon-wrapper">
                   <HardDrive size={22} />
                 </div>
                 <h3 className="feature-title">Local-First Storage</h3>
@@ -557,7 +557,7 @@ export default function LandingPage() {
               </article>
 
               <article className="feature-card">
-                <div className="feature-icon-wrapper ember">
+                <div className="feature-icon-wrapper">
                   <Lock size={22} />
                 </div>
                 <h3 className="feature-title">AES-256-GCM Vault Security</h3>
@@ -626,19 +626,19 @@ export default function LandingPage() {
                   <tbody>
                     <tr>
                       <td>Sovereign Knowledge Vault</td>
-                      <td><span style={{ background: 'var(--block-bg-tint-purple)', color: '#c084fc', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Architecture</span></td>
+                      <td><span style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Architecture</span></td>
                       <td><span className="demo-status-pill done">● Complete</span></td>
                       <td>100% (7/7 days)</td>
                     </tr>
                     <tr>
                       <td>Daily Spaced Repetition Review</td>
-                      <td><span style={{ background: 'var(--block-bg-tint-orange)', color: 'var(--accent-ember)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Cognition</span></td>
+                      <td><span style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Cognition</span></td>
                       <td><span className="demo-status-pill done">● Streak: 12d</span></td>
                       <td>85% (6/7 days)</td>
                     </tr>
                     <tr>
                       <td>Weekly System Review</td>
-                      <td><span style={{ background: 'var(--block-bg-tint-blue)', color: 'var(--info)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Productivity</span></td>
+                      <td><span style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>Productivity</span></td>
                       <td><span className="demo-status-pill progress">● In Progress</span></td>
                       <td>50% (3/7 days)</td>
                     </tr>
@@ -664,13 +664,13 @@ export default function LandingPage() {
 
                 {/* Column 2 */}
                 <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--info)', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-fg)', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
                     <span>In Progress</span>
                     <span>1</span>
                   </div>
-                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '10px' }}>
+                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '10px' }}>
                     <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '6px' }}>Active Recall Review</div>
-                    <div style={{ fontSize: '12px', color: 'var(--accent-ember)' }}>4 notes due for practice</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-fg)' }}>4 notes due for practice</div>
                   </div>
                 </div>
 
@@ -772,7 +772,7 @@ export default function LandingPage() {
         <section id="cognitive-stack" className="landing-section landing-section-border" aria-labelledby="heading-cognitive-stack">
           <div className="landing-container">
             <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-              <div className="section-tag ember">Cognitive Architecture &amp; Focus</div>
+              <div className="section-tag">Cognitive Architecture &amp; Focus</div>
               <h2 id="heading-cognitive-stack" className="section-heading">
                 The Sovereign Mind Stack: Structure Meets Mindful Clarity
               </h2>
@@ -797,15 +797,15 @@ export default function LandingPage() {
 
                 <div className="sovereign-pillar-features">
                   <div className="sovereign-pillar-feature-item">
-                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <CheckCircle2 size={16} className="pillar-feature-icon" />
                     <span><strong>Relational Databases:</strong> Interactive Table, Kanban Board, and Calendar views for tasks, habits, and projects.</span>
                   </div>
                   <div className="sovereign-pillar-feature-item">
-                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <CheckCircle2 size={16} className="pillar-feature-icon" />
                     <span><strong>Active Recall &amp; SRS:</strong> Automated Leitner spaced repetition to convert notes into permanent memory.</span>
                   </div>
                   <div className="sovereign-pillar-feature-item">
-                    <CheckCircle2 size={16} className="pillar-feature-icon ember" />
+                    <CheckCircle2 size={16} className="pillar-feature-icon" />
                     <span><strong>Local Data Sovereignty:</strong> High-performance IndexedDB engine with client-side AES-256-GCM encryption.</span>
                   </div>
                 </div>
@@ -984,7 +984,7 @@ export default function LandingPage() {
 
               <div className="feature-split-visual">
                 <div style={{ textAlign: 'center', padding: '36px 20px' }}>
-                  <div style={{ width: '64px', height: '64px', borderRadius: 'var(--radius-xl)', background: 'var(--block-bg-tint-blue)', border: '1px solid rgba(59,130,246,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--info)' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: 'var(--radius-xl)', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--color-fg)' }}>
                     <Upload size={28} />
                   </div>
                   <div style={{ fontWeight: 700, fontSize: '17px', color: 'var(--text-primary)', marginBottom: '8px' }}>
@@ -1104,7 +1104,7 @@ export default function LandingPage() {
                 >
                   <span className="ecosystem-badge-pill">Wellness</span>
                   <span>ReAlign</span>
-                  <ArrowUpRight size={13} className="ecosystem-icon-ember" />
+                  <ArrowUpRight size={13} className="ecosystem-icon" />
                 </a>
                 <a
                   href="https://convercell.netlify.app/"
@@ -1115,7 +1115,7 @@ export default function LandingPage() {
                 >
                   <span className="ecosystem-badge-pill">Utility</span>
                   <span>Convercell</span>
-                  <ArrowUpRight size={13} className="ecosystem-icon-blue" />
+                  <ArrowUpRight size={13} className="ecosystem-icon" />
                 </a>
               </div>
             </div>
@@ -1131,7 +1131,7 @@ export default function LandingPage() {
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                 <ManiacLogo size="lg" />
               </div>
-              <div className="section-tag ember" style={{ marginBottom: '8px' }}>
+              <div className="section-tag" style={{ marginBottom: '8px' }}>
                 Turn chaos into a system.
               </div>
               <h2 id="heading-start" style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '16px' }}>

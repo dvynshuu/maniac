@@ -26,7 +26,7 @@ function CanvasConfetti({ active }) {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const colors = ['#2E5BFF', '#2dd4bf', '#4ade80', '#fb923c', '#f87171', '#a78bfa'];
+    const colors = ['#ffffff', '#e5e5e5', '#a3a3a3', '#737373', '#525252'];
     const particles = Array.from({ length: 100 }).map(() => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height - canvas.height,
@@ -309,23 +309,23 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
           <>
             {/* Modal Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Brain size={22} color="var(--accent-primary)" />
+              <Brain size={22} color="var(--color-fg)" />
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Daily Recall Challenge</h3>
                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Card {currentIndex + 1} of {duePages.length}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#fb923c', fontWeight: 'bold' }}>
-                <Flame size={14} fill="#fb923c" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--color-fg)', fontWeight: 'bold' }}>
+                <Flame size={14} fill="var(--color-fg)" />
                 <span>Streak: {srsStreak}d</span>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', width: '100%', overflow: 'hidden' }}>
+            <div style={{ height: '6px', background: 'var(--color-surface-2)', borderRadius: '3px', width: '100%', overflow: 'hidden' }}>
               <div 
                 style={{
                   height: '100%',
-                  background: 'var(--accent-primary)',
+                  background: 'var(--color-primary-bg)',
                   width: `${(currentIndex / duePages.length) * 100}%`,
                   transition: 'width 0.3s ease'
                 }}
@@ -333,7 +333,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
             </div>
 
             {/* Prompt Area or Cloze Challenge */}
-            <div style={{ background: 'rgba(46, 91, 255, 0.03)', border: '1px dashed rgba(46, 91, 255, 0.2)', borderRadius: '12px', padding: '24px 20px', textAlign: 'center' }}>
+            <div style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '24px 20px', textAlign: 'center' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>{currentPage.icon || '📄'}</div>
               <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>
                 {clozeCards.length > 0 ? 'Cloze Flashcard Challenge' : 'Recall Prompt'}
@@ -346,7 +346,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
                   ) : (
                     <span>
                       {clozeCards[0].masked.split(' [ ... ] ')[0]}
-                      <span style={{ background: 'rgba(74, 222, 128, 0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', border: '1px solid #4ade80' }}>
+                      <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-fg)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--color-border-strong)' }}>
                         {clozeCards[0].answer}
                       </span>
                       {clozeCards[0].masked.split(' [ ... ] ')[1]}
@@ -367,14 +367,13 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
                 style={{
                   width: '100%',
                   padding: '14px',
-                  background: 'var(--accent-primary)',
-                  color: '#fff',
-                  border: 'none',
+                  background: 'var(--color-primary-bg)',
+                  color: 'var(--color-primary-fg)',
+                  border: '1px solid var(--color-primary-bg)',
                   borderRadius: '8px',
                   fontWeight: 'bold',
                   fontSize: '15px',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(46, 91, 255, 0.3)'
                 }}
               >
                 Reveal Answer
@@ -400,28 +399,28 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   <button 
                     onClick={() => handleGrade(1)}
-                    style={{ background: '#f87171', color: '#000', border: 'none', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
+                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
                   >
                     <span>🔄 Again</span>
                     <span style={{ fontSize: '9px', opacity: 0.8 }}>Forgot</span>
                   </button>
                   <button 
                     onClick={() => handleGrade(2)}
-                    style={{ background: '#fb923c', color: '#000', border: 'none', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
+                    style={{ background: 'var(--color-surface-3)', color: 'var(--color-fg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
                   >
                     <span>😟 Hard</span>
                     <span style={{ fontSize: '9px', opacity: 0.8 }}>Struggled</span>
                   </button>
                   <button 
                     onClick={() => handleGrade(3)}
-                    style={{ background: '#4ade80', color: '#000', border: 'none', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
+                    style={{ background: 'var(--color-surface-4)', color: 'var(--color-fg)', border: '1px solid var(--color-border-strong)', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
                   >
                     <span>🙂 Good</span>
                     <span style={{ fontSize: '9px', opacity: 0.8 }}>Correct</span>
                   </button>
                   <button 
                     onClick={() => handleGrade(4)}
-                    style={{ background: '#60a5fa', color: '#000', border: 'none', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
+                    style={{ background: 'var(--color-primary-bg)', color: 'var(--color-primary-fg)', border: '1px solid var(--color-primary-bg)', borderRadius: '8px', padding: '10px 0', fontWeight: 'bold', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
                   >
                     <span>😁 Easy</span>
                     <span style={{ fontSize: '9px', opacity: 0.8 }}>Instant</span>
@@ -433,7 +432,7 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
         ) : (
           /* Victory Completion Screen */
           <div style={{ textAlign: 'center', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ade80', marginBottom: '8px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-fg)', marginBottom: '8px' }}>
               <Award size={36} style={{ margin: 'auto' }} />
             </div>
             
@@ -442,8 +441,8 @@ export default function RecallChallengeModal({ duePages, updatePage, onClose }) 
               You have completed all your active recall checks for today. Your memory traces are successfully reinforced!
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'rgba(251, 146, 60, 0.1)', border: '1px solid rgba(251, 146, 60, 0.2)', borderRadius: '20px', fontSize: '14px', color: '#fb923c', fontWeight: 'bold' }}>
-              <Flame size={16} fill="#fb923c" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '20px', fontSize: '14px', color: 'var(--color-fg)', fontWeight: 'bold' }}>
+              <Flame size={16} fill="var(--color-fg)" />
               <span>Current Streak: {srsStreak} Days</span>
             </div>
 

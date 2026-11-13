@@ -217,7 +217,6 @@ export default function PageOptionsMenu({ page, updatePage, onClose, position })
           <button 
             className="page-options-btn"
             onClick={handleShareSnapshot}
-            style={{ color: 'var(--accent-scar, #ef4444)' }}
           >
             <Share2 size={15} />
             <span>Share Web Link / Template</span>
@@ -230,7 +229,7 @@ export default function PageOptionsMenu({ page, updatePage, onClose, position })
               onClose();
             }}
           >
-            <Star size={15} style={isFav ? { color: 'var(--warning)', fill: 'var(--warning)' } : {}} />
+            <Star size={15} style={isFav ? { color: 'var(--color-fg)', fill: 'var(--color-fg)' } : {}} />
             <span>{isFav ? 'Remove from Favorites' : 'Add to Favorites'}</span>
           </button>
 

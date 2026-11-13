@@ -8,24 +8,11 @@ import { Palette, Sparkles, Check } from 'lucide-react';
 
 const CALLOUT_PRESETS = [
   { id: 'note', label: 'Note', emoji: '💡', color: 'default' },
-  { id: 'info', label: 'Info', emoji: 'ℹ️', color: 'blue_background' },
-  { id: 'warning', label: 'Warning', emoji: '⚠️', color: 'orange_background' },
-  { id: 'danger', label: 'Critical', emoji: '🚨', color: 'red_background' },
-  { id: 'success', label: 'Verified', emoji: '✅', color: 'green_background' },
-  { id: 'tip', label: 'Insight', emoji: '⚡', color: 'purple_background' },
-];
-
-const CALLOUT_COLORS = [
-  { id: 'default', label: 'Default', bg: 'var(--bg-tertiary)' },
-  { id: 'gray_background', label: 'Gray', bg: 'var(--block-bg-tint-gray)' },
-  { id: 'brown_background', label: 'Brown', bg: 'var(--block-bg-tint-brown)' },
-  { id: 'orange_background', label: 'Orange', bg: 'var(--block-bg-tint-orange)' },
-  { id: 'yellow_background', label: 'Yellow', bg: 'var(--block-bg-tint-yellow)' },
-  { id: 'green_background', label: 'Green', bg: 'var(--block-bg-tint-green)' },
-  { id: 'blue_background', label: 'Blue', bg: 'var(--block-bg-tint-blue)' },
-  { id: 'purple_background', label: 'Purple', bg: 'var(--block-bg-tint-purple)' },
-  { id: 'pink_background', label: 'Pink', bg: 'var(--block-bg-tint-pink)' },
-  { id: 'red_background', label: 'Red', bg: 'var(--block-bg-tint-red)' },
+  { id: 'info', label: 'Info', emoji: 'ℹ️', color: 'default' },
+  { id: 'warning', label: 'Warning', emoji: '⚠️', color: 'default' },
+  { id: 'danger', label: 'Critical', emoji: '🚨', color: 'default' },
+  { id: 'success', label: 'Verified', emoji: '✅', color: 'default' },
+  { id: 'tip', label: 'Insight', emoji: '⚡', color: 'default' },
 ];
 
 function ActiveCalloutBlock({ block }: { block: any }) {
@@ -52,13 +39,6 @@ export default function CalloutBlock({ block }: { block: any }) {
       properties: { ...block.properties, emoji: newEmoji }
     });
     setShowIconPicker(false);
-  };
-
-  const handleSelectColor = (newColor: string) => {
-    engine.updateBlock(block.id, {
-      properties: { ...block.properties, color: newColor }
-    });
-    setShowMenu(false);
   };
 
   const handleSelectPreset = (preset: typeof CALLOUT_PRESETS[0]) => {
@@ -125,23 +105,6 @@ export default function CalloutBlock({ block }: { block: any }) {
                     <span>{p.emoji}</span>
                     <span>{p.label}</span>
                   </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Background Colors */}
-            <div className="callout-config-section" style={{ marginTop: '8px' }}>
-              <span className="callout-config-label">BACKGROUND TINT</span>
-              <div className="callout-color-grid">
-                {CALLOUT_COLORS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`callout-color-swatch ${color === c.id ? 'active' : ''}`}
-                    style={{ background: c.bg }}
-                    onClick={() => handleSelectColor(c.id)}
-                    title={c.label}
-                  />
                 ))}
               </div>
             </div>

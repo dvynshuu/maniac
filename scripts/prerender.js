@@ -46,7 +46,7 @@ const commonCrawlerNav = `
       <a href="/obsidian-alternative" style="color: #94a3b8; text-decoration: none; font-size: 14px;">Obsidian Alternative</a>
       <a href="/active-recall-notes" style="color: #94a3b8; text-decoration: none; font-size: 14px;">Active Recall</a>
       <a href="/templates" style="color: #94a3b8; text-decoration: none; font-size: 14px;">Templates</a>
-      <a href="/app" style="color: #f97316; text-decoration: none; font-weight: 600; font-size: 14px;">Open App</a>
+      <a href="/app" style="color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">Open App</a>
     </nav>
   </header>
 `;
@@ -210,7 +210,7 @@ const routes = [
         </p>
 
         <div style="display: flex; gap: 16px; margin-bottom: 48px; flex-wrap: wrap;">
-          <a href="/app" style="background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Open MANIAC Workspace</a>
+          <a href="/app" style="background: #ffffff; color: #000000; border: 1px solid #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Open MANIAC Workspace</a>
           <a href="/notion-alternative" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Compare with Notion</a>
           <a href="/obsidian-alternative" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Compare with Obsidian</a>
           <a href="/active-recall-notes" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Active Recall Notes</a>
@@ -231,7 +231,7 @@ const routes = [
         <section style="margin-top: 48px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 36px;">
           <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">The Sovereign Mind Stack: Structure Meets Mindful Clarity</h2>
           <p style="font-size: 16px; line-height: 1.6; color: #94a3b8; margin-bottom: 24px;">
-            Building an external second brain is only half the equation. Peak cognitive performance requires structured knowledge execution on your device, and calm mental clarity in your daily routine. By decoupling structured task execution in MANIAC from mindful decompression in <a href="https://getrealign.in/" target="_blank" rel="noopener" style="color: #2dd4bf; text-decoration: underline;">ReAlign</a>, you protect your focus, identify emotional blind spots, and cultivate enduring mental stamina.
+            Building an external second brain is only half the equation. Peak cognitive performance requires structured knowledge execution on your device, and calm mental clarity in your daily routine. By decoupling structured task execution in MANIAC from mindful decompression in <a href="https://getrealign.in/" target="_blank" rel="noopener" style="color: #ffffff; text-decoration: underline;">ReAlign</a>, you protect your focus, identify emotional blind spots, and cultivate enduring mental stamina.
           </p>
         </section>
       </main>
@@ -321,7 +321,7 @@ const routes = [
           Experience block-based rich text, relational databases (tables, boards, calendars), active recall flashcards, and AES-256 encryption with 0ms offline speed.
         </p>
         <div style="display: flex; gap: 16px; margin-bottom: 40px; flex-wrap: wrap;">
-          <a href="/app" style="background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Launch MANIAC Workspace</a>
+          <a href="/app" style="background: #ffffff; color: #000000; border: 1px solid #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Launch MANIAC Workspace</a>
           <a href="/templates" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Browse Templates</a>
         </div>
 
@@ -537,7 +537,7 @@ const routes = [
           Unify your study notes and flashcards. In MANIAC, any toggle or question block can be practiced in the Leitner spaced repetition review queue with 0ms offline speed.
         </p>
         <div style="display: flex; gap: 16px; margin-bottom: 40px; flex-wrap: wrap;">
-          <a href="/app" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Start Studying in MANIAC</a>
+          <a href="/app" style="background: #ffffff; color: #000000; border: 1px solid #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Start Studying in MANIAC</a>
           <a href="/templates/active-recall-srs" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Get Active Recall Template</a>
         </div>
       </main>
@@ -586,7 +586,7 @@ const routes = [
               <div style="font-size: 24px; margin-bottom: 8px;">${t.icon}</div>
               <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;"><a href="/templates/${t.id}" style="color: #fff; text-decoration: none;">${t.title}</a></h2>
               <p style="font-size: 13px; color: #94a3b8; margin-bottom: 14px;">${t.summary}</p>
-              <a href="/templates/${t.id}" style="color: #f97316; font-size: 13px; font-weight: 600; text-decoration: none;">View Template Guide &amp; Preview &rarr;</a>
+              <a href="/templates/${t.id}" style="color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none;">View Template Guide &amp; Preview &rarr;</a>
             </div>
           `).join('')}
         </div>
@@ -670,7 +670,7 @@ TEMPLATES.forEach(tpl => {
         <h1 style="font-size: 34px; font-weight: 900; line-height: 1.2; margin-bottom: 12px;">${tpl.title}</h1>
         <p style="font-size: 17px; line-height: 1.6; color: #94a3b8; margin-bottom: 24px;">${tpl.summary}</p>
         <div style="display: flex; gap: 16px; margin-bottom: 40px; flex-wrap: wrap;">
-          <a href="/app" style="background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Use Template in MANIAC</a>
+          <a href="/app" style="background: #ffffff; color: #000000; border: 1px solid #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Use Template in MANIAC</a>
           <a href="/templates" style="background: rgba(255,255,255,0.06); color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">Back to Templates</a>
         </div>
 
@@ -765,7 +765,7 @@ function renderHtmlForRoute(baseHtml, route) {
   // 8. Inject Semantic Pre-Render Fallback into #root
   const fallbackContainer = `
       <!-- Semantic Crawler & Pre-render Fallback (Hydrated by React on load) -->
-      <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 20px; color: #f1f5f9; background: #050508;">
+      <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 20px; color: #f1f5f9; background: #000000;">
         ${route.htmlContent}
       </div>`;
 
@@ -812,7 +812,7 @@ const html404 = baseIndexHtml
         <p style="color: #94a3b8; font-size: 16px; margin-bottom: 32px; line-height: 1.6;">The document or node you requested does not exist in this workspace vault.</p>
         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
           <a href="/" style="background: rgba(255,255,255,0.08); color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">Return Home</a>
-          <a href="/app" style="background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">Open Workspace</a>
+          <a href="/app" style="background: #ffffff; color: #000000; border: 1px solid #ffffff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">Open Workspace</a>
           <a href="/templates" style="background: rgba(255,255,255,0.08); color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">Browse Templates</a>
         </div>
       </div>

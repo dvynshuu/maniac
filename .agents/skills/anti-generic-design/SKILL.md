@@ -8,7 +8,7 @@ description: >-
 
 # Anti-Generic Design Skill & Manifesto (Maniac OS)
 
-This skill provides design directives and concrete implementation patterns to ensure Maniac maintains a distinct, world-class, bespoke digital workspace feel and never falls into generic AI-generated SaaS clichés.
+This skill provides design directives and concrete implementation patterns to ensure Maniac maintains a distinct, world-class, bespoke digital workspace feel per the canonical specification in `Maniac-DESIGN.md`.
 
 ---
 
@@ -18,34 +18,32 @@ When developing UI in Maniac, strictly avoid these AI/SaaS clichés:
 
 | Cliché | Why It's Bad | What to Do in Maniac Instead |
 | :--- | :--- | :--- |
-| **Flat Gray Cards with Generic Borders** | Looks like a bootstrap/tailwind starter template | Multi-layer glass elevation, subtle directional lighting (`--border-subtle`, `--bg-elevated`, backdrop blur) |
-| **Monotonous Electric Purple Pills Everywhere** | Screams "generic AI assistant template" | Use Maniac's signature **Ember / Scar** accents (`--accent-scar`, `--accent-ember`) balanced with deep midnight void tones |
-| **Lifeless Typography** | Default font rendering with standard tracking looks cheap | Tight tracking on headings (`letter-spacing: -0.03em`), geometric font hierarchy (Plus Jakarta Sans + JetBrains Mono) |
-| **Jarring Pop-in / Hard Cuts** | Makes software feel robotic and abrupt | Smooth physics-based transitions (`cubic-bezier(0.16, 1, 0.3, 1)`), shimmer skeletons, fade slides |
-| **Dead Empty States** | "No data found." kills momentum and user delight | Actionable empty states with contextual icons, inspiring micro-copy, and instant creation triggers |
-| **Static Buttons with Flat Colors** | Zero tactile feedback makes UI feel unresponsive | Micro-lift (`translateY(-1px)`), glow spread, responsive icon animations, and custom `:focus-visible` rings |
+| **Monotonous Colored Gradients / Aurora Glows** | Screams generic AI assistant template | Strict high-contrast monochrome palette (`#000000`, `#FAFAFA`, neutral greys) |
+| **Unconsidered 100px Rounded Pills Everywhere** | Clutters interface and looks juvenile | Deliberate small technical radii (`3px` for badges, `4px` for icons, `6px` for buttons/inputs) |
+| **Frosted Glass / Blurry Backgrounds** | Degrades contrast and harms readability | Crisp solid surfaces and 1px hairline dividers (`--color-border-subtle`, `--color-border`) |
+| **Fake Cards Everywhere** | Breaks document reading flow | Open canvas space and divider-led structural grouping |
+| **Colored Status Chips & Glowing Dots** | Ambiguous for accessibility | Text-first status labels with stroke icons and monochrome contrast steps |
+| **Dead Empty States** | "No data found." kills momentum | Typography-first empty state with one high-contrast black/white primary action |
 
 ---
 
 ## 2. Maniac's Core Design DNA
 
 ### Palette & Depth Architecture
-- **Primary Void**: `#050508` (deep cosmic black, not washed-out #1e1e1e)
-- **Secondary Shell**: `#0A0A0F` (sidebar and structural backdrop)
-- **Elevated Glass**: `#16161E` with `backdrop-filter: blur(24px) saturate(1.4)`
-- **Accents**: 
-  - *Scarlet Ember Gradient*: `linear-gradient(135deg, #f97316 0%, #ef4444 50%, #f43f5e 100%)`
-  - *Indigo Primary*: `#3b82f6` with soft glow falloff
-- **Borders**: Directional opacity (`rgba(255, 255, 255, 0.04)` to `rgba(255, 255, 255, 0.12)`)
+- **Canonical Canvas**: `#000000` (pure dark canvas) / `#FFFFFF` (exact light mode inverse)
+- **Surfaces**: `--color-surface-1` through `--color-surface-4` (`#000000`, `#050505`, `#0A0A0A`, `#111111`)
+- **Text Hierarchy**: `--color-fg` (`#FAFAFA`), `--color-fg-secondary` (`#A1A1AA`), `--color-fg-tertiary` (`#71717A`), `--color-fg-muted` (`#52525B`)
+- **Hairlines**: 1px solid `--color-border-subtle` (`#1A1A1A`) and `--color-border` (`#262626`)
+- **Primary Action**: Strict black/white inversion (`--color-primary-bg: #FAFAFA`, `--color-primary-fg: #09090B`)
 
 ### Motion & Micro-Physics
 ```css
---transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
---transition-default: 250ms cubic-bezier(0.16, 1, 0.3, 1);
---transition-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+--duration-fast: 100ms;
+--duration-normal: 160ms;
+--duration-slow: 220ms;
+--ease-standard: cubic-bezier(0.2, 0, 0, 1);
 ```
-- Hover states must always feel **springy, responsive, and tactile**.
-- Never animate width/height when opacity/transform can achieve the effect at 60fps.
+- Restrained transitions (100–160ms). No spring/bounce motion, perpetual ambient movement, or decorative glow filters.
 
 ---
 
@@ -54,10 +52,10 @@ When developing UI in Maniac, strictly avoid these AI/SaaS clichés:
 Before shipping any component or view, verify:
 
 1. **Tokens Over Inline**: No hardcoded `style={{ backgroundColor: '...' }}` or arbitrary hex values. Always bind to CSS custom properties.
-2. **Keyboard Focus**: Does every interactive trigger have a customized, beautiful `:focus-visible` ring?
+2. **Keyboard Focus**: Does every interactive trigger have a customized `:focus-visible` ring (2px `var(--color-border-focus)`)?
 3. **Light/Dark Parity**: Test both dark and light modes. Ensure borders and text contrasts remain razor-sharp.
-4. **Loading States**: If data is loading or decrypting, render a `.skeleton` shimmer shape rather than blank canvas or generic spinners.
-5. **Progressive Disclosure**: Keep default views clean and distraction-free. Reveal power controls and actions gracefully on hover or focus.
+4. **Loading States**: If data is loading or decrypting, render a neutral `.skeleton` shimmer shape rather than blank canvas or generic spinners.
+5. **Progressive Disclosure**: Keep default views clean and distraction-free. Reveal actions gracefully on hover or focus.
 
 ---
 
@@ -67,4 +65,4 @@ When implementing UI features:
 1. Reference [src/index.css](file:///c:/CodeBase/Projects/maniac/src/index.css) design tokens.
 2. Draft modular CSS classes adhering to Maniac's token hierarchy.
 3. Test hover, active, focus, disabled, and responsive states.
-4. Verify build with `npm run build`.
+4. Verify build with `npm run build` and `npm test`.

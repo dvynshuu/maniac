@@ -1461,13 +1461,13 @@ const isArraysEqual = (arr1, arr2) => {
     const label = `${prefix}${formattedNum}${suffix}`;
 
     const colorsMap = {
-      blue: 'var(--accent-primary)',
-      green: 'var(--success)',
-      purple: '#a78bfa',
-      orange: 'var(--warning)',
-      red: '#f87171'
+      blue: 'var(--color-primary-bg)',
+      green: 'var(--color-fg)',
+      purple: 'var(--color-fg-secondary)',
+      orange: 'var(--color-fg-tertiary)',
+      red: 'var(--color-fg-muted)'
     };
-    const color = colorsMap[progressColor] || 'var(--accent-primary)';
+    const color = colorsMap[progressColor] || 'var(--color-primary-bg)';
 
     if (showAs === 'bar') {
       return (
@@ -1475,7 +1475,7 @@ const isArraysEqual = (arr1, arr2) => {
           <div 
             style={{ 
               height: '6px', 
-              background: 'rgba(255, 255, 255, 0.08)', 
+              background: 'var(--color-surface-3)', 
               borderRadius: '3px', 
               flex: 1, 
               overflow: 'hidden',
@@ -2319,13 +2319,13 @@ const isArraysEqual = (arr1, arr2) => {
               {isColNumeric(colMenu.index) && !colConfigs[colMenu.index]?.numberFormat && (
                 <div style={{
                   padding: '8px 12px',
-                  background: 'rgba(59, 130, 246, 0.1)',
+                  background: 'var(--color-surface-2)',
                   borderBottom: '1px solid var(--border-subtle)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-fg)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>💡 Numeric column detected</span>
                   </div>
                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>

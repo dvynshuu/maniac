@@ -18,8 +18,8 @@ export default function EmbedBlock({ block }) {
   // Widget settings
   const widgetSettings = block.properties?.widgetSettings || {
     theme: 'sleekdark',
-    bgColor: '#17171e',
-    textColor: '#f3f3f4',
+    bgColor: '#0a0a0a',
+    textColor: '#fafafa',
     title: '',
     targetDate: '',
     workTime: 25,
@@ -981,7 +981,7 @@ function ProgressWidget({ block, themeClass, textColor, bgColor, engine }) {
       canvas.width = canvas.parentElement.offsetWidth || 400;
       canvas.height = canvas.parentElement.offsetHeight || 140;
 
-      const colors = ['#2E5BFF', '#8B5CF6', '#4ade80', '#facc15', '#f87171', '#FF512F', '#00F2FE'];
+      const colors = ['#FFFFFF', '#E5E5E5', '#D4D4D4', '#A3A3A3', '#737373', '#525252'];
       const particles = [];
       for (let i = 0; i < 60; i++) {
         particles.push({

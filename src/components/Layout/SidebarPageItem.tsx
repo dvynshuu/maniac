@@ -147,8 +147,7 @@ function SidebarPageItem({ page, depth }) {
         }}
         data-page-id={page.id}
         style={{ 
-          paddingLeft: `${depth * 16 + 8}px`,
-          background: isSelected ? 'rgba(35, 131, 226, 0.15)' : undefined
+          paddingLeft: `${depth * 16 + 8}px`
         }}
       >
         <div

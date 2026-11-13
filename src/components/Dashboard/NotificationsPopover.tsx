@@ -3,9 +3,9 @@ import { CheckCircle2, Zap, ShieldAlert, Archive, X } from 'lucide-react';
 import { useNotificationStore } from '../../stores/notificationStore';
 
 const TYPE_MAP = {
-  system: { icon: Zap, color: 'var(--success)' },
-  security: { icon: ShieldAlert, color: 'var(--accent-primary)' },
-  info: { icon: Archive, color: 'var(--text-tertiary)' }
+  system: { icon: Zap, color: 'var(--color-fg-secondary)' },
+  security: { icon: ShieldAlert, color: 'var(--color-fg)' },
+  info: { icon: Archive, color: 'var(--color-fg-muted)' }
 };
 
 function formatRelativeTime(timestamp) {
@@ -35,7 +35,7 @@ export function NotificationsPopover({ onClose }) {
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: 'var(--accent-primary)', 
+              color: 'var(--color-fg)', 
               fontSize: '12px', 
               cursor: 'pointer',
               fontWeight: 500
@@ -60,7 +60,7 @@ export function NotificationsPopover({ onClose }) {
                 style={{ 
                   alignItems: 'flex-start',
                   opacity: n.isRead ? 0.65 : 1,
-                  borderLeft: !n.isRead ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                  borderLeft: !n.isRead ? '2px solid var(--color-fg)' : '2px solid transparent',
                   paddingLeft: !n.isRead ? '17px' : '20px',
                   display: 'flex',
                   gap: '12px',

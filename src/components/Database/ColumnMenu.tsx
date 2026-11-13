@@ -281,7 +281,7 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
                           width: '32px',
                           height: '16px',
                           borderRadius: '8px',
-                          background: (property.config?.showNumber !== false) ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+                          background: (property.config?.showNumber !== false) ? 'var(--color-primary-bg)' : 'var(--color-surface-3)',
                           border: 'none',
                           position: 'relative',
                           cursor: 'pointer'
@@ -292,7 +292,7 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
                             width: '10px',
                             height: '10px',
                             borderRadius: '50%',
-                            background: '#fff',
+                            background: 'var(--color-primary-fg)',
                             position: 'absolute',
                             top: '3px',
                             left: (property.config?.showNumber !== false) ? '19px' : '3px',

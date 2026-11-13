@@ -6,7 +6,7 @@
 .notion-import-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 5, 8, 0.78);
+  background: var(--color-overlay);
   backdrop-filter: blur(16px) saturate(1.3);
   z-index: 10000;
   display: flex;
@@ -55,7 +55,7 @@
   justify-content: space-between;
   padding: 18px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(18, 21, 31, 0.4);
+  background: var(--color-surface-2);
 }
 
 .notion-import-header-left {
@@ -73,7 +73,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-primary);
+  color: var(--color-fg);
 }
 
 .notion-import-title {
@@ -119,7 +119,7 @@
   padding: 12px 24px;
   gap: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(10, 12, 18, 0.6);
+  background: var(--color-surface-2);
 }
 
 .notion-import-step {
@@ -143,15 +143,15 @@
 }
 
 .notion-import-step.active .notion-import-step-dot {
-  border-color: var(--accent-primary);
-  background: var(--accent-primary);
+  border-color: var(--color-border-strong);
+  background: var(--color-primary-bg);
   color: #ffffff;
 }
 
 .notion-import-step.done .notion-import-step-dot {
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.18);
-  color: #10b981;
+  border-color: color: var(--color-fg);
+  background: var(--color-surface-3);
+  color: color: var(--color-fg);
 }
 
 .notion-import-step-label {
@@ -198,11 +198,11 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-surface-3);
   border-radius: 10px;
   margin-bottom: 18px;
-  color: #f87171;
+  color: var(--color-fg-secondary);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -214,7 +214,7 @@
 .notion-import-error button {
   background: transparent;
   border: none;
-  color: #f87171;
+  color: var(--color-fg-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -240,7 +240,7 @@
   text-align: center;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
-  background: rgba(18, 21, 31, 0.3);
+  background: var(--color-surface-2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -248,13 +248,13 @@
 }
 
 .notion-import-dropzone:hover {
-  border-color: var(--accent-primary);
-  background: var(--accent-primary-subtle);
-  transform: translateY(-1px);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-3);
+  transform: none;
 }
 
 .notion-import-dropzone.dragging {
-  border-color: var(--accent-primary);
+  border-color: var(--color-border-strong);
   background: var(--accent-primary-subtle);
 }
 
@@ -267,7 +267,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-primary);
+  color: var(--color-fg);
   margin-bottom: 16px;
   transition: transform 200ms ease;
 }
@@ -305,10 +305,8 @@
 }
 
 .notion-import-dropzone:hover .notion-import-dropzone-cta {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  background: var(--color-primary-bg); border-color: var(--color-primary-bg); color: var(--color-primary-fg);
+  box-shadow: none;
 }
 
 /* Features Grid */
@@ -317,7 +315,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   padding: 16px;
-  background: rgba(14, 17, 24, 0.5);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 12px;
 }
@@ -332,7 +330,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent-primary);
+  background: var(--color-primary-bg);
   margin-top: 6px;
   flex-shrink: 0;
 }
@@ -376,7 +374,7 @@
 
 .notion-import-spinner {
   animation: notionImportSpin 1s linear infinite;
-  color: #818cf8;
+  color: var(--color-fg);
 }
 
 @keyframes notionImportSpin {
@@ -411,10 +409,10 @@
 
 .notion-import-progress-bar-fill {
   height: 100%;
-  background: var(--accent-primary);
+  background: var(--color-primary-bg);
   border-radius: 6px;
   transition: width 200ms ease;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: none;
 }
 
 .notion-import-progress-pct {
@@ -445,16 +443,16 @@
 }
 
 .pipeline-stage-badge.active {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #818cf8;
+  background: var(--color-surface-3);
+  border-color: var(--color-surface-3);
+  color: var(--color-fg);
   font-weight: 600;
 }
 
 .pipeline-stage-badge.passed {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #10b981;
+  background: var(--color-surface-3);
+  border-color: var(--color-surface-3);
+  color: color: var(--color-fg);
 }
 
 /* ─── Step 3: Preview Pane ─────────────────────────────────────────────── */
@@ -473,7 +471,7 @@
 }
 
 .notion-stat-card {
-  background: rgba(18, 21, 31, 0.4);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 14px;
@@ -501,10 +499,10 @@
   color: var(--text-tertiary, #64748b);
 }
 
-.notion-stat-icon.accent-indigo { color: #818cf8; }
-.notion-stat-icon.accent-purple { color: #c084fc; }
-.notion-stat-icon.accent-amber { color: #fbbf24; }
-.notion-stat-icon.accent-emerald { color: #34d399; }
+.notion-stat-icon.accent-indigo { color: var(--color-fg); }
+.notion-stat-icon.accent-purple { color: color: var(--color-fg); }
+.notion-stat-icon.accent-amber { color: var(--color-fg); }
+.notion-stat-icon.accent-emerald { color: var(--color-fg); }
 
 .notion-stat-value {
   font-size: 24px;
@@ -531,8 +529,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(16, 185, 129, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.16);
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-surface-3);
   border-radius: 10px;
 }
 
@@ -542,11 +540,11 @@
   gap: 6px;
   font-size: 11px;
   font-weight: 500;
-  color: #34d399;
+  color: var(--color-fg);
 }
 
 .accent-emerald {
-  color: #34d399;
+  color: var(--color-fg);
 }
 
 /* Preview Tabs */
@@ -578,9 +576,9 @@
 }
 
 .preview-tab-btn.active {
-  color: #818cf8;
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.25);
+  color: var(--color-fg);
+  background: var(--color-surface-3);
+  border-color: var(--color-surface-3);
   font-weight: 600;
 }
 
@@ -594,13 +592,13 @@
 }
 
 .tab-count-badge.badge-warn {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  background: var(--color-surface-3);
+  color: var(--color-fg);
 }
 
 .tab-count-badge.badge-error {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  background: var(--color-surface-3);
+  color: var(--color-fg-secondary);
 }
 
 /* Tab Panels */
@@ -616,7 +614,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(14, 17, 24, 0.6);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
 }
@@ -646,7 +644,7 @@
 .notion-preview-tree-container {
   max-height: 220px;
   overflow-y: auto;
-  background: rgba(12, 14, 20, 0.5);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   padding: 6px 0;
@@ -703,9 +701,9 @@
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(168, 85, 247, 0.14);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  background: var(--color-surface-3);
+  color: color: var(--color-fg);
+  border: 1px solid var(--color-surface-3);
 }
 
 .tree-node-child-count {
@@ -732,7 +730,7 @@
 
 .notion-db-preview-card {
   padding: 10px 14px;
-  background: rgba(18, 21, 31, 0.4);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   display: flex;
@@ -756,8 +754,8 @@
 .notion-db-preview-rows {
   font-size: 11px;
   font-family: var(--font-mono, monospace);
-  color: #c084fc;
-  background: rgba(168, 85, 247, 0.1);
+  color: color: var(--color-fg);
+  background: var(--color-surface-3);
   padding: 1px 7px;
   border-radius: 6px;
 }
@@ -789,18 +787,18 @@
 }
 
 .diag-chip.green {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34d399;
+  background: var(--color-surface-3);
+  color: var(--color-fg);
 }
 
 .diag-chip.amber {
-  background: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
+  background: var(--color-surface-3);
+  color: var(--color-fg);
 }
 
 .diag-chip.red {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: var(--color-surface-3);
+  color: var(--color-fg-secondary);
 }
 
 .notion-diag-copy-btn {
@@ -835,20 +833,20 @@
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(12, 14, 20, 0.4);
+  background: var(--color-surface-2);
   font-size: 12px;
 }
 
 .notion-diag-entry.level-warn {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid color: var(--color-fg);
 }
 
 .notion-diag-entry.level-error {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid color: var(--color-fg-secondary);
 }
 
 .notion-diag-entry.level-info {
-  border-left: 3px solid #3b82f6;
+  border-left: 2px solid var(--color-border-strong);
 }
 
 .notion-diag-entry-header {
@@ -866,9 +864,9 @@
   letter-spacing: 0.04em;
 }
 
-.diag-level-pill.info { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.diag-level-pill.warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.diag-level-pill.error { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.diag-level-pill.info { background: var(--color-surface-2); color: var(--color-fg); border: 1px solid var(--color-border); }
+.diag-level-pill.warn { background: var(--color-surface-3); color: var(--color-fg); border: 1px solid var(--color-border-strong); }
+.diag-level-pill.error { background: var(--color-surface-4); color: var(--color-fg); border: 1px solid var(--color-border-strong); }
 
 .diag-code {
   font-family: var(--font-mono, monospace);
@@ -899,7 +897,7 @@
   justify-content: center;
   gap: 10px;
   padding: 32px 16px;
-  color: #34d399;
+  color: var(--color-fg);
   font-size: 13px;
   font-weight: 500;
 }
@@ -938,26 +936,28 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 22px;
-  background: var(--accent-primary);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-bg);
+  border-radius: var(--radius-md);
   font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
+  font-weight: 500;
+  color: var(--color-primary-fg);
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), var(--shadow-sm);
+  box-shadow: none;
   transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .notion-import-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), var(--shadow-md);
-  filter: brightness(1.05);
+  background: var(--color-primary-bg-hover);
+  border-color: var(--color-primary-bg-hover);
+  transform: none;
+  box-shadow: none;
+  filter: none;
 }
 
 .notion-import-btn-primary:active {
-  transform: translateY(0);
+  transform: translateY(0.5px);
 }
 
 /* ─── Step 5: Complete Pane ────────────────────────────────────────────── */
@@ -975,12 +975,12 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1.5px solid rgba(16, 185, 129, 0.3);
+  background: var(--color-surface-3);
+  border: 1.5px solid var(--color-surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #10b981;
+  color: color: var(--color-fg);
   margin-bottom: 20px;
 }
 
@@ -1006,7 +1006,7 @@
   justify-content: center;
   gap: 16px;
   padding: 14px 20px;
-  background: rgba(18, 21, 31, 0.5);
+  background: var(--color-surface-2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   margin-bottom: 16px;
@@ -1042,7 +1042,7 @@
 
 .notion-complete-timing {
   font-size: 11px;
-  color: #34d399;
+  color: var(--color-fg);
   font-family: var(--font-mono, monospace);
   margin-bottom: 28px;
 }
