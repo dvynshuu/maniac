@@ -4,8 +4,7 @@ import {
   Download, 
   Copy, 
   Check, 
-  ArrowRight, 
-  Sparkles
+  ArrowRight
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
@@ -77,8 +76,7 @@ export default function TemplateGallery() {
         structuredData={structuredData}
       />
 
-      {/* Atmospheric Glow */}
-      <div className="tpl-ambient-glow" aria-hidden="true" />
+      {/* Background Grid */}
       <div className="tpl-grid-bg" aria-hidden="true" />
 
       {/* Navigation */}
@@ -123,13 +121,14 @@ export default function TemplateGallery() {
         <section className="tpl-hero">
           <div className="tpl-container">
             <div className="tpl-badge">
-              <Sparkles size={13} />
-              <span>READY-TO-USE WORKSPACE BLUEPRINTS</span>
+              <span className="tpl-badge-mono">BLUEPRINTS</span>
+              <span className="tpl-badge-sep">/</span>
+              <span>SOVEREIGN TEMPLATES</span>
             </div>
 
             <h1 className="tpl-hero-title">
               Turn Chaos into a System with <br />
-              <span className="tpl-title-gradient">Sovereign Templates</span>
+              <span className="tpl-title-em">Sovereign Templates</span>
             </h1>
 
             <p className="tpl-hero-subtitle">

@@ -4,15 +4,12 @@ import {
   Check, 
   X, 
   ArrowRight, 
-  Shield, 
-  Brain, 
-  Database, 
-  ChevronDown,
-  Sparkles
+  ChevronDown
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
 import { getObsidianAltStructuredData } from '../seo/structuredData';
+import ObsidianLiveBlockDemo from '../components/Marketing/ObsidianLiveBlockDemo';
 import './ObsidianAlternative.css';
 
 export default function ObsidianAlternative() {
@@ -100,12 +97,13 @@ export default function ObsidianAlternative() {
         <section className="obs-hero">
           <div className="obs-container">
             <div className="obs-badge">
-              <Sparkles size={14} className="obs-badge-icon" />
-              <span>The Local-First Evolution</span>
+              <span className="obs-badge-mono">LOCAL-FIRST</span>
+              <span className="obs-badge-sep">/</span>
+              <span>OBSIDIAN ALTERNATIVE</span>
             </div>
 
             <h1 className="obs-title">
-              The Local-First Obsidian Alternative with <span className="obs-gradient-text">Native Databases &amp; Blocks</span>
+              The Local-First Obsidian Alternative with <span className="obs-title-em">Native Databases &amp; Blocks</span>
             </h1>
 
             <p className="obs-subtitle">
@@ -211,47 +209,17 @@ export default function ObsidianAlternative() {
           </div>
         </section>
 
-        {/* Why Users Switch Section */}
-        <section className="obs-section obs-section-alt">
+        {/* Tactile Live Block Demo Section */}
+        <section className="obs-section obs-demo-section">
           <div className="obs-container">
             <div className="obs-section-header">
-              <h2 className="obs-section-title">The Three Big Pain Points of Obsidian Solved</h2>
+              <h2 className="obs-section-title">Tactile Block Kernel vs Plugin Sprawl</h2>
               <p className="obs-section-subtitle">
-                Why power knowledge workers are choosing MANIAC as their primary thinking environment.
+                Interact live with native relational databases, bi-directional backlinks, and client-side AES-256 vault encryption.
               </p>
             </div>
 
-            <div className="obs-grid-3">
-              <div className="obs-card">
-                <div className="obs-card-icon red">
-                  <Database size={24} />
-                </div>
-                <h3 className="obs-card-title">1. Real Databases, Not Hacky Scripts</h3>
-                <p className="obs-card-text">
-                  In Obsidian, building a simple project management board requires installing Dataview, learning custom query syntax, and hoping community plugins don't corrupt your YAML frontmatter. MANIAC gives you true relational databases with custom properties, board filters, and calendar views out of the box.
-                </p>
-              </div>
-
-              <div className="obs-card">
-                <div className="obs-card-icon blue">
-                  <Brain size={24} />
-                </div>
-                <h3 className="obs-card-title">2. Study Where You Write</h3>
-                <p className="obs-card-text">
-                  Obsidian users frequently maintain notes in Obsidian and separate flashcards in Anki. MANIAC eliminates this cognitive fragmentation: toggle blocks in any note can be practiced immediately in the built-in Leitner spaced repetition review queue.
-                </p>
-              </div>
-
-              <div className="obs-card">
-                <div className="obs-card-icon green">
-                  <Shield size={24} />
-                </div>
-                <h3 className="obs-card-title">3. True Military-Grade Cryptography</h3>
-                <p className="obs-card-text">
-                  Obsidian leaves your notes in raw, unencrypted markdown files on your drive, vulnerable to rogue scripts or malware. MANIAC offers client-side Web Crypto AES-256-GCM vault locking so your proprietary research remains strictly confidential.
-                </p>
-              </div>
-            </div>
+            <ObsidianLiveBlockDemo />
           </div>
         </section>
 

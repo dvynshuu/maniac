@@ -9,7 +9,6 @@ import {
   Lock,
   ArrowRight,
   CheckCircle2,
-  Sparkles,
   ChevronDown,
   ChevronRight,
   Layers,
@@ -23,7 +22,8 @@ import {
   Table,
   Kanban,
   ArrowUpRight,
-  Copy
+  Copy,
+  Zap
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
@@ -281,7 +281,7 @@ export default function LandingPage() {
                       </div>
 
                       <div className="modular-callout-demo">
-                        <Sparkles size={18} style={{ color: 'var(--color-fg)', flexShrink: 0, marginTop: '2px' }} />
+                        <Zap size={16} style={{ color: 'var(--color-fg)', flexShrink: 0, marginTop: '2px' }} />
                         <div>
                           <strong>Turn chaos into a system:</strong> Every concept, task, and tracker in Maniac is an atomic block interconnected via bidirectional backlinks.
                         </div>
@@ -808,8 +808,8 @@ export default function LandingPage() {
               {/* Pillar 2: ReAlign Companion */}
               <article className="sovereign-pillar-card realign-pillar">
                 <div className="sovereign-pillar-header">
-                  <div className="sovereign-pillar-badge realign-badge">
-                    <Sparkles size={13} />
+                  <div className="sovereign-pillar-badge realalign-badge">
+                    <Brain size={13} />
                     <span>Recommended Cognitive Companion</span>
                   </div>
                   <h3 className="sovereign-pillar-title">
@@ -1075,7 +1075,7 @@ export default function LandingPage() {
           <div className="landing-container">
             <div className="ecosystem-strip-card">
               <div className="ecosystem-strip-left">
-                <Sparkles size={20} className="ecosystem-sparkle" />
+                <Layers size={20} className="ecosystem-sparkle" />
                 <div>
                   <div className="ecosystem-title">Part of a Sovereign Productivity Ecosystem</div>
                   <div className="ecosystem-desc">Explore complementary tools designed for high-performance cognitive workflows.</div>

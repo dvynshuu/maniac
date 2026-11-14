@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getCommandsByCategory } from '../../core/slashCommandRegistry';
 import { resolveDynamicIcon } from '../Common/IconResolver';
+import EmojiIcon from '../Common/EmojiIcon';
 import { Zap } from 'lucide-react';
 
 interface SlashMenuProps {
@@ -191,7 +192,7 @@ export default function SlashMenu({ editor, query, onSelect, onClose, onLinkPage
             >
               <div className="slash-menu-item-icon">
                 {item.pageIcon ? (
-                  <span style={{ fontSize: '16px' }}>{item.pageIcon}</span>
+                  <EmojiIcon emoji={item.pageIcon} size="18px" />
                 ) : (
                   <IconComponent size={18} strokeWidth={1.5} />
                 )}

@@ -158,7 +158,7 @@ function SidebarPageItem({ page, depth }) {
           <ChevronRight size={14} />
         </div>
 
-        <span className="page-item-icon"><EmojiIcon emoji={page.icon || '📝'} size="16px" /></span>
+        <span className="page-item-icon"><EmojiIcon emoji={page.icon || 'FileText'} size="15px" /></span>
 
         <span className="page-item-title">
           {page.title || 'Untitled'}

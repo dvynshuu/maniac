@@ -1,9 +1,9 @@
 /* Template Detail Page Styles — Executive Obsidian Craft */
 .tpl-detail-page {
   min-height: 100vh;
-  background-color: var(--bg-primary, var(--color-bg));
-  color: var(--text-primary, #ffffff);
-  font-family: var(--font-sans, 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif);
+  background-color: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   position: relative;
   overflow-x: hidden;
 }
@@ -31,8 +31,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--surface-canvas);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .tpl-detail-nav {
@@ -329,11 +329,11 @@
 
 /* Interactive Preview Box */
 .tpl-preview-canvas {
-  background: var(--color-surface-2);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--radius-xl, 14px);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg, 8px);
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .tpl-preview-topbar {
@@ -341,8 +341,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .tpl-window-dots {

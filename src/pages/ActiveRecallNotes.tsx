@@ -117,7 +117,7 @@ export default function ActiveRecallNotes() {
             </div>
 
             <h1 className="srs-title">
-              The Note-Taking App with Native <span className="srs-gradient-text">Active Recall &amp; Spaced Repetition</span>
+              The Note-Taking App with Native <span className="srs-title-em">Active Recall &amp; Spaced Repetition</span>
             </h1>
 
             <p className="srs-subtitle">

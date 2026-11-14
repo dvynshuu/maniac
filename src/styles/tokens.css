@@ -1,0 +1,334 @@
+/* ==========================================================================
+   MANIAC PRODUCT DESIGN SYSTEM — CANONICAL CSS TOKENS
+   Unified single source of truth for workspace and marketing pages.
+   Source: Maniac-DESIGN.md & Modular Block Architecture
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Core Semantic Surface Tokens (Mandatory) ---- */
+  --surface-canvas: #000000;
+  --surface-sunken: #050505;
+  --surface-elevated: #0a0a0a;
+  --surface-active: #111111;
+  --surface-hover: #141414;
+  --surface-popover: #090909;
+  --surface-overlay: rgba(0, 0, 0, 0.72);
+
+  /* ---- Core Semantic Border Tokens (Mandatory) ---- */
+  --border-hairline: #1a1a1a;
+  --border-default: #262626;
+  --border-strong: #3f3f46;
+  --border-focus: #a1a1aa;
+  --border-hairline-rule: 1px solid var(--border-hairline);
+  --border-default-rule: 1px solid var(--border-default);
+
+  /* ---- Core Semantic Text Hierarchy (Mandatory) ---- */
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-muted: #52525b;
+  --text-placeholder: #52525b;
+
+  /* ---- Selection & Accent Tokens (Strict Monochrome) ---- */
+  --selection-bg: rgba(255, 255, 255, 0.16);
+  --color-selection: var(--selection-bg);
+  --color-primary-bg: #fafafa;
+  --color-primary-fg: #09090b;
+  --color-primary-bg-hover: #e4e4e7;
+  --color-secondary-bg: transparent;
+  --color-secondary-fg: #fafafa;
+
+  /* ---- Canonical Color Bridges (Maniac-DESIGN.md Spec) ---- */
+  --color-bg: var(--surface-canvas);
+  --color-surface-1: var(--surface-canvas);
+  --color-surface-2: var(--surface-sunken);
+  --color-surface-3: var(--surface-elevated);
+  --color-surface-4: var(--surface-active);
+  --color-surface-popover: var(--surface-popover);
+  --color-overlay: var(--surface-overlay);
+
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-tertiary: var(--text-tertiary);
+  --color-fg-muted: var(--text-muted);
+
+  --color-border-subtle: var(--border-hairline);
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* ---- Legacy Workspace Aliases ---- */
+  --bg-primary: var(--surface-canvas);
+  --bg-secondary: var(--surface-sunken);
+  --bg-tertiary: var(--surface-elevated);
+  --bg-elevated: var(--surface-elevated);
+  --bg-hover: var(--surface-hover);
+  --bg-active: var(--surface-active);
+  --bg-selected: var(--selection-bg);
+  --bg-sidebar: var(--surface-sunken);
+  --bg-popover: var(--surface-popover);
+  --bg-glass: var(--surface-elevated);
+  --bg-glass-subtle: var(--surface-sunken);
+
+  --border-subtle: var(--border-hairline);
+  --border-sidebar: var(--border-hairline);
+  --border-popover: var(--border-default);
+  --border-glass: var(--border-hairline);
+  --border-glass-subtle: var(--border-hairline);
+
+  --accent-primary: var(--color-primary-bg);
+  --accent-primary-hover: var(--color-primary-bg-hover);
+  --accent-primary-active: var(--border-strong);
+  --accent-primary-subtle: var(--surface-active);
+  --accent-secondary: var(--text-secondary);
+  --accent-tertiary: var(--text-tertiary);
+  --accent-gradient: var(--color-primary-bg);
+  --accent-ember: var(--text-primary);
+  --accent-scar: var(--text-primary);
+
+  --glow-primary: none;
+  --glow-ember: none;
+
+  /* ---- Typography Scale ---- */
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --font-serif: Lyon-Text, Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
+
+  --text-2xs: 0.6875rem;       /* 11px */
+  --text-xs: 0.75rem;          /* 12px */
+  --text-sm: 0.8125rem;        /* 13px */
+  --text-base: 0.875rem;       /* 14px */
+  --text-md: 0.9375rem;        /* 15px */
+  --text-lg: 1.125rem;         /* 18px */
+  --text-xl: 1.25rem;          /* 20px */
+  --text-2xl: 1.5rem;          /* 24px */
+  --text-3xl: 2rem;            /* 32px */
+  --text-display: clamp(2.5rem, 6vw, 4.5rem);
+
+  --leading-tight: 1.15;
+  --leading-heading: 1.25;
+  --leading-normal: 1.5;
+  --leading-reading: 1.7;
+
+  /* ---- Spacing Scale (4px Base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---- Technical Radii Scale (Disciplined Geometry) ---- */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-dialog: 10px;
+  --radius-full: 9999px;
+
+  --border-width: 1px;
+  --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.42);
+  --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.55);
+  --shadow-recessed: none;
+  --shadow-flat: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.42);
+  --shadow-xl: 0 16px 64px rgba(0, 0, 0, 0.55);
+  --shadow-glass: none;
+  --shadow-glow: none;
+
+  --duration-fast: 100ms;
+  --duration-normal: 160ms;
+  --duration-slow: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: 100ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-default: 160ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-slow: 220ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---- Layout Geometry ---- */
+  --sidebar-width: 248px;
+  --topbar-height: 48px;
+  --editor-width: 720px;
+  --editor-width-wide: 960px;
+  --content-width: 1200px;
+
+  /* ---- Modular Block Engine Tokens (Imported from block_tokens.css) ---- */
+  --block-font-sans: var(--font-sans);
+  --block-font-serif: var(--font-serif);
+  --block-font-mono: var(--font-mono);
+
+  --block-title-size: 2.5rem;
+  --block-title-lh: 1.2;
+  --block-h1-size: 1.875rem;
+  --block-h1-lh: 1.3;
+  --block-h2-size: 1.5rem;
+  --block-h2-lh: 1.35;
+  --block-h3-size: 1.25rem;
+  --block-h3-lh: 1.4;
+  --block-body-size: 1rem;
+  --block-body-lh: 1.6;
+  --block-small-size: 0.8125rem;
+  --block-small-lh: 1.4;
+
+  --block-content-max-width: var(--editor-width);
+  --block-content-wide-width: var(--editor-width-wide);
+  --block-content-full-width: 100%;
+  --block-indent: 24px;
+  --block-gap: 2px;
+  --block-radius-sm: var(--radius-xs);
+  --block-radius-md: var(--radius-md);
+  --block-radius-lg: var(--radius-xl);
+
+  --block-bg-main: var(--surface-canvas);
+  --block-bg-sidebar: var(--surface-sunken);
+  --block-bg-card: var(--surface-elevated);
+  --block-bg-hover: rgba(255, 255, 255, 0.055);
+  --block-bg-active: rgba(255, 255, 255, 0.085);
+  --block-text-main: var(--text-primary);
+  --block-text-muted: var(--text-tertiary);
+  --block-border-subtle: var(--border-hairline);
+  --block-border-strong: var(--border-strong);
+
+  --block-shadow-popover: var(--shadow-popover);
+  --block-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  /* Content-owned Semantic Tints (User content only; UI chrome remains monochrome) */
+  --block-color-default: inherit;
+  --block-color-gray: rgba(155, 154, 151, 1);
+  --block-color-brown: rgba(186, 133, 111, 1);
+  --block-color-orange: rgba(199, 125, 72, 1);
+  --block-color-yellow: rgba(202, 152, 73, 1);
+  --block-color-green: rgba(82, 158, 114, 1);
+  --block-color-blue: rgba(94, 135, 201, 1);
+  --block-color-purple: rgba(144, 101, 176, 1);
+  --block-color-pink: rgba(193, 76, 138, 1);
+  --block-color-red: rgba(212, 76, 71, 1);
+
+  --block-bg-tint-gray: rgba(155, 154, 151, 0.12);
+  --block-bg-tint-brown: rgba(186, 133, 111, 0.12);
+  --block-bg-tint-orange: rgba(199, 125, 72, 0.12);
+  --block-bg-tint-yellow: rgba(202, 152, 73, 0.12);
+  --block-bg-tint-green: rgba(82, 158, 114, 0.12);
+  --block-bg-tint-blue: rgba(94, 135, 201, 0.12);
+  --block-bg-tint-purple: rgba(144, 101, 176, 0.12);
+  --block-bg-tint-pink: rgba(193, 76, 138, 0.12);
+  --block-bg-tint-red: rgba(212, 76, 71, 0.12);
+}
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES (Strict Monochrome Inverse)
+   ========================================================================== */
+:root[data-theme="light"],
+[data-theme="light"] {
+  color-scheme: light;
+
+  --surface-canvas: #ffffff;
+  --surface-sunken: #fafafa;
+  --surface-elevated: #f4f4f5;
+  --surface-active: #eeeeef0;
+  --surface-hover: #f0f0f2;
+  --surface-popover: #ffffff;
+  --surface-overlay: rgba(0, 0, 0, 0.32);
+
+  --border-hairline: #e4e4e7;
+  --border-default: #e4e4e7;
+  --border-strong: #a1a1aa;
+  --border-focus: #27272a;
+
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-tertiary: #71717a;
+  --text-muted: #a1a1aa;
+  --text-placeholder: #a1a1aa;
+
+  --selection-bg: rgba(9, 9, 11, 0.10);
+  --color-selection: var(--selection-bg);
+  --color-primary-bg: #09090b;
+  --color-primary-fg: #ffffff;
+  --color-primary-bg-hover: #27272a;
+  --color-secondary-bg: transparent;
+  --color-secondary-fg: #09090b;
+
+  --color-bg: var(--surface-canvas);
+  --color-surface-1: var(--surface-canvas);
+  --color-surface-2: var(--surface-sunken);
+  --color-surface-3: var(--surface-elevated);
+  --color-surface-4: var(--surface-active);
+  --color-surface-popover: var(--surface-popover);
+  --color-overlay: var(--surface-overlay);
+
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-tertiary: var(--text-tertiary);
+  --color-fg-muted: var(--text-muted);
+
+  --color-border-subtle: #f0f0f0;
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  --bg-primary: var(--surface-canvas);
+  --bg-secondary: var(--surface-sunken);
+  --bg-tertiary: var(--surface-elevated);
+  --bg-elevated: var(--surface-elevated);
+  --bg-hover: var(--surface-hover);
+  --bg-active: var(--surface-active);
+  --bg-selected: var(--selection-bg);
+  --bg-sidebar: var(--surface-sunken);
+  --bg-popover: var(--surface-popover);
+  --bg-glass: var(--surface-elevated);
+  --bg-glass-subtle: var(--surface-sunken);
+
+  --border-subtle: #f0f0f0;
+  --border-sidebar: #f0f0f0;
+  --border-popover: var(--border-default);
+  --border-glass: #f0f0f0;
+  --border-glass-subtle: #f0f0f0;
+
+  --shadow-popover: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.15);
+
+  --block-bg-main: var(--surface-canvas);
+  --block-bg-sidebar: var(--surface-sunken);
+  --block-bg-card: var(--surface-canvas);
+  --block-bg-hover: rgba(55, 53, 47, 0.06);
+  --block-bg-active: rgba(55, 53, 47, 0.1);
+  --block-text-main: #37352f;
+  --block-text-muted: #787774;
+  --block-border-subtle: rgba(55, 53, 47, 0.09);
+  --block-border-strong: rgba(55, 53, 47, 0.18);
+
+  --block-shadow-popover: 0 1px 3px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.12);
+  --block-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  --block-color-gray: #787774;
+  --block-color-brown: #9f6b53;
+  --block-color-orange: #d9730d;
+  --block-color-yellow: #cb912f;
+  --block-color-green: #448361;
+  --block-color-blue: #337ea9;
+  --block-color-purple: #9065b0;
+  --block-color-pink: #c14c8a;
+  --block-color-red: #d44c47;
+
+  --block-bg-tint-gray: rgba(227, 226, 224, 0.5);
+  --block-bg-tint-brown: rgba(238, 224, 218, 0.5);
+  --block-bg-tint-orange: rgba(250, 235, 221, 0.5);
+  --block-bg-tint-yellow: rgba(253, 245, 213, 0.5);
+  --block-bg-tint-green: rgba(219, 237, 219, 0.5);
+  --block-bg-tint-blue: rgba(211, 229, 239, 0.5);
+  --block-bg-tint-purple: rgba(232, 222, 238, 0.5);
+  --block-bg-tint-pink: rgba(244, 223, 235, 0.5);
+  --block-bg-tint-red: rgba(251, 228, 228, 0.5);
+}

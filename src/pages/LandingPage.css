@@ -5,14 +5,14 @@
    ========================================================================== */
 
 .landing-page {
-  background-color: var(--bg-primary);
+  background-color: var(--surface-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
   min-height: 100vh;
   line-height: var(--leading-normal);
   position: relative;
   overflow-x: hidden;
-  selection-background-color: var(--accent-primary-subtle);
+  selection-background-color: var(--selection-bg);
 }
 
 /* --------------------------------------------------------------------------

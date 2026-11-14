@@ -4,16 +4,13 @@ import {
   Check, 
   X, 
   ArrowRight, 
-  Shield, 
-  Zap, 
-  Brain, 
   Upload, 
-  ChevronDown,
-  Sparkles
+  ChevronDown
 } from 'lucide-react';
 import ManiacLogo from '../components/Common/ManiacLogo';
 import SEO from '../seo/SEO';
 import { getNotionAltStructuredData } from '../seo/structuredData';
+import NotionLiveBlockDemo from '../components/Marketing/NotionLiveBlockDemo';
 import './NotionAlternative.css';
 
 export default function NotionAlternative() {
@@ -101,13 +98,14 @@ export default function NotionAlternative() {
         <section className="alt-hero">
           <div className="alt-container">
             <div className="alt-badge">
-              <Sparkles size={13} />
+              <span className="alt-badge-kicker">LOCAL-FIRST</span>
+              <span className="alt-badge-sep">/</span>
               <span>THE SOVEREIGN NOTION ALTERNATIVE</span>
             </div>
 
             <h1 className="alt-hero-title">
               The Best Offline Notion Alternative — <br />
-              <span className="alt-title-gradient">Local-First &amp; Zero-Latency</span>
+              <span className="alt-title-em">Local-First &amp; Zero-Latency</span>
             </h1>
 
             <p className="alt-hero-subtitle">
@@ -207,39 +205,15 @@ export default function NotionAlternative() {
           </div>
         </section>
 
-        {/* Why Make the Switch */}
-        <section className="alt-section alt-reasons-section">
+        {/* Tactile Interactive Live Block Demo Playground */}
+        <section className="alt-section alt-demo-section">
           <div className="alt-container">
             <div className="alt-section-head">
-              <h2>Why Discerning Knowledge Workers Switch</h2>
-              <p>Designed from first principles to overcome the fundamental flaws of cloud-only workspaces.</p>
+              <h2>Tactile Live Block Engine</h2>
+              <p>Experience the immediate 0ms responsiveness of local-first modular blocks, relational tables, and native active recall.</p>
             </div>
 
-            <div className="alt-reasons-grid">
-              <div className="alt-reason-card">
-                <div className="reason-icon-wrap">
-                  <Zap size={22} />
-                </div>
-                <h3>Zero Latency Architecture</h3>
-                <p>Notion requires constant network roundtrips to fetch pages and save edits. MANIAC writes synchronously to browser IndexedDB, eliminating all loading spinners and typing delays.</p>
-              </div>
-
-              <div className="alt-reason-card">
-                <div className="reason-icon-wrap">
-                  <Shield size={22} />
-                </div>
-                <h3>Sovereign Privacy</h3>
-                <p>Cloud tools expose your private thoughts to data breaches, AI training pipelines, and employee inspection. MANIAC keeps your notes strictly on your device with hardware AES-256 encryption.</p>
-              </div>
-
-              <div className="alt-reason-card">
-                <div className="reason-icon-wrap">
-                  <Brain size={22} />
-                </div>
-                <h3>Active Recall Integration</h3>
-                <p>Stop merely collecting notes. MANIAC transforms any toggle block into an active recall flashcard, using spaced repetition to guarantee permanent knowledge retention.</p>
-              </div>
-            </div>
+            <NotionLiveBlockDemo />
           </div>
         </section>
 

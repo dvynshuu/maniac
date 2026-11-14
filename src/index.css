@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+
 /* ============================================
    MANIAC — Product Design System
    Vercel-inspired monochrome canonical architecture
@@ -5,6 +7,13 @@
 
 :root {
   color-scheme: dark;
+
+  /* ---- Enforced Semantic Surface Tokens ---- */
+  --surface-canvas: #000000;
+  --surface-elevated: #0A0A0A;
+  --border-hairline: #1A1A1A;
+  --text-primary: #FAFAFA;
+  --text-muted: #71717A;
 
   /* ---- Canonical Monochrome Surfaces (Dark — Default) ---- */
   --color-bg: #000000;
@@ -225,6 +234,13 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+
+  /* ---- Enforced Semantic Surface Tokens (Monochrome Inverse) ---- */
+  --surface-canvas: #FFFFFF;
+  --surface-elevated: #F4F4F5;
+  --border-hairline: #E4E4E7;
+  --text-primary: #09090B;
+  --text-muted: #71717A;
 
   /* ---- Canonical Monochrome Surfaces (Light — Exact Inverse) ---- */
   --color-bg: #FFFFFF;
@@ -1514,9 +1530,12 @@ a:hover {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2-5);
-  padding: var(--notion-block-padding, 3px 2px);
-  border-radius: var(--radius-sm);
+  margin: 1px 0;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
   transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
   content-visibility: auto;
   contain-intrinsic-size: auto 32px;
@@ -1530,22 +1549,89 @@ a:hover {
 }
 
 .block-gutter-controls {
+  position: absolute;
+  left: -48px;
+  top: 0;
+  bottom: 0;
+  width: 48px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: flex-end;
   gap: 2px;
+  padding-top: 2px;
   opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 140ms cubic-bezier(0.16, 1, 0.3, 1), transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+  transform: translateX(-2px);
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
   flex-shrink: 0;
-  margin-top: 3px;
   user-select: none;
+  z-index: 10;
 }
 
-.block-wrapper:hover .block-gutter-controls,
-.block-wrapper:hover .block-handle {
+/* Strictly reveal on pointer proximity within the 48px left gutter */
+.block-gutter-controls:hover,
+.block-gutter-controls:focus-within {
   opacity: 1;
   transform: translateX(0);
+}
+
+.block-wrapper.is-dragging .block-gutter-controls,
+.block-wrapper.dragging .block-gutter-controls {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Continuous Prose Spacing & Zero Resting Chrome */
+.block-wrapper.block-text,
+.block-wrapper.block-heading1,
+.block-wrapper.block-heading2,
+.block-wrapper.block-heading3,
+.block-wrapper.block-bullet,
+.block-wrapper.block-numbered {
+  margin-top: 1px;
+  margin-bottom: 1px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.block-heading1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.block-heading2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+}
+
+.block-heading3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.block-text:focus,
+.block-text:focus-visible,
+.tiptap.ProseMirror:focus,
+.tiptap.ProseMirror:focus-visible,
+.tiptap-editor:focus,
+.tiptap-editor:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Virtualized placeholder — preserves height for scroll stability */
@@ -1767,7 +1853,7 @@ a:hover {
 
 .block-drop-indicator {
   position: absolute;
-  left: 34px; /* Align with text content (handle 24px + gap 10px) */
+  left: 0; /* Align with text content */
   right: 0;
   height: 2px;
   background: var(--accent-primary);
@@ -5370,14 +5456,14 @@ textarea.input {
 
 .selection-toolbar {
   pointer-events: auto;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  background: var(--surface-elevated, var(--bg-elevated));
+  border: 1px solid var(--border-hairline, var(--border-subtle));
+  border-radius: var(--radius-md, 6px);
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 4px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   animation: fadeInDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

@@ -20,7 +20,6 @@ import { SettingsModal } from '../Settings/SettingsModal';
 import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { OnboardingNarrative } from './OnboardingNarrative';
 import RecallChallengeModal from './RecallChallengeModal';
 import GraphView from './GraphView';
 import EmojiIcon from '../Common/EmojiIcon';
@@ -506,10 +505,6 @@ function WorkspaceTab({ pages, navigate }: WorkspaceTabProps) {
         </div>
       )}
 
-      {/* Mastering MANIAC Onboarding Spec (If Not Dismissed) */}
-      {!onboardingStatus?.isComplete && (
-        <OnboardingNarrative onComplete={() => useUIStore.getState().updateOnboarding('isComplete')} />
-      )}
 
       {/* Asymmetrical Workstation Split Grid */}
       <div className="dashboard-split-pane">
