@@ -105,14 +105,22 @@ export async function persistImportModel(model: any, onProgress: (progress?: any
     updatedAt: c.updatedAt || now,
   }));
 
-  // Prepare blobs
-  const dbBlobs = assets.map(a => ({
-    hash: a.hash,
-    blob: a.blob,
-    mimeType: a.mimeType,
-    size: a.size,
-    createdAt: now,
-  }));
+  // Prepare blobs with zero-copy buffer handling
+  const dbBlobs = assets.map(a => {
+    let finalBlob = a.blob;
+    if (typeof ArrayBuffer !== 'undefined' && a.blob instanceof ArrayBuffer) {
+      finalBlob = new Blob([new Uint8Array(a.blob)], { type: a.mimeType || 'application/octet-stream' });
+    } else if (typeof Uint8Array !== 'undefined' && a.blob instanceof Uint8Array) {
+      finalBlob = new Blob([a.blob], { type: a.mimeType || 'application/octet-stream' });
+    }
+    return {
+      hash: a.hash,
+      blob: finalBlob,
+      mimeType: a.mimeType,
+      size: a.size || finalBlob?.size || 0,
+      createdAt: now,
+    };
+  });
 
   // Execute within atomic readwrite transaction
   await db.transaction('rw', [db.pages, db.blocks, db.database_rows, db.database_cells, db.blobs], async () => {

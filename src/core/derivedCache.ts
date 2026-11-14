@@ -186,3 +186,96 @@ export function selectSyncedCount(sourceId: string) {
     return counts[sourceId] || 1;
   };
 }
+
+// ─── Flattened Visible DFS Render List ─────────────────────────
+
+export interface VisibleDFSBlock {
+  id: string;
+  depth: number;
+  parentId: string | null;
+}
+
+export const getCachedVisibleDFSBlocks = createDerivedCache<VisibleDFSBlock[]>(
+  'visible_dfs_blocks',
+  ['blockStore'],
+  (blockOrder: string[], blockMap: Record<string, Block>) => {
+    const list: VisibleDFSBlock[] = [];
+    if (!blockOrder || !blockMap || blockOrder.length === 0) return list;
+
+    // 1. Build children map preserving blockOrder sequence
+    const childMap = new Map<string | null, string[]>();
+    for (const id of blockOrder) {
+      const b = blockMap[id];
+      if (!b) continue;
+      const pKey = b.parentId || null;
+      if (!childMap.has(pKey)) childMap.set(pKey, []);
+      childMap.get(pKey)!.push(id);
+    }
+
+    const visited = new Set<string>();
+
+    // 2. DFS traversal respecting toggle collapsed state
+    function traverse(parentId: string | null, depth: number) {
+      const children = childMap.get(parentId);
+      if (!children) return;
+
+      for (const id of children) {
+        if (visited.has(id)) continue;
+        visited.add(id);
+
+        const b = blockMap[id];
+        if (!b) continue;
+
+        list.push({ id, depth, parentId });
+
+        // Skip traversing children if collapsed toggle
+        const isToggle =
+          b.type === 'toggle' ||
+          b.type === 'toggle_heading1' ||
+          b.type === 'toggle_heading2' ||
+          b.type === 'toggle_heading3';
+        const isExpanded = b.properties?.expanded !== false;
+
+        if (isToggle && !isExpanded) {
+          continue;
+        }
+
+        traverse(id, depth + 1);
+      }
+    }
+
+    // Traverse root blocks (depth = 0)
+    traverse(null, 0);
+
+    // 3. Fallback: Include any disconnected orphan blocks
+    for (const id of blockOrder) {
+      if (!visited.has(id)) {
+        const b = blockMap[id];
+        if (b && (!b.parentId || !blockMap[b.parentId])) {
+          visited.add(id);
+          list.push({ id, depth: 0, parentId: null });
+          traverse(id, 1);
+        }
+      }
+    }
+
+    return list;
+  }
+);
+
+export const getCachedVisibleDFSBlockIds = createDerivedCache<string[]>(
+  'visible_dfs_block_ids',
+  ['blockStore'],
+  (blockOrder: string[], blockMap: Record<string, Block>) => {
+    const blocks = getCachedVisibleDFSBlocks(blockOrder, blockMap);
+    return blocks.map(b => b.id);
+  }
+);
+
+export function selectVisibleDFSBlocks(state: { blockOrder: string[]; blockMap: Record<string, Block> }): VisibleDFSBlock[] {
+  return getCachedVisibleDFSBlocks(state.blockOrder, state.blockMap);
+}
+
+export function selectVisibleDFSBlockIds(state: { blockOrder: string[]; blockMap: Record<string, Block> }): string[] {
+  return getCachedVisibleDFSBlockIds(state.blockOrder, state.blockMap);
+}

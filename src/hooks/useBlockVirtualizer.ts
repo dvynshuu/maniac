@@ -118,15 +118,28 @@ export function useBlockVirtualizer(
         elementMapRef.current.clear();
 
         // Pre-populate renderSet with only the initial viewport window + pinned focus target
-        // to prevent mounting hundreds of editor instances synchronously on page open.
-        const allBlockIds = useBlockStore.getState().blockOrder;
-        const initialVisibleCount = Math.min(25, allBlockIds.length);
-        const initialBlockIds = allBlockIds.slice(0, initialVisibleCount);
+        // from the visible DFS order to prevent mounting hundreds of editor instances synchronously.
+        const initialVisibleCount = Math.min(25, blockIds.length);
+        const initialBlockIds = blockIds.slice(0, initialVisibleCount);
         renderSetRef.current = new Set(initialBlockIds);
         if (focusBlockIdRef.current) {
           renderSetRef.current.add(focusBlockIdRef.current);
         }
 
+        notify();
+      }
+    } else if (idsChanged && enabled) {
+      // Structure changed within the same page (e.g. toggle expanded or collapsed)
+      // Prune collapsed offscreen blocks from renderSet
+      const visibleSet = new Set(blockIds);
+      let changed = false;
+      for (const id of renderSetRef.current) {
+        if (!visibleSet.has(id) && id !== focusBlockIdRef.current && !pinnedRef.current.has(id)) {
+          renderSetRef.current.delete(id);
+          changed = true;
+        }
+      }
+      if (changed) {
         notify();
       }
     }

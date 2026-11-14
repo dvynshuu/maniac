@@ -1,5 +1,4 @@
 import React, { useState, memo, useRef, useEffect, useCallback, useContext, Suspense, lazy } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import { useSortable } from '@dnd-kit/sortable';
 import { DragDropContext } from './DragDropContext';
 import { CSS } from '@dnd-kit/utilities';
@@ -19,7 +18,6 @@ import DividerBlock from './blocks/DividerBlock';
 import ImageBlock from './blocks/ImageBlock';
 import QuoteBlock from './blocks/QuoteBlock';
 import CalloutBlock from './blocks/CalloutBlock';
-import CodeBlock from './blocks/CodeBlock';
 import BulletBlock from './blocks/BulletBlock';
 import NumberedBlock from './blocks/NumberedBlock';
 import ToggleBlock from './blocks/ToggleBlock';
@@ -46,6 +44,7 @@ const DatabaseBlock = lazy(() => import('../Database/DatabaseBlock'));
 const TrackerBlock = lazy(() => import('../Tracker/TrackerBlock'));
 const MathBlock = lazy(() => import('./blocks/MathBlock'));
 const DiagramBlock = lazy(() => import('./blocks/DiagramBlock'));
+const CodeBlock = lazy(() => import('./blocks/CodeBlock'));
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { dispatch } from '../../core/commandBus';
@@ -59,19 +58,8 @@ interface BlockRendererProps {
 }
 
 const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendererProps) => {
-  const block = useBlockStore(useShallow(s => {
-    const b = s.blockMap[blockId];
-    if (!b) return null;
-    return {
-      id: b.id,
-      pageId: b.pageId,
-      parentId: b.parentId,
-      type: b.type,
-      content: b.content,
-      properties: b.properties,
-      _isDecrypting: b._isDecrypting,
-    };
-  }));
+  // Granular selector: subscribes strictly to this block's identity to prevent cascade re-renders
+  const block = useBlockStore(useCallback(s => s.blocks?.[blockId] ?? s.blockMap[blockId], [blockId]));
   // Performance: incremental child map instead of O(n) filter
   const childBlockIds = useChildBlockIds(blockId);
   const engine = useEditorEngine(block?.pageId);
@@ -186,7 +174,11 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
       case BLOCK_TYPES.NUMBERED:
         return <NumberedBlock block={block} />;
       case BLOCK_TYPES.CODE:
-        return <CodeBlock block={block} />;
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 48 }} />}>
+            <CodeBlock block={block} />
+          </Suspense>
+        );
       
       case BLOCK_TYPES.HEADING1:
       case BLOCK_TYPES.HEADING2:

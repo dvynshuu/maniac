@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { EditorContent } from '@tiptap/react';
-import { useBlockEditor } from '../../../hooks/useBlockEditor';
+import UniversalTextEditor from './UniversalTextEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import EmojiIcon from '../../Common/EmojiIcon';
 import IconPicker from '../../Common/IconPicker';
@@ -14,18 +13,6 @@ const CALLOUT_PRESETS = [
   { id: 'success', label: 'Verified', emoji: '✅', color: 'default' },
   { id: 'tip', label: 'Insight', emoji: '⚡', color: 'default' },
 ];
-
-function ActiveCalloutBlock({ block }: { block: any }) {
-  const editor = useBlockEditor(block, {
-    placeholder: 'Callout text or instructions...',
-    newBlockType: 'text',
-    backspaceAction: 'convert',
-  });
-
-  if (!editor) return null;
-
-  return <EditorContent editor={editor} className="block-callout-content" />;
-}
 
 export default function CalloutBlock({ block }: { block: any }) {
   const emoji = block.properties?.emoji || '💡';
@@ -76,7 +63,13 @@ export default function CalloutBlock({ block }: { block: any }) {
       </div>
 
       {/* Editable Text Body */}
-      <ActiveCalloutBlock block={block} />
+      <UniversalTextEditor
+        block={block}
+        placeholder="Callout text or instructions..."
+        className="block-callout-content"
+        newBlockType="text"
+        backspaceAction="convert"
+      />
 
       {/* Quick Config Palette Button */}
       <div className="block-callout-actions" contentEditable={false}>

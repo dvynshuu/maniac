@@ -7,11 +7,12 @@
  * only re-renders when that specific parent's children change.
  */
 
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import { useBlockStore } from '../stores/blockStore';
 
 // ─── Module-level child map cache ───────────────────────────────
 let _cachedBlockOrder = null;
+let _cachedBlockMap = null;
 let _cachedParentMap = new Map(); // blockId -> parentId
 let _cachedChildMap = new Map(); // parentId|null → [childId, ...]
 
@@ -21,6 +22,11 @@ let _cachedChildMap = new Map(); // parentId|null → [childId, ...]
  */
 function getChildMap(blockMap, blockOrder) {
   if (!blockOrder || !blockMap) return _cachedChildMap;
+
+  // Instant fast path: If both blockMap and blockOrder references are unchanged, return cached map in O(1)
+  if (blockMap === _cachedBlockMap && blockOrder === _cachedBlockOrder) {
+    return _cachedChildMap;
+  }
 
   // Fast path: Check if structure (order and parentIds) is unchanged
   if (blockOrder === _cachedBlockOrder) {
@@ -33,6 +39,7 @@ function getChildMap(blockMap, blockOrder) {
       }
     }
     if (!structureChanged) {
+      _cachedBlockMap = blockMap;
       return _cachedChildMap;
     }
   }
@@ -51,6 +58,7 @@ function getChildMap(blockMap, blockOrder) {
   }
 
   _cachedBlockOrder = blockOrder;
+  _cachedBlockMap = blockMap;
   _cachedParentMap = newParentMap;
   _cachedChildMap = newChildMap;
 
@@ -69,7 +77,7 @@ function getChildMap(blockMap, blockOrder) {
 export function useChildBlockIds(parentId = null) {
   const prevRef = useRef([]);
 
-  const children = useBlockStore((s) => {
+  const selector = useCallback((s) => {
     const childMap = getChildMap(s.blockMap, s.blockOrder);
     const result = childMap.get(parentId) || [];
 
@@ -81,9 +89,9 @@ export function useChildBlockIds(parentId = null) {
 
     prevRef.current = result;
     return result;
-  });
+  }, [parentId]);
 
-  return children;
+  return useBlockStore(selector);
 }
 
 /**

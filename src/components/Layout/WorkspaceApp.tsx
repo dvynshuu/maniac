@@ -17,7 +17,6 @@ import CommandPalette from '../CommandPalette/CommandPalette';
 import ManiacLogo from '../Common/ManiacLogo';
 import UnlockScreen from './UnlockScreen';
 import RestorePreviewModal from '../Settings/RestorePreviewModal';
-import NotionImportModal from '../Settings/NotionImportModal';
 import { useSettingsStore } from '../../stores/settingsStore';
 import ToastContainer from '../Common/ToastContainer';
 import SEO from '../../seo/SEO';
@@ -29,6 +28,7 @@ import '../../core/commandHandlers';
 // Lazy load heavy components
 const PageEditor = lazy(() => import('../Editor/PageEditor'));
 const Dashboard = lazy(() => import('../Dashboard/Dashboard'));
+const NotionImportModal = lazy(() => import('../Settings/NotionImportModal'));
 
 function LoadingFallback() {
   return (
@@ -189,7 +189,9 @@ export default function WorkspaceApp() {
       </AppLayout>
       {commandPaletteOpen && <CommandPalette onClose={closeCommandPalette} />}
       <RestorePreviewModal />
-      <NotionImportModal />
+      <Suspense fallback={null}>
+        <NotionImportModal />
+      </Suspense>
       <ToastContainer />
     </>
   );

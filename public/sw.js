@@ -1,5 +1,9 @@
 // MANIAC Sovereign Workspace Service Worker (Offline-First Cache)
 const CACHE_NAME = 'maniac-cache-v2';
+
+// Core application shell assets.
+// Explicitly excludes high-resolution icon variants (icon-1024x1024.png, mstile-*, apple-touch-icon-*,
+// android-chrome-*) from precaching to eliminate multi-megabyte payloads on first visit.
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

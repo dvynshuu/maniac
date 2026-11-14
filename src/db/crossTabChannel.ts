@@ -86,11 +86,70 @@ export function onMessage(handler: (msg: ChannelMessage) => void): () => void {
   return () => _listeners.delete(handler);
 }
 
+let _pendingBroadcastOps: any[] = [];
+let _broadcastTimer: any = null;
+const BROADCAST_COALESCE_MS = 150;
+
+/**
+ * Flush any buffered broadcast operations immediately.
+ */
+export function flushBroadcastOps(): void {
+  if (_broadcastTimer) {
+    clearTimeout(_broadcastTimer);
+    _broadcastTimer = null;
+  }
+  if (_pendingBroadcastOps.length === 0) return;
+
+  const opsToBroadcast = [..._pendingBroadcastOps];
+  _pendingBroadcastOps = [];
+
+  // Coalesce block updates for the same entityId
+  const coalesced: any[] = [];
+  const blockMap = new Map<string, any>();
+
+  for (const op of opsToBroadcast) {
+    const entityId = op.entityId || op.payload?.id || op.payload?.blockId;
+    if (op.op === 'update' && (op.entityType === 'block' || op.type === 'block/update') && entityId) {
+      if (blockMap.has(entityId)) {
+        const existing = blockMap.get(entityId);
+        existing.payload = {
+          ...existing.payload,
+          ...op.payload,
+          properties: {
+            ...(existing.payload?.properties || {}),
+            ...(op.payload?.properties || {}),
+          }
+        };
+        continue;
+      } else {
+        blockMap.set(entityId, op);
+      }
+    }
+    coalesced.push(op);
+  }
+
+  for (const op of coalesced) {
+    broadcast(ChannelMessageType.OP_COMMITTED, { operation: op });
+  }
+}
+
 /**
  * Broadcast that an operation was committed.
+ * Coalesces rapid updates in a 150ms buffer to reduce serialization thrashing across tabs.
  */
-export function broadcastOp(operation: any): void {
-  broadcast(ChannelMessageType.OP_COMMITTED, { operation });
+export function broadcastOp(operation: any, immediate = false): void {
+  if (immediate) {
+    flushBroadcastOps();
+    broadcast(ChannelMessageType.OP_COMMITTED, { operation });
+    return;
+  }
+
+  _pendingBroadcastOps.push(operation);
+  if (!_broadcastTimer) {
+    _broadcastTimer = setTimeout(() => {
+      flushBroadcastOps();
+    }, BROADCAST_COALESCE_MS);
+  }
 }
 
 /**
@@ -104,6 +163,11 @@ export function broadcastInvalidate(storeName: string, entityId: string | null =
  * Destroy the channel. Call on app unmount.
  */
 export function destroyChannel(): void {
+  if (_broadcastTimer) {
+    clearTimeout(_broadcastTimer);
+    _broadcastTimer = null;
+  }
+  _pendingBroadcastOps = [];
   if (_channel) {
     _channel.close();
     _channel = null;

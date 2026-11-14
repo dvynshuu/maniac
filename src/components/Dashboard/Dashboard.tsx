@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../stores/pageStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -21,9 +21,10 @@ import { useIntelligenceStore } from '../../stores/intelligenceStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import RecallChallengeModal from './RecallChallengeModal';
-import GraphView from './GraphView';
 import EmojiIcon from '../Common/EmojiIcon';
 import { getPlainText } from '../../utils/helpers';
+
+const GraphView = lazy(() => import('./GraphView'));
 
 // Helper for high-precision relative timestamps
 function formatRelativeTime(timestamp: number | string | undefined | null): string {
@@ -746,7 +747,13 @@ function WorkspaceTab({ pages, navigate }: WorkspaceTabProps) {
               <div className="bezel-corner corner-br">+</div>
 
               <div className="bezel-graph-content">
-                <GraphView pages={pages} />
+                <Suspense fallback={
+                  <div className="h-full w-full flex items-center justify-center text-xs font-mono text-neutral-500">
+                    INITIALIZING KNOWLEDGE TOPOLOGY...
+                  </div>
+                }>
+                  <GraphView pages={pages} />
+                </Suspense>
               </div>
             </div>
           </section>

@@ -8,6 +8,24 @@ import {
   ParsedBlockFlashcard, 
   extractFlashcardsFromBlock 
 } from '../utils/activeRecallParser';
+import { scheduleIdle, CancelFn } from '../utils/idleScheduler';
+
+let _pendingFlashcardSyncCancel: CancelFn | null = null;
+
+/**
+ * Debounces syncBlockFlashcards by 300ms–500ms using requestIdleCallback
+ * so typing never triggers synchronous cloze/QA regex scans or active recall re-renders.
+ */
+export function scheduleIdleFlashcardSync(pageId: string, blocks: any[], delayMs = 350): void {
+  if (_pendingFlashcardSyncCancel) {
+    _pendingFlashcardSyncCancel();
+  }
+
+  _pendingFlashcardSyncCancel = scheduleIdle(() => {
+    _pendingFlashcardSyncCancel = null;
+    useIntelligenceStore.getState().syncBlockFlashcards(pageId, blocks);
+  }, delayMs);
+}
 
 export interface IntelligenceStore {
   nextActions: any[];

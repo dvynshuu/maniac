@@ -23,15 +23,29 @@ export class EditorEngine {
     return new Transaction(this);
   }
 
-  async updateBlock(blockId: string, updates: Record<string, any>): Promise<any> {
-    return this.startTransaction().updateBlock(blockId, updates).commit();
+  /**
+   * Flushes all pending buffered text mutations across the workspace.
+   */
+  async flush(): Promise<void> {
+    await Transaction.flushAll();
+  }
+
+  async updateBlock(blockId: string, updates: Record<string, any>, immediate = false): Promise<any> {
+    if (immediate) {
+      const key = `${this.pageId}:${blockId}`;
+      await Transaction.flushBufferedBlock(key);
+      return this.startTransaction().updateBlock(blockId, updates).commit();
+    }
+    return Transaction.bufferBlockUpdate(this, blockId, updates, 150);
   }
 
   async deleteBlock(blockId: string): Promise<any> {
+    await this.flush();
     return this.startTransaction().deleteBlock(blockId).commit();
   }
 
   async insertAfter(blockId: string | null, type: BlockType | string = 'text', properties: Record<string, any> = {}): Promise<any> {
+    await this.flush();
     const tx = this.startTransaction();
     const { parentId: overrideParentId, ...restProperties } = properties;
     const block = blockId ? useBlockStore.getState().blockMap[blockId] : null;
@@ -52,12 +66,14 @@ export class EditorEngine {
   }
 
   async move(blockId: string, targetParentId: string | null, targetAfterId: string | null): Promise<any> {
+    await this.flush();
     const tx = this.startTransaction();
     tx.moveBlock(blockId, targetParentId, targetAfterId);
     return tx.commit();
   }
 
   async nest(blockId: string): Promise<any> {
+    await this.flush();
     const store = useBlockStore.getState();
     const { blockOrder, blockMap } = store;
     const index = blockOrder.indexOf(blockId);
@@ -75,6 +91,7 @@ export class EditorEngine {
   }
 
   async unnest(blockId: string): Promise<any> {
+    await this.flush();
     const store = useBlockStore.getState();
     const { blockMap } = store;
     const currentBlock = blockMap[blockId];
@@ -89,6 +106,7 @@ export class EditorEngine {
   }
 
   async split(blockId: string, contentBefore: string, contentAfter: string, newType?: string): Promise<any> {
+    await this.flush();
     const tx = this.startTransaction();
     const block = useBlockStore.getState().blockMap[blockId];
     if (!block) return;
@@ -109,6 +127,7 @@ export class EditorEngine {
   }
 
   async merge(blockId: string, targetId: string): Promise<any> {
+    await this.flush();
     const store = useBlockStore.getState();
     const block = store.blockMap[blockId];
     const target = store.blockMap[targetId];
@@ -123,6 +142,7 @@ export class EditorEngine {
   }
 
   async convertType(blockId: string, newType: string): Promise<any> {
+    await this.flush();
     const tx = this.startTransaction();
     if (newType === 'page') {
       const { createId } = await import('../ids/identity');
@@ -139,6 +159,7 @@ export class EditorEngine {
   }
 
   async createColumns(afterBlockId: string | null, count = 2): Promise<any> {
+    await this.flush();
     const store = useBlockStore.getState();
     const block = afterBlockId ? store.blockMap[afterBlockId] : null;
     const parentId = block ? block.parentId : null;

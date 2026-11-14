@@ -16,7 +16,7 @@ import { TiptapMention } from '../extensions/tiptapMention';
 import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
 import { TiptapTransclusion } from '../extensions/tiptapTransclusion';
-import { useIntelligenceStore } from '../stores/intelligenceStore';
+import { useIntelligenceStore, scheduleIdleFlashcardSync } from '../stores/intelligenceStore';
 import { useEditorEngine } from './useEditorEngine';
 import { useSelectionStore } from '../core/editor/selectionStore';
 import { getBlockFragment, waitForDoc } from '../core/crdtManager';
@@ -56,44 +56,7 @@ const CustomHighlight = Mark.create({
 });
 
 
-const EDITABLE_TYPES = [
-  'text', 'heading1', 'heading2', 'heading3',
-  'toggle_heading1', 'toggle_heading2', 'toggle_heading3',
-  'todo', 'quote', 'callout', 'bullet', 'numbered', 'toggle', 'code'
-];
-
-function isBlockVisibleInTree(blockId: string, blockMap: Record<string, any>): boolean {
-  let curr = blockMap[blockId];
-  while (curr && curr.parentId) {
-    const parent = blockMap[curr.parentId];
-    if (!parent) break;
-    const isCollapsible = parent.type === 'toggle' || parent.type === 'toggle_heading1' || parent.type === 'toggle_heading2' || parent.type === 'toggle_heading3';
-    if (isCollapsible && parent.properties?.expanded === false) {
-      return false;
-    }
-    curr = parent;
-  }
-  return true;
-}
-
-function getNextEditableBlockId(currentId: string, direction: 'up' | 'down') {
-  const store = useBlockStore.getState();
-  const { blockOrder, blockMap } = store;
-  const index = blockOrder.indexOf(currentId);
-  if (index === -1) return null;
-
-  const step = direction === 'up' ? -1 : 1;
-  let i = index + step;
-  while (i >= 0 && i < blockOrder.length) {
-    const nextId = blockOrder[i];
-    const block = blockMap[nextId];
-    if (block && EDITABLE_TYPES.includes(block.type) && isBlockVisibleInTree(nextId, blockMap)) {
-      return nextId;
-    }
-    i += step;
-  }
-  return null;
-}
+import { EDITABLE_TYPES, isBlockVisibleInTree, getNextEditableBlockId } from '../utils/editorBlockNavigation';
 
 export interface UseBlockEditorOptions {
   placeholder?: string;
@@ -139,12 +102,12 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
   const saveContent = useCallback((blockId: string, rawHtml: string) => {
     const cleanHtml = sanitize(rawHtml);
     lastSavedContentRef.current = cleanHtml;
-    engine.startTransaction().updateBlock(blockId, { content: cleanHtml }).commit();
+    engine.updateBlock(blockId, { content: cleanHtml });
 
-    // Auto-sync cloze deletions & Q/A syntax into intelligenceStore
+    // Auto-sync cloze deletions & Q/A syntax into intelligenceStore (debounced during idle time)
     try {
       const allBlocks = Object.values(useBlockStore.getState().blockMap);
-      useIntelligenceStore.getState().syncBlockFlashcards(block.pageId, allBlocks);
+      scheduleIdleFlashcardSync(block.pageId, allBlocks, 350);
     } catch (e) {
       /* ignore sync error */
     }
@@ -281,7 +244,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
             const prevId = getNextEditableBlockId(block.id, 'up');
             if (prevId) {
               event.preventDefault();
-              useBlockStore.getState().setFocusBlock(prevId, 'end');
+              useBlockStore.getState().setFocusBlock(prevId, 'end', 'up');
               return true;
             }
           }
@@ -293,7 +256,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
             const nextId = getNextEditableBlockId(block.id, 'down');
             if (nextId) {
               event.preventDefault();
-              useBlockStore.getState().setFocusBlock(nextId, 'start');
+              useBlockStore.getState().setFocusBlock(nextId, 'start', 'down');
               return true;
             }
           }
@@ -347,7 +310,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
             if (results && results[1]) {
               const newBlock = results[1];
               // Set focus position to start of the new block
-              useBlockStore.getState().setFocusBlock(newBlock.id, 'start');
+              useBlockStore.getState().setFocusBlock(newBlock.id, 'start', 'down');
             }
           });
           return true;
@@ -370,7 +333,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
             } else {
               const prevId = getNextEditableBlockId(block.id, 'up');
               if (prevId) {
-                useBlockStore.getState().setFocusBlock(prevId, 'end');
+                useBlockStore.getState().setFocusBlock(prevId, 'end', 'up');
               }
               engine.startTransaction().deleteBlock(block.id).commit();
             }
@@ -411,7 +374,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
                   .commit();
                 
                 // Focus previous block at the junction
-                useBlockStore.getState().setFocusBlock(prevId, oldTextLength + 1);
+                useBlockStore.getState().setFocusBlock(prevId, oldTextLength + 1, 'up');
                 return true;
               }
             }
@@ -524,6 +487,24 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
       }
     }
   }, [isFocusedTarget, block.id, editor]);
+
+  // Flush uncommitted changes immediately on unmount and clean activeEditor ref
+  useEffect(() => {
+    return () => {
+      if (editor && !editor.isDestroyed) {
+        const rawHtml = editor.getHTML();
+        const cleanHtml = sanitize(rawHtml);
+        if (cleanHtml !== lastSavedContentRef.current) {
+          lastSavedContentRef.current = cleanHtml;
+          engine.startTransaction().updateBlock(block.id, { content: cleanHtml }).commit();
+        }
+      }
+      const uiStore = useUIStore.getState();
+      if (uiStore.activeEditorBlockId === block.id) {
+        uiStore.clearActiveEditor();
+      }
+    };
+  }, [editor, block.id, engine]);
 
   return editor;
 }

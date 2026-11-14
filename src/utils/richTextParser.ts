@@ -3,6 +3,7 @@
 // This is the critical bridge between Notion export HTML and our
 // annotation-based data model.
 
+import React from 'react';
 import { createAnnotations, createRichTextSpan } from './blockSchema';
 import { RichTextSpan, RichTextAnnotation } from '../types/block';
 
@@ -32,10 +33,10 @@ export function parseHtmlToRichText(html: string | null | undefined): RichTextSp
     return [{ text: trimmed, annotations: createAnnotations(), href: null }];
   }
 
-  // In Node/test environments without DOMParser, return plain span directly
+  // In Node/test/worker environments without DOMParser, use lightweight tokenizing fallback
   const parser = getDOMParser();
   if (!parser) {
-    return [{ text: trimmed.replace(/<[^>]+>/g, ''), annotations: createAnnotations(), href: null }];
+    return parseHtmlFallback(trimmed);
   }
 
   // Use cached DOMParser for correct HTML interpretation
@@ -50,6 +51,138 @@ export function parseHtmlToRichText(html: string | null | undefined): RichTextSp
   walkNode(body, createAnnotations(), null, spans);
 
   // Post-process: merge adjacent spans with identical annotations
+  return mergeAdjacentSpans(spans);
+}
+
+/**
+ * Lightweight tokenizing HTML fallback for Node.js test runner and headless environments.
+ */
+function parseHtmlFallback(html: string): RichTextSpan[] {
+  const spans: RichTextSpan[] = [];
+  const tagRegex = /<(\/)?([a-z0-9_-]+)([^>]*)>|([^<]+)/gi;
+  let match;
+
+  let currentAnnotations = createAnnotations();
+  let currentHref: string | null = null;
+  const tagStack: { tag: string; annotations: RichTextAnnotation; href: string | null }[] = [];
+
+  while ((match = tagRegex.exec(html)) !== null) {
+    const [, isClose, tagName, attrs, textContent] = match;
+
+    if (textContent) {
+      if (textContent.length > 0) {
+        spans.push(createRichTextSpan(textContent, { ...currentAnnotations }, currentHref));
+      }
+      continue;
+    }
+
+    const tag = (tagName || '').toLowerCase();
+
+    if (tag === 'br') {
+      spans.push(createRichTextSpan('\n', { ...currentAnnotations }, currentHref));
+      continue;
+    }
+
+    if (isClose) {
+      if (tagStack.length > 0) {
+        const popped = tagStack.pop();
+        if (popped) {
+          currentAnnotations = popped.annotations;
+          currentHref = popped.href;
+        }
+      }
+      continue;
+    }
+
+    // Opening tag: Check for Mention
+    if (attrs && (attrs.includes('data-mention') || attrs.includes('page-mention') || attrs.includes('mention-chip'))) {
+      const pageIdMatch = attrs.match(/data-page-id=["']([^"']+)["']/) || attrs.match(/href=["'][^"']*\/page\/([^"']+)["']/);
+      const pageId = pageIdMatch ? pageIdMatch[1] : '';
+      const closeTagIdx = html.indexOf(`</${tag}>`, match.index);
+      const innerHtml = closeTagIdx !== -1 ? html.substring(match.index + match[0].length, closeTagIdx) : '';
+      const iconMatch = innerHtml.match(/mention-icon["']>([^<]+)<\//) || innerHtml.match(/data-icon=["']([^"']+)["']/);
+      const titleMatch = innerHtml.match(/mention-label["']>([^<]+)<\//) || innerHtml.match(/data-title=["']([^"']+)["']/);
+      const title = titleMatch ? titleMatch[1] : innerHtml.replace(/<[^>]+>/g, '').trim() || 'Untitled';
+      const icon = iconMatch ? iconMatch[1] : '📄';
+
+      spans.push({
+        text: title,
+        annotations: { ...currentAnnotations },
+        href: `/app/page/${pageId}`,
+        mention: { pageId, title, icon }
+      });
+
+      if (closeTagIdx !== -1) {
+        tagRegex.lastIndex = closeTagIdx + `</${tag}>`.length;
+      }
+      continue;
+    }
+
+    // Opening tag: Check for Transclusion
+    if (attrs && (attrs.includes('data-transclusion') || attrs.includes('transclusion-chip'))) {
+      const blockIdMatch = attrs.match(/data-block-id=["']([^"']+)["']/);
+      const pageIdMatch = attrs.match(/data-page-id=["']([^"']+)["']/);
+      const textMatch = attrs.match(/data-text=["']([^"']+)["']/);
+      const blockTypeMatch = attrs.match(/data-block-type=["']([^"']+)["']/);
+
+      const blockId = blockIdMatch ? blockIdMatch[1] : '';
+      const pageId = pageIdMatch ? pageIdMatch[1] : '';
+      const text = textMatch ? textMatch[1] : 'Transcluded block';
+      const blockType = blockTypeMatch ? blockTypeMatch[1] : 'text';
+
+      spans.push({
+        text: `⎘ ${text}`,
+        annotations: { ...currentAnnotations },
+        href: null,
+        transclusion: { blockId, pageId, text, blockType }
+      });
+
+      const closeTagIdx = html.indexOf(`</${tag}>`, match.index);
+      if (closeTagIdx !== -1) {
+        tagRegex.lastIndex = closeTagIdx + `</${tag}>`.length;
+      }
+      continue;
+    }
+
+    // Opening tag: Check for Database Chip
+    if (attrs && (attrs.includes('data-db-id') || attrs.includes('db-chip'))) {
+      const databaseIdMatch = attrs.match(/data-db-id=["']([^"']+)["']/);
+      const pageIdMatch = attrs.match(/data-page-id=["']([^"']+)["']/);
+      const labelMatch = attrs.match(/data-label=["']([^"']+)["']/);
+
+      const databaseId = databaseIdMatch ? databaseIdMatch[1] : '';
+      const pageId = pageIdMatch ? pageIdMatch[1] : '';
+      const label = labelMatch ? labelMatch[1] : 'Database';
+
+      spans.push({
+        text: label,
+        annotations: { ...currentAnnotations },
+        href: null,
+        databaseChip: { databaseId, pageId, label }
+      });
+
+      const closeTagIdx = html.indexOf(`</${tag}>`, match.index);
+      if (closeTagIdx !== -1) {
+        tagRegex.lastIndex = closeTagIdx + `</${tag}>`.length;
+      }
+      continue;
+    }
+
+    // Formatting tags
+    tagStack.push({ tag, annotations: { ...currentAnnotations }, href: currentHref });
+
+    if (tag === 'strong' || tag === 'b') currentAnnotations.bold = true;
+    if (tag === 'em' || tag === 'i') currentAnnotations.italic = true;
+    if (tag === 'u') currentAnnotations.underline = true;
+    if (tag === 's' || tag === 'del' || tag === 'strike') currentAnnotations.strikethrough = true;
+    if (tag === 'code') currentAnnotations.code = true;
+    if (tag === 'mark') currentAnnotations.backgroundColor = 'yellow_background';
+    if (tag === 'a' && attrs) {
+      const hrefMatch = attrs.match(/href=["']([^"']+)["']/);
+      if (hrefMatch) currentHref = hrefMatch[1];
+    }
+  }
+
   return mergeAdjacentSpans(spans);
 }
 
@@ -75,6 +208,55 @@ function walkNode(node: Node, annotations: RichTextAnnotation, href: string | nu
 
   // Skip non-content elements
   if (tag === 'style' || tag === 'script' || tag === 'head' || tag === 'meta' || tag === 'link') {
+    return;
+  }
+
+  // Handle line breaks
+  if (tag === 'br') {
+    spans.push(createRichTextSpan('\n', { ...annotations }, href));
+    return;
+  }
+
+  // Handle Mentions (@page)
+  if (element.hasAttribute('data-mention') || element.classList.contains('mention-chip') || element.classList.contains('page-mention')) {
+    const pageId = element.getAttribute('data-page-id') || element.getAttribute('href')?.replace(/^.*\/page\//, '') || '';
+    const title = element.getAttribute('data-title') || element.querySelector('.mention-label')?.textContent || element.textContent || 'Untitled';
+    const icon = element.getAttribute('data-icon') || element.querySelector('.mention-icon')?.textContent || '📄';
+    spans.push({
+      text: title,
+      annotations: { ...annotations },
+      href: `/app/page/${pageId}`,
+      mention: { pageId, title, icon }
+    });
+    return;
+  }
+
+  // Handle Transclusions (((blockId)))
+  if (element.hasAttribute('data-transclusion') || element.classList.contains('transclusion-chip')) {
+    const blockId = element.getAttribute('data-block-id') || '';
+    const pageId = element.getAttribute('data-page-id') || '';
+    const text = element.getAttribute('data-text') || element.textContent?.replace(/^⎘\s*/, '') || '';
+    const blockType = element.getAttribute('data-block-type') || 'text';
+    spans.push({
+      text: `⎘ ${text}`,
+      annotations: { ...annotations },
+      href: null,
+      transclusion: { blockId, pageId, text, blockType }
+    });
+    return;
+  }
+
+  // Handle Database Chips
+  if (element.hasAttribute('data-db-id') || element.classList.contains('db-chip')) {
+    const databaseId = element.getAttribute('data-db-id') || '';
+    const pageId = element.getAttribute('data-page-id') || '';
+    const label = element.getAttribute('data-label') || element.textContent || '';
+    spans.push({
+      text: label,
+      annotations: { ...annotations },
+      href: null,
+      databaseChip: { databaseId, pageId, label }
+    });
     return;
   }
 
@@ -167,7 +349,8 @@ function mergeAdjacentSpans(spans: RichTextSpan[]): RichTextSpan[] {
     const prev = result[result.length - 1];
     const curr = spans[i];
 
-    if (annotationsEqual(prev.annotations, curr.annotations) && prev.href === curr.href) {
+    const hasChips = prev.mention || curr.mention || prev.transclusion || curr.transclusion || prev.databaseChip || curr.databaseChip;
+    if (!hasChips && annotationsEqual(prev.annotations, curr.annotations) && prev.href === curr.href) {
       // Merge text
       result[result.length - 1] = {
         ...prev,
@@ -292,4 +475,127 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// ─── React VDOM Renderer ──────────────────────────────────────────
+
+/**
+ * Render structured RichTextSpan[] into lightweight, pure React VDOM.
+ * Bypasses all ProseMirror, TipTap, and heavy editor DOM overhead.
+ */
+export function renderRichTextToVDOM(spans: RichTextSpan[]): React.ReactNode {
+  if (!spans || spans.length === 0) return null;
+
+  return spans.map((span, index) => {
+    // 1. Mention Chip (@page)
+    if (span.mention) {
+      return React.createElement(
+        'a',
+        {
+          key: index,
+          className: 'page-mention mention-chip',
+          href: span.href || `/app/page/${span.mention.pageId}`,
+          'data-page-id': span.mention.pageId,
+          contentEditable: false,
+        },
+        React.createElement('span', { className: 'mention-icon' }, span.mention.icon || '📄'),
+        React.createElement('span', { className: 'mention-label' }, span.mention.title || span.text)
+      );
+    }
+
+    // 2. Transclusion Chip (((blockId)))
+    if (span.transclusion) {
+      return React.createElement(
+        'span',
+        {
+          key: index,
+          className: 'transclusion-chip',
+          'data-transclusion': '',
+          'data-block-id': span.transclusion.blockId,
+          'data-page-id': span.transclusion.pageId,
+          'data-text': span.transclusion.text,
+          'data-block-type': span.transclusion.blockType,
+          contentEditable: false,
+          title: `Transcluded from ${span.transclusion.pageId}`,
+        },
+        `⎘ ${span.transclusion.text}`
+      );
+    }
+
+    // 3. Database Chip
+    if (span.databaseChip) {
+      return React.createElement(
+        'span',
+        {
+          key: index,
+          className: 'db-chip',
+          'data-db-id': span.databaseChip.databaseId,
+          'data-page-id': span.databaseChip.pageId,
+          contentEditable: false,
+        },
+        `📊 ${span.databaseChip.label || span.text}`
+      );
+    }
+
+    // 4. Formatted Text Span
+    let node: React.ReactNode = span.text;
+
+    // Handle newlines
+    if (typeof span.text === 'string' && span.text.includes('\n')) {
+      const parts = span.text.split('\n');
+      node = parts.map((part, pIdx) =>
+        React.createElement(
+          React.Fragment,
+          { key: pIdx },
+          pIdx > 0 ? React.createElement('br') : null,
+          part
+        )
+      );
+    }
+
+    const { annotations, href } = span;
+    if (annotations) {
+      if (annotations.code) {
+        node = React.createElement('code', null, node);
+      }
+      if (annotations.bold) {
+        node = React.createElement('strong', null, node);
+      }
+      if (annotations.italic) {
+        node = React.createElement('em', null, node);
+      }
+      if (annotations.underline) {
+        node = React.createElement('u', null, node);
+      }
+      if (annotations.strikethrough) {
+        node = React.createElement('s', null, node);
+      }
+      if (annotations.backgroundColor && annotations.backgroundColor !== 'default') {
+        node = React.createElement('mark', { className: `hl-${annotations.backgroundColor}` }, node);
+      }
+      if (annotations.color && annotations.color !== 'default') {
+        node = React.createElement('span', { className: `color-${annotations.color}` }, node);
+      }
+    }
+
+    if (href) {
+      node = React.createElement(
+        'a',
+        {
+          href,
+          className: 'editor-link',
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          onClick: (e: React.MouseEvent) => {
+            if (!e.metaKey && !e.ctrlKey) {
+              e.stopPropagation();
+            }
+          },
+        },
+        node
+      );
+    }
+
+    return React.createElement(React.Fragment, { key: index }, node);
+  });
 }

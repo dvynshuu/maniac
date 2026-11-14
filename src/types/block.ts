@@ -60,6 +60,22 @@ export interface RichTextSpan {
   text: string;
   annotations: RichTextAnnotation;
   href: string | null;
+  mention?: {
+    pageId: string;
+    title: string;
+    icon?: string;
+  };
+  transclusion?: {
+    blockId: string;
+    pageId: string;
+    text: string;
+    blockType?: string;
+  };
+  databaseChip?: {
+    databaseId?: string;
+    pageId?: string;
+    label?: string;
+  };
 }
 
 export interface BlockProperties {

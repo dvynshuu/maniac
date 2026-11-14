@@ -10,6 +10,15 @@ export interface QueuedOp {
   payload: Record<string, any>;
 }
 
+interface BufferedEntry {
+  engine: EditorEngine;
+  blockId: string;
+  updates: Record<string, any>;
+  resolvers: Array<(value: any) => void>;
+  rejecters: Array<(reason: any) => void>;
+  timer: any;
+}
+
 /**
  * ─── Editor Transaction ─────────────────────────────────────────
  * Batches multiple block and text operations into a single unit.
@@ -18,6 +27,79 @@ export class Transaction {
   engine: EditorEngine;
   ops: QueuedOp[];
   private _isCommitted: boolean;
+  private static _bufferedOps = new Map<string, BufferedEntry>();
+
+  /**
+   * Coalesce rapid text/property mutations for a block in a 150ms transaction buffer.
+   * Flushes atomic transaction once typing pauses.
+   */
+  static async bufferBlockUpdate(
+    engine: EditorEngine,
+    blockId: string,
+    updates: Record<string, any>,
+    delayMs = 150
+  ): Promise<any> {
+    const key = `${engine.pageId}:${blockId}`;
+    return new Promise((resolve, reject) => {
+      const existing = Transaction._bufferedOps.get(key);
+      if (existing) {
+        if (existing.timer) clearTimeout(existing.timer);
+        existing.updates = {
+          ...existing.updates,
+          ...updates,
+          properties: {
+            ...(existing.updates.properties || {}),
+            ...(updates.properties || {}),
+          }
+        };
+        existing.resolvers.push(resolve);
+        existing.rejecters.push(reject);
+        existing.timer = setTimeout(() => {
+          Transaction.flushBufferedBlock(key);
+        }, delayMs);
+      } else {
+        const entry: BufferedEntry = {
+          engine,
+          blockId,
+          updates: { ...updates },
+          resolvers: [resolve],
+          rejecters: [reject],
+          timer: setTimeout(() => {
+            Transaction.flushBufferedBlock(key);
+          }, delayMs),
+        };
+        Transaction._bufferedOps.set(key, entry);
+      }
+    });
+  }
+
+  static async flushBufferedBlock(key: string): Promise<any> {
+    const entry = Transaction._bufferedOps.get(key);
+    if (!entry) return;
+    Transaction._bufferedOps.delete(key);
+    if (entry.timer) clearTimeout(entry.timer);
+
+    try {
+      const tx = entry.engine.startTransaction();
+      tx.updateBlock(entry.blockId, entry.updates);
+      const res = await tx.commit();
+      entry.resolvers.forEach(r => r(res));
+      return res;
+    } catch (err) {
+      entry.rejecters.forEach(r => r(err));
+      throw err;
+    }
+  }
+
+  static async flushAll(): Promise<void> {
+    const keys = Array.from(Transaction._bufferedOps.keys());
+    if (keys.length === 0) return;
+    await Promise.all(keys.map(k => Transaction.flushBufferedBlock(k)));
+  }
+
+  static getPendingBufferCount(): number {
+    return Transaction._bufferedOps.size;
+  }
 
   constructor(editorEngine: EditorEngine) {
     this.engine = editorEngine;
@@ -138,6 +220,34 @@ export class Transaction {
   }
 
   normalize(): this {
+    if (this.ops.length <= 1) return this;
+
+    const coalescedOps: QueuedOp[] = [];
+    const blockUpdateIndices = new Map<string, number>();
+
+    for (const op of this.ops) {
+      if (op.type === 'block/update' && op.payload?.blockId) {
+        const bId = op.payload.blockId;
+        if (blockUpdateIndices.has(bId)) {
+          const idx = blockUpdateIndices.get(bId)!;
+          const prev = coalescedOps[idx];
+          prev.payload.updates = {
+            ...prev.payload.updates,
+            ...op.payload.updates,
+            properties: {
+              ...(prev.payload.updates?.properties || {}),
+              ...(op.payload.updates?.properties || {}),
+            }
+          };
+          continue;
+        } else {
+          blockUpdateIndices.set(bId, coalescedOps.length);
+        }
+      }
+      coalescedOps.push(op);
+    }
+
+    this.ops = coalescedOps;
     return this;
   }
 

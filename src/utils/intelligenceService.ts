@@ -1,6 +1,11 @@
 import { db } from '../db/database';
 import { SecurityService } from './securityService';
 import { batchDecrypt } from './cryptoWorker';
+import {
+  workerComputeKnowledgeVelocity,
+  workerScoreNextActions,
+  workerScoreForgetting
+} from '../core/transformWorker';
 
 interface IntelligenceCache {
   nextActions: any[] | null;
@@ -68,29 +73,7 @@ export class IntelligenceService {
     };
 
     const decrypted = key ? await batchDecrypt(todos, key, decryptTodo, 15) : todos;
-    
-    const result = decrypted
-      .filter((t: any) => {
-        if (t.properties?.checked) return false;
-        const clean = (t.content || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
-        return Boolean(clean);
-      })
-      .map((t: any) => {
-        const cleanContent = (t.content || '')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        let priority = 0;
-        if (cleanContent.includes('!!!')) priority = 3;
-        else if (cleanContent.includes('!!')) priority = 2;
-        else if (cleanContent.includes('!')) priority = 1;
-        
-        return { ...t, content: cleanContent, priority };
-      })
-      .sort((a: any, b: any) => b.priority - a.priority || b.updatedAt - a.updatedAt)
-      .slice(0, 10);
+    const result = await workerScoreNextActions(decrypted);
 
     _intelligenceCache.nextActions = result;
     _intelligenceCache.nextActionsTimestamp = now;
@@ -148,26 +131,8 @@ export class IntelligenceService {
     };
 
     const decryptedTodos = key ? await batchDecrypt(abandonedTodosRaw, key, decryptTodo, 10) : abandonedTodosRaw;
-    const abandonedTodos = decryptedTodos
-      .filter((t: any) => {
-        if (t.properties?.checked) return false;
-        const clean = (t.content || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
-        return Boolean(clean);
-      })
-      .map((t: any) => {
-        const cleanContent = (t.content || '')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        return { ...t, content: cleanContent };
-      })
-      .sort((a: any, b: any) => a.updatedAt - b.updatedAt);
+    const result = await workerScoreForgetting(decryptedPages, decryptedTodos);
 
-    const result = {
-      stalePages: decryptedPages.sort((a: any, b: any) => a.updatedAt - b.updatedAt),
-      abandonedTodos: abandonedTodos
-    };
     _intelligenceCache.forgetting = result;
     _intelligenceCache.forgettingTimestamp = now;
     return result;
@@ -239,36 +204,17 @@ export class IntelligenceService {
       db.relations.count()
     ]);
 
-    const dailyActivity = [0, 0, 0, 0, 0, 0, 0];
     const weeklyBlocks = await db.blocks.where('updatedAt').above(weekAgo).limit(100).toArray();
-    
-    weeklyBlocks.forEach(b => {
-      const daysAgo = Math.floor((now - b.updatedAt) / (24 * 60 * 60 * 1000));
-      if (daysAgo >= 0 && daysAgo < 7) {
-        dailyActivity[6 - daysAgo]++;
-      }
-    });
+    const weeklyTimestamps = weeklyBlocks.map(b => b.updatedAt);
 
-    const maxActivity = Math.max(...dailyActivity, 1);
-    const normalizedActivity = dailyActivity.map(count => Math.max(5, Math.round((count / maxActivity) * 100)));
-
-    let depthLevel = 1;
-    if (totalBlocks > 2000 && totalRelations > 200) depthLevel = 5;
-    else if (totalBlocks > 500 && totalRelations > 50) depthLevel = 4;
-    else if (totalBlocks > 100 && totalRelations > 10) depthLevel = 3;
-    else if (totalBlocks > 50) depthLevel = 2;
-
-    const velocity = Math.min(100, Math.round((dayBlocks * 5) + (weekBlocks * 0.5)));
-    
-    const result = {
-      velocity,
+    const result = await workerComputeKnowledgeVelocity({
       dayBlocks,
       weekBlocks,
       totalBlocks,
       totalRelations,
-      dailyActivity: normalizedActivity,
-      depthLevel
-    };
+      weeklyTimestamps,
+      now
+    });
     _intelligenceCache.knowledgeVelocity = result;
     _intelligenceCache.velocityTimestamp = now;
     return result;

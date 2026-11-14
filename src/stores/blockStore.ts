@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { db } from '../db/database';
 import { SecurityService } from '../utils/securityService';
 import { useSecurityStore } from './securityStore';
 import { invalidateStore } from '../core/derivedCache';
 import { Block } from '../types/block';
 import { compareSortOrder } from '../utils/helpers';
+import { getNextEditableBlockId } from '../utils/editorBlockNavigation';
+import { scheduleIdleBacklinkIndex } from './backlinkStore';
 
 /**
  * Safely resolve a block's properties from raw DB data.
@@ -23,40 +26,47 @@ function resolveProperties(raw: any): Record<string, any> {
 }
 
 export interface BlockStore {
+  blocks: Record<string, Block>;
   blockMap: Record<string, Block>;
   blockOrder: string[];
   focusBlockId: string | null;
   focusPosition: 'start' | 'end' | number;
+  prewarmedBlockId: string | null;
+  navigationDirection: 'up' | 'down';
   lastLoadId: number;
 
   getBlocks: () => Block[];
   getBlock: (id: string) => Block | undefined;
   loadBlocks: (pageId: string | null) => Promise<void>;
-  setFocusBlock: (blockId: string | null, position?: 'start' | 'end' | number) => void;
+  setFocusBlock: (blockId: string | null, position?: 'start' | 'end' | number, direction?: 'up' | 'down') => void;
   getDescendants: (blockId: string) => string[];
 }
 
-export const useBlockStore = create<BlockStore>((set, get) => ({
-  blockMap: {},
-  blockOrder: [],
-  focusBlockId: null,
-  focusPosition: 'end',
-  lastLoadId: 0,
+export const useBlockStore = create<BlockStore>()(
+  subscribeWithSelector((set, get) => ({
+    blocks: {},
+    blockMap: {},
+    blockOrder: [],
+    focusBlockId: null,
+    focusPosition: 'end',
+    prewarmedBlockId: null,
+    navigationDirection: 'down',
+    lastLoadId: 0,
 
-  getBlocks: () => {
-    const { blockMap, blockOrder } = get();
-    return blockOrder.map(id => blockMap[id]).filter(Boolean);
-  },
+    getBlocks: () => {
+      const { blockMap, blockOrder } = get();
+      return blockOrder.map(id => blockMap[id]).filter(Boolean);
+    },
 
-  getBlock: (id) => get().blockMap[id],
+    getBlock: (id) => get().blockMap[id] ?? get().blocks[id],
 
-  loadBlocks: async (pageId) => {
-    if (!pageId) {
-      set({ blockMap: {}, blockOrder: [] });
-      return;
-    }
-    const loadId = (get().lastLoadId || 0) + 1;
-    set({ lastLoadId: loadId });
+    loadBlocks: async (pageId) => {
+      if (!pageId) {
+        set({ blockMap: {}, blocks: {}, blockOrder: [], focusBlockId: null, prewarmedBlockId: null });
+        return;
+      }
+      const loadId = (get().lastLoadId || 0) + 1;
+      set({ lastLoadId: loadId });
 
     try {
       const key = useSecurityStore.getState().derivedKey;
@@ -82,7 +92,7 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
       // Stale load guard
       if (get().lastLoadId !== loadId) return;
 
-      set({ blockMap: initialMap, blockOrder: initialOrder });
+      set({ blockMap: initialMap, blocks: initialMap, blockOrder: initialOrder });
       invalidateStore('blockStore');
       invalidateStore('headings');
       invalidateStore('synced');
@@ -152,7 +162,7 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
                 changed = true;
               }
             });
-            return changed ? { blockMap: newMap } : state;
+            return changed ? { blockMap: newMap, blocks: newMap } : state;
           });
 
           // Yield to main thread
@@ -166,8 +176,21 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
     }
   },
 
-  setFocusBlock: (blockId, position = 'end') => {
-    set({ focusBlockId: blockId, focusPosition: position });
+  setFocusBlock: (blockId, position = 'end', direction = 'down') => {
+    let prewarmed: string | null = null;
+    if (blockId) {
+      const { blockOrder, blockMap } = get();
+      prewarmed = getNextEditableBlockId(blockId, direction, blockOrder, blockMap);
+      if (!prewarmed) {
+        prewarmed = getNextEditableBlockId(blockId, direction === 'down' ? 'up' : 'down', blockOrder, blockMap);
+      }
+    }
+    set({
+      focusBlockId: blockId,
+      focusPosition: position,
+      prewarmedBlockId: prewarmed,
+      navigationDirection: direction,
+    });
   },
 
   /**
@@ -197,7 +220,29 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
     collect(blockId);
     return descendants;
   },
-}));
+})));
+
+// Guarantee that s.blocks and s.blockMap are always identical references
+const _originalBlockStoreSetState = useBlockStore.setState;
+useBlockStore.setState = (partial: any, replace?: any) => {
+  if (typeof partial === 'function') {
+    return _originalBlockStoreSetState((state: any) => {
+      const next = partial(state);
+      if (next && next.blockMap && !next.blocks) {
+        next.blocks = next.blockMap;
+      } else if (next && next.blocks && !next.blockMap) {
+        next.blockMap = next.blocks;
+      }
+      return next;
+    }, replace);
+  }
+  if (partial && partial.blockMap && !partial.blocks) {
+    partial.blocks = partial.blockMap;
+  } else if (partial && partial.blocks && !partial.blockMap) {
+    partial.blockMap = partial.blocks;
+  }
+  return _originalBlockStoreSetState(partial, replace);
+};
 
 // Performance listener: tracks fine-grained changes to invalidate derived caches
 useBlockStore.subscribe((state, prevState) => {
@@ -215,33 +260,68 @@ useBlockStore.subscribe((state, prevState) => {
     let headingChanged = false;
     let syncedChanged = false;
 
-    for (const id of state.blockOrder) {
-      const cur = state.blockMap[id];
-      const prev = prevState.blockMap[id];
-      if (cur !== prev) {
-        if (!prev) {
+    // Fast O(1) path: if the user is typing in the focused block, inspect it directly
+    const focusId = state.focusBlockId;
+    if (focusId && state.blockMap[focusId] !== prevState.blockMap[focusId]) {
+      const cur = state.blockMap[focusId];
+      const prev = prevState.blockMap[focusId];
+      if (cur) {
+        if (!prev || cur.type !== prev.type) {
           headingChanged = true;
           syncedChanged = true;
-          break;
+        } else {
+          const isHeading =
+            cur.type === 'heading1' ||
+            cur.type === 'heading2' ||
+            cur.type === 'heading3' ||
+            cur.type === 'toggle_heading1' ||
+            cur.type === 'toggle_heading2' ||
+            cur.type === 'toggle_heading3';
+          if (isHeading && (cur.content !== prev.content || cur.properties?.level !== prev.properties?.level)) {
+            headingChanged = true;
+          }
+          const isSynced = cur.type === 'synced_block' || cur.type === 'synced_reference';
+          if (isSynced && (cur.properties?.sourceBlockId !== prev.properties?.sourceBlockId || cur.properties?.isOriginal !== prev.properties?.isOriginal)) {
+            syncedChanged = true;
+          }
         }
-        if (cur.type !== prev.type) {
-          headingChanged = true;
-          syncedChanged = true;
-          break;
+        if (cur.content !== prev?.content && cur.pageId) {
+          scheduleIdleBacklinkIndex(cur.id, cur.pageId, cur.content, 350);
         }
-        const isHeading =
-          cur.type === 'heading1' ||
-          cur.type === 'heading2' ||
-          cur.type === 'heading3' ||
-          cur.type === 'toggle_heading1' ||
-          cur.type === 'toggle_heading2' ||
-          cur.type === 'toggle_heading3';
-        if (isHeading && (cur.content !== prev.content || cur.properties?.level !== prev.properties?.level)) {
-          headingChanged = true;
-        }
-        const isSynced = cur.type === 'synced_block' || cur.type === 'synced_reference';
-        if (isSynced && (cur.properties?.sourceBlockId !== prev.properties?.sourceBlockId || cur.properties?.isOriginal !== prev.properties?.isOriginal)) {
-          syncedChanged = true;
+      }
+    } else {
+      // Fallback for batch updates or un-focused mutations
+      for (const id of state.blockOrder) {
+        const cur = state.blockMap[id];
+        const prev = prevState.blockMap[id];
+        if (cur !== prev) {
+          if (!cur || !prev) {
+            headingChanged = true;
+            syncedChanged = true;
+            break;
+          }
+          if (cur.type !== prev.type) {
+            headingChanged = true;
+            syncedChanged = true;
+            break;
+          }
+          const isHeading =
+            cur.type === 'heading1' ||
+            cur.type === 'heading2' ||
+            cur.type === 'heading3' ||
+            cur.type === 'toggle_heading1' ||
+            cur.type === 'toggle_heading2' ||
+            cur.type === 'toggle_heading3';
+          if (isHeading && (cur.content !== prev.content || cur.properties?.level !== prev.properties?.level)) {
+            headingChanged = true;
+          }
+          const isSynced = cur.type === 'synced_block' || cur.type === 'synced_reference';
+          if (isSynced && (cur.properties?.sourceBlockId !== prev.properties?.sourceBlockId || cur.properties?.isOriginal !== prev.properties?.isOriginal)) {
+            syncedChanged = true;
+          }
+          if (cur.content !== prev.content && cur.pageId) {
+            scheduleIdleBacklinkIndex(cur.id, cur.pageId, cur.content, 350);
+          }
         }
       }
     }

@@ -2,13 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { selectHeadings, TocHeading } from '../../../core/derivedCache';
 import { ListTree, ArrowUpRight } from 'lucide-react';
+import { scheduleIdle, CancelFn } from '../../../utils/idleScheduler';
 
 export default function TableOfContentsBlock({ block }: { block: any }) {
-  // Scoped derivedCache selector: returns cached array instance unless headings actually changed,
-  // preventing re-render thrashing and IntersectionObserver resets during typing in paragraphs.
-  const headings = useBlockStore(selectHeadings);
+  // Scoped debounced headings: uses requestIdleCallback to debounce heading updates by 350ms
+  // so typing in headings never triggers synchronous heading scans or IntersectionObserver thrashing
+  const [headings, setHeadings] = useState<TocHeading[]>(() => {
+    return selectHeadings(useBlockStore.getState());
+  });
 
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelSchedule: CancelFn | null = null;
+
+    const unsubscribe = useBlockStore.subscribe((state) => {
+      if (cancelSchedule) {
+        cancelSchedule();
+      }
+
+      cancelSchedule = scheduleIdle(() => {
+        const next = selectHeadings(state);
+        setHeadings((prev) => {
+          if (
+            prev.length === next.length &&
+            prev.every((h, i) => h.id === next[i].id && h.text === next[i].text && h.level === next[i].level)
+          ) {
+            return prev;
+          }
+          return next;
+        });
+      }, 350);
+    });
+
+    return () => {
+      unsubscribe();
+      if (cancelSchedule) cancelSchedule();
+    };
+  }, []);
 
   // Track active section in viewport
   useEffect(() => {

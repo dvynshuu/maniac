@@ -35,6 +35,7 @@ import BacklinksPanel from './BacklinksPanel';
 import { useRootBlockIds } from '../../hooks/useChildBlockIds';
 import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
+import { selectVisibleDFSBlockIds } from '../../core/derivedCache';
 import { DragDropContext } from './DragDropContext';
 import ActiveRecallPanel from './ActiveRecallPanel';
 import { useIntelligenceStore } from '../../stores/intelligenceStore';
@@ -81,9 +82,9 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
     }
   }, [isTypewriterMode, activeBlockId]);
 
-  // Block virtualization — virtualizes both root blocks and deeply nested children (toggles, columns)
-  const allBlockOrder = useBlockStore((s) => s.blockOrder);
-  const virtualizer = useBlockVirtualizer(scrollElement, allBlockOrder, pageId);
+  // Block virtualization — virtualizes visible DFS blocks (both root blocks and nested children inside open toggles)
+  const visibleDFSBlockIds = useBlockStore(selectVisibleDFSBlockIds);
+  const virtualizer = useBlockVirtualizer(scrollElement, visibleDFSBlockIds, pageId);
 
   // dnd-kit sensors
   const sensors = useSensors(
@@ -305,16 +306,7 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
       if (rootBlockIds.length === 0) {
         await engine.insertAfter(null, 'text');
       } else {
-        const firstBlockEl = document.querySelector<HTMLElement>(`[data-block-id="${rootBlockIds[0]}"] .block-content [contenteditable="true"]`);
-        if (firstBlockEl) {
-           firstBlockEl.focus();
-           const selection = window.getSelection();
-           const range = document.createRange();
-           range.selectNodeContents(firstBlockEl);
-           range.collapse(true);
-           selection.removeAllRanges();
-           selection.addRange(range);
-        }
+        useBlockStore.getState().setFocusBlock(rootBlockIds[0], 'start', 'down');
       }
     }
   };

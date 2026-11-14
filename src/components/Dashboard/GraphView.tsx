@@ -9,8 +9,7 @@ interface ForceGraphInstance {
 import { useBacklinkStore } from '../../stores/backlinkStore';
 import { useNavigate } from 'react-router-dom';
 import { Maximize2, Minimize2, Network, Search, X, SlidersHorizontal, Layers, Focus } from 'lucide-react';
-import { detectCommunities } from '../../utils/louvain';
-import { workerDetectCommunities } from '../../core/transformWorker';
+import { workerLayoutGraph } from '../../core/transformWorker';
 
 // ─── Color Palette & Deterministic Generator ──────────────────────────────
 const PALETTE = {
@@ -269,13 +268,19 @@ export default function GraphView({ pages }: GraphViewProps) {
     hasInitialZoomedRef.current = false;
   }, [pages.length, linkFilter, colorMode]);
 
-  // Offload Louvain Community Detection to Web Worker to prevent UI freezes
+  // Offload Louvain Community Detection & 2D Force Layout to Web Worker
   const [workerCommunityMap, setWorkerCommunityMap] = useState<Record<string, string>>({});
+  const [layoutPositions, setLayoutPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
 
   useEffect(() => {
-    if (colorMode !== 'community') return;
     let isCancelled = false;
     const activePages = pages.filter(p => !p.isArchived);
+    if (activePages.length === 0) {
+      setLayoutPositions(new Map());
+      setWorkerCommunityMap({});
+      return;
+    }
+
     const validNodeIds = new Set(activePages.map(n => n.id));
     const linksList: Array<{ source: string; target: string }> = [];
 
@@ -289,14 +294,33 @@ export default function GraphView({ pages }: GraphViewProps) {
       }
     });
 
-    workerDetectCommunities(activePages, linksList).then(res => {
-      if (!isCancelled && res) {
-        setWorkerCommunityMap(res);
+    activePages.forEach(p => {
+      if (p.parentId && validNodeIds.has(p.parentId) && p.parentId !== p.id) {
+        linksList.push({ source: p.parentId, target: p.id });
       }
     });
 
+    const activeW = isFullscreen ? fsWidth : inlineWidth;
+    const activeH = isFullscreen ? fsHeight : inlineHeight;
+
+    workerLayoutGraph(activePages, linksList, activeW || 800, activeH || 600, 60).then(res => {
+      if (isCancelled || !res) return;
+      const { coordinates, nodeIds, clusterMap } = res;
+      const posMap = new Map<string, { x: number; y: number }>();
+      for (let i = 0; i < nodeIds.length; i++) {
+        posMap.set(nodeIds[i], {
+          x: coordinates[i * 2],
+          y: coordinates[i * 2 + 1],
+        });
+      }
+      setLayoutPositions(posMap);
+      setWorkerCommunityMap(clusterMap);
+    }).catch(err => {
+      console.warn('[GraphView] workerLayoutGraph failed:', err);
+    });
+
     return () => { isCancelled = true; };
-  }, [colorMode, pages, forwardLinks]);
+  }, [pages, forwardLinks, isFullscreen, inlineWidth, inlineHeight, fsWidth, fsHeight]);
 
   // ─── Build Graph Data with Full Determinism & Filtering ─────
   const { graphData, communityMetadata } = useMemo(() => {
@@ -340,10 +364,8 @@ export default function GraphView({ pages }: GraphViewProps) {
       return linkFilter.semantic;
     });
 
-    // 4. Run Louvain Community Detection (worker-cached with sync fallback)
-    const communities = colorMode === 'community'
-      ? (Object.keys(workerCommunityMap).length > 0 ? workerCommunityMap : detectCommunities(activePages, filteredLinks))
-      : {};
+    // 4. Run Louvain Community Detection (worker-driven, zero main-thread freeze)
+    const communities = colorMode === 'community' ? workerCommunityMap : {};
 
     const communityColors: Record<string, string> = {};
     const topCommunities: Array<{ id: string; color: string; count: number }> = [];
@@ -383,7 +405,7 @@ export default function GraphView({ pages }: GraphViewProps) {
       connectionCount[t] = (connectionCount[t] || 0) + 1;
     });
 
-    // 6. Assemble Nodes
+    // 6. Assemble Nodes with Precomputed Worker Coordinates
     const nodes: GraphNode[] = activePages.map(p => {
       const conns = connectionCount[p.id] || 0;
       const baseSize = 8;
@@ -399,6 +421,8 @@ export default function GraphView({ pages }: GraphViewProps) {
         else if (conns >= 3) color = PALETTE.nodeSecondary;
       }
 
+      const precomputed = layoutPositions.get(p.id);
+
       return {
         id: p.id,
         name: unescapeTitle(p.title),
@@ -407,6 +431,7 @@ export default function GraphView({ pages }: GraphViewProps) {
         icon: p.icon || '',
         isFavorite: Boolean(p.isFavorite),
         connections: conns,
+        ...(precomputed ? { x: precomputed.x, y: precomputed.y } : {}),
       };
     });
 
@@ -414,7 +439,7 @@ export default function GraphView({ pages }: GraphViewProps) {
       graphData: { nodes, links: filteredLinks },
       communityMetadata: { topCommunities },
     };
-  }, [pages, forwardLinks, linkFilter, colorMode]);
+  }, [pages, forwardLinks, linkFilter, colorMode, workerCommunityMap, layoutPositions]);
 
   // Fast O(1) node lookup map for link render loop
   const nodeMap = useMemo(() => {
@@ -791,8 +816,8 @@ export default function GraphView({ pages }: GraphViewProps) {
     onBackgroundClick: () => setHoveredNode(null),
     d3AlphaDecay: 0.04,
     d3VelocityDecay: 0.35,
-    warmupTicks: 40,
-    cooldownTicks: 120,
+    warmupTicks: layoutPositions.size > 0 ? 0 : 20,
+    cooldownTicks: 100,
     enablePointerInteraction: true,
     onRenderFramePre: drawBackground,
     onEngineStop: handleEngineStop,

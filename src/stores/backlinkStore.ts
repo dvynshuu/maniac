@@ -7,6 +7,35 @@
 
 import { create } from 'zustand';
 import { db } from '../db/database';
+import { scheduleIdle, CancelFn } from '../utils/idleScheduler';
+
+// Pending idle backlink indexing jobs: blockId -> CancelFn
+const _pendingBacklinkIndexers = new Map<string, CancelFn>();
+
+/**
+ * Debounce backlink indexing by 300ms–500ms using requestIdleCallback
+ * so keystrokes never trigger backlink regex parsing or graph updates synchronously.
+ */
+export function scheduleIdleBacklinkIndex(
+  blockId: string,
+  sourcePageId: string,
+  content?: string | null,
+  delayMs = 350
+): void {
+  if (!blockId || !sourcePageId) return;
+
+  const existingCancel = _pendingBacklinkIndexers.get(blockId);
+  if (existingCancel) {
+    existingCancel();
+  }
+
+  const cancel = scheduleIdle(() => {
+    _pendingBacklinkIndexers.delete(blockId);
+    useBacklinkStore.getState().indexBlock(blockId, sourcePageId, content);
+  }, delayMs);
+
+  _pendingBacklinkIndexers.set(blockId, cancel);
+}
 
 export interface BacklinkDetail {
   sourcePageId: string;

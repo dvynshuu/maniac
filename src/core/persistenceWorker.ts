@@ -53,6 +53,44 @@ self.onmessage = async (e) => {
     const { op } = payload;
     enqueueOperation(op);
   }
+
+  // Handle zero-copy Transferable ArrayBuffer payloads for encrypted blobs
+  if (type === 'TRANSFER_BLOB' || type === 'ENQUEUE_BLOB') {
+    const { hash, buffer, mimeType, size } = payload;
+    if (buffer instanceof ArrayBuffer && hash) {
+      await db.blobs.put({
+        hash,
+        blob: new Blob([new Uint8Array(buffer)], { type: mimeType || 'application/octet-stream' }),
+        mimeType: mimeType || 'application/octet-stream',
+        size: size || buffer.byteLength,
+        createdAt: Date.now()
+      });
+      self.postMessage({ type: 'BLOB_SAVED', payload: { hash } });
+    }
+    return;
+  }
+
+  if (type === 'GET_BLOB_TRANSFER') {
+    const { hash } = payload;
+    const record = await db.blobs.get(hash);
+    if (record && record.blob) {
+      const buffer = await record.blob.arrayBuffer();
+      try {
+        self.postMessage(
+          { type: 'BLOB_TRANSFERRED', payload: { hash, buffer, mimeType: record.mimeType, size: record.size } },
+          [buffer]
+        );
+      } catch {
+        self.postMessage({
+          type: 'BLOB_TRANSFERRED',
+          payload: { hash, buffer, mimeType: record.mimeType, size: record.size }
+        });
+      }
+    } else {
+      self.postMessage({ type: 'BLOB_TRANSFERRED', payload: { hash, buffer: null } });
+    }
+    return;
+  }
   
   if (type === 'FORCE_FLUSH') {
     await flushQueue();

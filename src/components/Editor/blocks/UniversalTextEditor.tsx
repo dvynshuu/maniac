@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useBlockEditor, UseBlockEditorOptions } from '../../../hooks/useBlockEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { useNavigate } from 'react-router-dom';
 import { usePageStore } from '../../../stores/pageStore';
 import { useUIStore } from '../../../stores/uiStore';
+import { useBlockStore } from '../../../stores/blockStore';
+import { parseHtmlToRichText, renderRichTextToVDOM } from '../../../utils/richTextParser';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
 import BlockTransclusionMenu from '../BlockTransclusionMenu';
@@ -16,19 +18,96 @@ export interface UniversalTextEditorProps {
   newBlockType?: string;
   backspaceAction?: 'delete' | 'merge' | 'convert' | 'none';
   enableMenus?: boolean;
+  onEnter?: (editor: any) => boolean | void;
+  onBackspace?: (editor: any) => boolean | void;
+}
+
+interface ReadonlyBlockViewProps {
+  content?: string;
+  placeholder?: string;
+  className?: string;
+  onActivate: (offset?: number | 'start' | 'end') => void;
 }
 
 /**
- * UniversalTextEditor — Consolidated rich-text editing surface for all text block variants.
- * Centralizes SlashMenu, MentionMenu, block-splitting, merging, and keyboard shortcuts.
+ * Lightweight read-only block representation.
+ * Renders pure React VDOM via richTextParser with zero ProseMirror or TipTap overhead.
  */
-export default function UniversalTextEditor({
+const ReadonlyBlockView = React.memo(function ReadonlyBlockView({
+  content,
+  placeholder = "Type '/' for commands or '@' to mention",
+  className = 'block-text',
+  onActivate,
+}: ReadonlyBlockViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const spans = useMemo(() => {
+    return parseHtmlToRichText(content);
+  }, [content]);
+
+  const isEmpty = !content || spans.length === 0 || (spans.length === 1 && !spans[0].text.trim());
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const target = e.target as HTMLElement;
+    // Don't focus editor if clicking directly on link or interactive chip
+    if (target.closest('.transclusion-chip') || target.closest('.page-mention') || target.closest('a')) {
+      return;
+    }
+
+    let offset: number | 'end' = 'end';
+    try {
+      const selection = window.getSelection();
+      if (selection && selection.anchorNode && containerRef.current?.contains(selection.anchorNode)) {
+        const range = document.createRange();
+        range.selectNodeContents(containerRef.current);
+        range.setEnd(selection.anchorNode, selection.anchorOffset);
+        const textBefore = range.toString();
+        offset = Math.max(1, textBefore.length + 1);
+      }
+    } catch {
+      offset = 'end';
+    }
+
+    onActivate(offset);
+  }, [onActivate]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', cursor: 'text' }}
+      className="readonly-block-surface"
+      onClick={handleClick}
+    >
+      <div className={className}>
+        <div className="tiptap-editor ProseMirror read-only-prosemirror" contentEditable={false}>
+          {isEmpty ? (
+            <p className="is-editor-empty is-empty" data-placeholder={placeholder}>
+              <br className="ProseMirror-trailingBreak" />
+            </p>
+          ) : (
+            <p>{renderRichTextToVDOM(spans)}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/**
+ * ActiveBlockEditor — Heavy ProseMirror/TipTap instance mounted only
+ * when a block is actively focused or in the 1-block pre-warmed pool.
+ */
+function ActiveBlockEditor({
   block,
   placeholder = "Type '/' for commands or '@' to mention",
   className = 'block-text',
   newBlockType = 'text',
   backspaceAction = 'delete',
   enableMenus = true,
+  onEnter,
+  onBackspace,
 }: UniversalTextEditorProps) {
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
@@ -44,8 +123,13 @@ export default function UniversalTextEditor({
     placeholder,
     newBlockType,
     backspaceAction,
-    onEnter: () => {
+    onEnter: (ed: any) => {
       if (showSlashMenu || showMentionMenu || showTransclusionMenu) return false;
+      if (onEnter) return onEnter(ed);
+      return undefined;
+    },
+    onBackspace: (ed: any) => {
+      if (onBackspace) return onBackspace(ed);
       return undefined;
     },
   });
@@ -195,5 +279,35 @@ export default function UniversalTextEditor({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * UniversalTextEditor — Consolidated rich-text editing surface for all text block variants.
+ * Employs a single active editor architecture:
+ * - Unfocused blocks render lightweight read-only React VDOM via richTextParser.
+ * - Only the actively focused block + 1 pre-warmed adjacent block mount heavy TipTap/ProseMirror instances.
+ */
+export default function UniversalTextEditor(props: UniversalTextEditorProps) {
+  const { block } = props;
+  const isFocused = useBlockStore(useCallback(s => s.focusBlockId === block.id, [block.id]));
+  const isPrewarmed = useBlockStore(useCallback(s => s.prewarmedBlockId === block.id, [block.id]));
+  const isMounted = isFocused || isPrewarmed;
+
+  const handleActivate = useCallback((offset?: number | 'start' | 'end') => {
+    useBlockStore.getState().setFocusBlock(block.id, offset ?? 'end', 'down');
+  }, [block.id]);
+
+  if (isMounted) {
+    return <ActiveBlockEditor {...props} />;
+  }
+
+  return (
+    <ReadonlyBlockView
+      content={block.content}
+      placeholder={props.placeholder}
+      className={props.className}
+      onActivate={handleActivate}
+    />
   );
 }

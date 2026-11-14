@@ -27,14 +27,22 @@ function versionedServiceWorkerPlugin(): Plugin {
           `const CACHE_NAME = '${cacheVersion}';`
         );
 
-        // Inject dynamic precache list
+        // Inject dynamic precache list: strictly shell files and hashed code bundles.
+        // Explicitly excludes high-resolution icon variants (icon-1024x1024.png, mstile-*, apple-touch-icon-*,
+        // android-chrome-*) to eliminate multi-megabyte payloads on first visit.
+        const filteredCodeAssets = assetFiles.filter(f => {
+          const isCode = f.endsWith('.js') || f.endsWith('.css');
+          const isIcon = /(icon-|android-chrome|apple-touch|mstile|og-image)/i.test(f);
+          return isCode && !isIcon;
+        });
+
         const precacheAssets = [
           '/',
           '/index.html',
           '/favicon.svg',
           '/favicon.ico',
           '/site.webmanifest',
-          ...assetFiles.filter(f => f.endsWith('.js') || f.endsWith('.css'))
+          ...filteredCodeAssets
         ];
 
         swContent = swContent.replace(

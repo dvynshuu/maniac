@@ -1,6 +1,5 @@
 import React from 'react';
-import { EditorContent } from '@tiptap/react';
-import { useBlockEditor } from '../../../hooks/useBlockEditor';
+import UniversalTextEditor from './UniversalTextEditor';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { ChevronRight } from 'lucide-react';
 import BlockRenderer from '../BlockRenderer';
@@ -9,29 +8,30 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 function ActiveToggleTitle({ block, level, expanded, engine }: { block: any; level?: number; expanded: boolean; engine: any }) {
   const placeholder = level ? `Toggle Heading ${level}` : 'Toggle heading';
-  const editor = useBlockEditor(block, {
-    placeholder,
-    newBlockType: 'text',
-    backspaceAction: 'convert',
-    onEnter: () => {
-      if (editor) {
-        engine.updateBlock(block.id, { content: editor.getHTML() });
-      }
-      if (expanded) {
-        // Add a child inside the toggle
-        engine.insertAfter(null, 'text', { parentId: block.id });
-      } else {
-        // Add sibling below toggle
-        engine.insertAfter(block.id, 'text');
-      }
-      return true; // handled
-    },
-  });
-
-  if (!editor) return null;
-
   const headingClass = level ? ` block-heading${level} block-toggle-heading-title` : ' block-toggle-title';
-  return <EditorContent editor={editor} className={`block-text${headingClass}`} />;
+
+  return (
+    <UniversalTextEditor
+      block={block}
+      placeholder={placeholder}
+      className={`block-text${headingClass}`}
+      newBlockType="text"
+      backspaceAction="convert"
+      onEnter={(editor) => {
+        if (editor) {
+          engine.updateBlock(block.id, { content: editor.getHTML() });
+        }
+        if (expanded) {
+          // Add a child inside the toggle
+          engine.insertAfter(null, 'text', { parentId: block.id });
+        } else {
+          // Add sibling below toggle
+          engine.insertAfter(block.id, 'text');
+        }
+        return true; // handled
+      }}
+    />
+  );
 }
 
 export default function ToggleBlock({ block }: { block: any }) {
