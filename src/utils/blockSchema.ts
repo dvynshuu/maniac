@@ -169,6 +169,52 @@ export const BLOCK_PROPERTY_DEFAULTS: Record<string, BlockProperties> = {
   column_list: { columnRatios: [0.5, 0.5] },
   column: { width: null },
   page: { pageId: null },
+  file: { src: '', name: '', size: 0, mimeType: '', caption: '' },
+  audio: { src: '', name: '', size: 0, mimeType: 'audio/mpeg', caption: '' },
+  video: { src: '', name: '', size: 0, mimeType: 'video/mp4', width: '100%', caption: '' },
+  pdf: { src: '', name: '', size: 0, mimeType: 'application/pdf', height: 500, caption: '' },
+  button: {
+    buttonLabel: 'Click me',
+    buttonIcon: 'Play',
+    buttonColor: 'default',
+    buttonAction: 'insert_blocks',
+    buttonPayload: {
+      blocks: [
+        { type: 'text', content: 'New automated entry' }
+      ]
+    }
+  },
+  diagram: {
+    diagramType: 'mermaid',
+    code: 'graph TD\n    A[Start] --> B{Valid?}\n    B -->|Yes| C[Result]\n    B -->|No| D[Retry]',
+    caption: ''
+  },
+  breadcrumb: { showRoot: true, delimiter: '/' },
+  template: {
+    templateTitle: 'New Item',
+    templateIcon: 'Plus',
+    templateBlocks: [
+      { type: 'todo', content: 'Action item' }
+    ]
+  },
+  linked_database: {
+    databaseId: null,
+    viewConfigId: '',
+    view: 'table',
+    filters: [],
+    sorts: []
+  },
+  flashcard: {
+    cardType: 'qa',
+    question: 'What is the key takeaway?',
+    answer: 'The core insight or concept.',
+    clozeText: '{{c1::Active recall}} strengthens memory retention.',
+    ease: 2.5,
+    interval: 1,
+    nextReview: Date.now(),
+    streak: 0,
+    lastGrade: null,
+  },
 };
 
 export function createFidelityBlock(pageId: string, type: BlockType, overrides: Partial<Block> = {}): Block {

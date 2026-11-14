@@ -36,7 +36,14 @@ export type BlockType =
   | 'synced_block'
   | 'bookmark'
   | 'file'
-  | 'audio';
+  | 'audio'
+  | 'pdf'
+  | 'button'
+  | 'diagram'
+  | 'breadcrumb'
+  | 'template'
+  | 'linked_database'
+  | 'flashcard';
 
 export interface RichTextAnnotation {
   bold: boolean;
@@ -87,6 +94,41 @@ export interface BlockProperties {
   pageId?: string | null;
   syncedBlockId?: string | null;
   isOriginal?: boolean;
+  src?: string;
+  name?: string;
+  size?: number;
+  mimeType?: string;
+  assetId?: string;
+  buttonLabel?: string;
+  buttonIcon?: string;
+  buttonColor?: string;
+  buttonAction?: string;
+  buttonPayload?: any;
+  diagramType?: string;
+  code?: string;
+  theme?: string;
+  showRoot?: boolean;
+  delimiter?: string;
+  templateTitle?: string;
+  templateIcon?: string;
+  templateBlocks?: any[];
+  databaseId?: string | null;
+  viewConfigId?: string;
+  view?: string;
+  filters?: any[];
+  sorts?: any[];
+  isLinkedView?: boolean;
+  cardType?: 'qa' | 'cloze';
+  question?: string;
+  answer?: string;
+  clozeText?: string;
+  ease?: number;
+  interval?: number;
+  nextReview?: number;
+  streak?: number;
+  lastGrade?: number | null;
+  transclusionBlockId?: string;
+  transclusionPageId?: string;
   [key: string]: any;
 }
 

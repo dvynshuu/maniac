@@ -118,7 +118,7 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
             </div>
             <span>Type</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
-              <span style={{ fontSize: '12px' }}>{PROPERTY_TYPE_META[property.type].label}</span>
+              <span style={{ fontSize: '12px' }}>{PROPERTY_TYPE_META[property.type]?.label || property.type}</span>
               <ChevronRight size={14} />
             </div>
           </button>
@@ -332,8 +332,26 @@ export default function ColumnMenu({ property, blockId, position, onClose }) {
             </>
           )}
 
-          {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP || property.type === PROPERTY_TYPES.FORMULA) && (
+          {(property.type === PROPERTY_TYPES.RELATION || property.type === PROPERTY_TYPES.ROLLUP || property.type === PROPERTY_TYPES.FORMULA || property.type === PROPERTY_TYPES.AUTO_ID) && (
             <div className="db-menu-divider" />
+          )}
+
+          {property.type === PROPERTY_TYPES.AUTO_ID && (
+            <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label className="db-field-label" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                ID Prefix (optional)
+              </label>
+              <input 
+                className="db-menu-input"
+                placeholder="e.g. TASK-, DEV-, #"
+                value={property.config?.prefix || ''}
+                onChange={(e) => {
+                  updateProperty(blockId, property.id, {
+                    config: { ...property.config, prefix: e.target.value }
+                  });
+                }}
+              />
+            </div>
           )}
 
           {property.type === PROPERTY_TYPES.RELATION && (

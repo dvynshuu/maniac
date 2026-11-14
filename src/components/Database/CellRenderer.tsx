@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { PROPERTY_TYPES } from '../../utils/constants';
 import { formatDate, debounce } from '../../utils/helpers';
 
-import { ExternalLink, Mail, Phone, CheckSquare, Square, Check } from 'lucide-react';
+import { ExternalLink, Mail, Phone, CheckSquare, Square, Check, Clock } from 'lucide-react';
 import SelectDropdown from './SelectDropdown';
+import StatusDropdown from './StatusDropdown';
+import RelationPickerModal from './RelationPickerModal';
 import DatePicker from './DatePicker';
 import { useDatabaseStore } from '../../stores/databaseStore';
 import { db } from '../../db/database';
@@ -156,6 +158,7 @@ export default function CellRenderer({
 }: CellRendererProps) {
   const inputRef = useRef(null);
   const [localValue, setLocalValue] = useState(value);
+  const [showRelationModal, setShowRelationModal] = useState(false);
 
   // Sync with store when property/value changes outside (e.g. undo/redo)
   useEffect(() => {
@@ -260,6 +263,10 @@ export default function CellRenderer({
         return relatedRowIds.length - values.length;
       case 'count_not_empty':
         return values.length;
+      case 'percent_empty':
+        return relatedRowIds.length > 0 ? ((relatedRowIds.length - values.length) / relatedRowIds.length) : 0;
+      case 'percent_not_empty':
+        return relatedRowIds.length > 0 ? (values.length / relatedRowIds.length) : 0;
       case 'sum': {
         const nums = values.map(Number).filter(n => !isNaN(n));
         return nums.reduce((sum, n) => sum + n, 0);
@@ -268,6 +275,12 @@ export default function CellRenderer({
         const nums = values.map(Number).filter(n => !isNaN(n));
         return nums.length > 0 ? (nums.reduce((sum, n) => sum + n, 0) / nums.length) : 0;
       }
+      case 'median': {
+        const nums = values.map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+        if (nums.length === 0) return 0;
+        const mid = Math.floor(nums.length / 2);
+        return nums.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+      }
       case 'min': {
         const nums = values.map(Number).filter(n => !isNaN(n));
         return nums.length > 0 ? Math.min(...nums) : 0;
@@ -275,6 +288,10 @@ export default function CellRenderer({
       case 'max': {
         const nums = values.map(Number).filter(n => !isNaN(n));
         return nums.length > 0 ? Math.max(...nums) : 0;
+      }
+      case 'range': {
+        const nums = values.map(Number).filter(n => !isNaN(n));
+        return nums.length > 0 ? Math.max(...nums) - Math.min(...nums) : 0;
       }
       case 'show_original':
       default:
@@ -461,6 +478,17 @@ export default function CellRenderer({
         );
 
       case PROPERTY_TYPES.STATUS:
+        return (
+          <StatusDropdown
+            property={property}
+            value={value}
+            onChange={onChange}
+            isEditing={isEditing}
+            stopEditing={stopEditing}
+            blockId={blockId}
+          />
+        );
+
       case PROPERTY_TYPES.SELECT:
         return (
           <SelectDropdown
@@ -553,11 +581,55 @@ export default function CellRenderer({
         );
 
       case PROPERTY_TYPES.CREATED_AT:
+      case PROPERTY_TYPES.CREATED_TIME: {
+        const rawTime = row?.createdAt || value;
+        const formatted = rawTime ? new Date(rawTime).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }) : '—';
         return (
-          <div className="db-cell-timestamp text-xs text-tertiary">
-            {formatDate(value)}
+          <div className="db-cell-timestamp text-xs text-tertiary flex items-center gap-1.5 select-none" title="Created Time (Read-only)">
+            <Clock size={12} className="opacity-60 flex-shrink-0" />
+            <span className="truncate">{formatted}</span>
           </div>
         );
+      }
+
+      case PROPERTY_TYPES.LAST_EDITED_TIME: {
+        const rawTime = row?.updatedAt || row?.createdAt || value;
+        const formatted = rawTime ? new Date(rawTime).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }) : '—';
+        return (
+          <div className="db-cell-timestamp text-xs text-tertiary flex items-center gap-1.5 select-none" title="Last Edited Time (Read-only)">
+            <Clock size={12} className="opacity-60 flex-shrink-0" />
+            <span className="truncate">{formatted}</span>
+          </div>
+        );
+      }
+
+      case PROPERTY_TYPES.AUTO_ID: {
+        const currentData = useDatabaseStore.getState().getDatabaseData(blockId || '');
+        const rows = currentData?.rows || [];
+        const rowIndex = rows.findIndex((r: any) => r.id === row?.id);
+        const seqNum = rowIndex >= 0 ? rowIndex + 1 : 1;
+        const prefix = property.config?.prefix || '';
+        const displayId = prefix ? `${prefix}${seqNum}` : `#${seqNum}`;
+        return (
+          <div className="db-cell-autoid text-xs font-mono text-tertiary select-none" title="System Auto-ID">
+            <span className="px-1.5 py-0.5 rounded bg-[var(--color-surface-2)] text-[var(--color-fg-secondary)] text-[11px] font-medium">
+              {displayId}
+            </span>
+          </div>
+        );
+      }
 
       case PROPERTY_TYPES.RELATION: {
         const selectedIds = Array.isArray(value) ? value : [];
@@ -569,7 +641,13 @@ export default function CellRenderer({
         return (
           <div className="db-cell-relation flex flex-wrap gap-1 items-center" style={{ minHeight: '20px', width: '100%', position: 'relative' }}>
             {selectedIds.length === 0 ? (
-              <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>Empty</span>
+              <span 
+                className="text-tertiary text-xs cursor-pointer hover:text-secondary flex items-center gap-1"
+                onClick={() => setShowRelationModal(true)}
+              >
+                <span>Empty</span>
+                <span className="text-[10px] opacity-60">+</span>
+              </span>
             ) : (
               selectedIds.map(id => {
                 const targetRow = relatedRows.find(r => r.id === id);
@@ -577,7 +655,7 @@ export default function CellRenderer({
                 return (
                   <span 
                     key={id} 
-                    className="relation-badge"
+                    className="relation-badge inline-flex items-center gap-1"
                     style={{
                       background: 'var(--bg-tertiary)',
                       border: '1px solid var(--border-subtle)',
@@ -588,17 +666,52 @@ export default function CellRenderer({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {title}
+                    <span className="truncate max-w-[120px]">{title}</span>
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChange(selectedIds.filter(x => x !== id));
+                      }}
+                      className="hover:text-red-400 p-0.5"
+                    >
+                      ×
+                    </button>
                   </span>
                 );
               })
             )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRelationModal(true);
+              }}
+              className="text-tertiary hover:text-primary p-0.5 ml-auto text-xs opacity-60 hover:opacity-100"
+              title="Open Relation Picker"
+            >
+              <ExternalLink size={10} />
+            </button>
+
             {isEditing && (
               <RelationDropdown
                 relatedDatabaseId={relatedDatabaseId}
                 selectedRowIds={selectedIds}
                 onChange={onChange}
                 stopEditing={stopEditing}
+              />
+            )}
+
+            {showRelationModal && (
+              <RelationPickerModal
+                isOpen={showRelationModal}
+                onClose={() => setShowRelationModal(false)}
+                relatedDatabaseId={relatedDatabaseId}
+                selectedRowIds={selectedIds}
+                onChange={onChange}
+                propertyTitle={property.name}
+                reciprocalPropertyId={property.config?.reciprocalPropertyId}
               />
             )}
           </div>
@@ -643,6 +756,9 @@ export default function CellRenderer({
       onDoubleClick={
         property.type !== PROPERTY_TYPES.CHECKBOX && 
         property.type !== PROPERTY_TYPES.CREATED_AT && 
+        property.type !== PROPERTY_TYPES.CREATED_TIME && 
+        property.type !== PROPERTY_TYPES.LAST_EDITED_TIME && 
+        property.type !== PROPERTY_TYPES.AUTO_ID && 
         property.type !== PROPERTY_TYPES.ROLLUP &&
         property.type !== PROPERTY_TYPES.FORMULA
           ? startEditing 

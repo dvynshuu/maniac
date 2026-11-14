@@ -16,7 +16,8 @@ export type DatabaseColumnType =
   | 'created_time'
   | 'created_by'
   | 'last_edited_time'
-  | 'last_edited_by';
+  | 'last_edited_by'
+  | 'auto_id';
 
 export interface DatabaseColumn {
   id: string;

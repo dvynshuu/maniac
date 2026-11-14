@@ -37,6 +37,7 @@ import { useEditorEngine } from '../../hooks/useEditorEngine';
 import { useBlockVirtualizer, VirtualizerProvider } from '../../hooks/useBlockVirtualizer';
 import { DragDropContext } from './DragDropContext';
 import ActiveRecallPanel from './ActiveRecallPanel';
+import { useIntelligenceStore } from '../../stores/intelligenceStore';
 
 function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
   const { pageId: paramPageId } = useParams();
@@ -202,14 +203,37 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
 
   useEffect(() => {
     if (pageId) {
-      loadBlocks(pageId);
+      loadBlocks(pageId).then(() => {
+        try {
+          const allBlocks = Object.values(useBlockStore.getState().blockMap);
+          useIntelligenceStore.getState().syncBlockFlashcards(pageId, allBlocks);
+        } catch {
+          /* ignore */
+        }
+      });
       setLastVisitedPageId(pageId);
     }
   }, [pageId, loadBlocks, setLastVisitedPageId]);
 
   useEffect(() => {
-    const handleGlobalClick = (e) => {
-      const link = e.target.closest('a');
+    const handleGlobalClick = (e: MouseEvent) => {
+      const transclusion = (e.target as HTMLElement)?.closest('.transclusion-chip');
+      if (transclusion) {
+        const targetBlockId = transclusion.getAttribute('data-block-id');
+        const targetPageId = transclusion.getAttribute('data-page-id');
+        if (targetPageId && targetPageId !== pageId) {
+          usePageStore.getState().setCurrentPage(targetPageId);
+        } else if (targetBlockId) {
+          const targetEl = document.querySelector<HTMLElement>(`[data-block-id="${targetBlockId}"]`);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            useBlockStore.getState().setFocusBlock(targetBlockId, 'start');
+          }
+        }
+        return;
+      }
+
+      const link = (e.target as HTMLElement)?.closest('a');
       if (link && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         const href = link.getAttribute('href');
@@ -220,7 +244,7 @@ function PageEditor({ pageId: pageIdProp }: { pageId?: string } = {}) {
     };
     document.addEventListener('click', handleGlobalClick, true);
     return () => document.removeEventListener('click', handleGlobalClick, true);
-  }, []);
+  }, [pageId]);
 
   useEffect(() => {
     if (page) {

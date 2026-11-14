@@ -7,6 +7,7 @@ import { usePageStore } from '../../../stores/pageStore';
 import { useUIStore } from '../../../stores/uiStore';
 import SlashMenu from '../SlashMenu';
 import MentionMenu from '../MentionMenu';
+import BlockTransclusionMenu from '../BlockTransclusionMenu';
 
 export interface UniversalTextEditorProps {
   block: any;
@@ -33,6 +34,8 @@ export default function UniversalTextEditor({
   const [slashQuery, setSlashQuery] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [showTransclusionMenu, setShowTransclusionMenu] = useState(false);
+  const [transclusionQuery, setTransclusionQuery] = useState('');
 
   const engine = useEditorEngine(block.pageId);
   const navigate = useNavigate();
@@ -42,7 +45,7 @@ export default function UniversalTextEditor({
     newBlockType,
     backspaceAction,
     onEnter: () => {
-      if (showSlashMenu || showMentionMenu) return false;
+      if (showSlashMenu || showMentionMenu || showTransclusionMenu) return false;
       return undefined;
     },
   });
@@ -62,6 +65,19 @@ export default function UniversalTextEditor({
           setSlashQuery(query);
           setShowSlashMenu(true);
           setShowMentionMenu(false);
+          setShowTransclusionMenu(false);
+          return;
+        }
+      }
+
+      if (textBefore.includes('((')) {
+        const lastTriggerIndex = textBefore.lastIndexOf('((');
+        const query = textBefore.substring(lastTriggerIndex + 2);
+        if (!query.includes(')')) {
+          setTransclusionQuery(query);
+          setShowTransclusionMenu(true);
+          setShowSlashMenu(false);
+          setShowMentionMenu(false);
           return;
         }
       }
@@ -74,12 +90,14 @@ export default function UniversalTextEditor({
           setMentionQuery(query);
           setShowMentionMenu(true);
           setShowSlashMenu(false);
+          setShowTransclusionMenu(false);
           return;
         }
       }
 
       setShowSlashMenu(false);
       setShowMentionMenu(false);
+      setShowTransclusionMenu(false);
     };
 
     editor.on('update', handleUpdate);
@@ -130,6 +148,22 @@ export default function UniversalTextEditor({
     editor.commands.focus('end');
   }, [editor, block.id, engine]);
 
+  const handleSelectTransclusion = useCallback((targetBlock: any, snippet: string) => {
+    if (!editor) return;
+    const text = editor.getText();
+    const lastTriggerIndex = text.lastIndexOf('((');
+    const beforeTrigger = text.substring(0, lastTriggerIndex);
+
+    const safeSnippet = snippet.length > 50 ? `${snippet.substring(0, 47)}...` : snippet;
+    const transclusionHtml = `<span class="transclusion-chip" data-transclusion="" data-block-id="${targetBlock.id}" data-page-id="${targetBlock.pageId}" data-text="${safeSnippet}" data-block-type="${targetBlock.type}" contenteditable="false" title="Transcluded from ${targetBlock.pageId}">⎘ ${safeSnippet}</span>`;
+    const newHtml = `<p>${beforeTrigger}${transclusionHtml}&nbsp;</p>`;
+
+    (editor.commands.setContent as any)(newHtml, false);
+    engine.updateBlock(block.id, { content: newHtml });
+    setShowTransclusionMenu(false);
+    editor.commands.focus('end');
+  }, [editor, block.id, engine]);
+
   if (!editor) return null;
 
   return (
@@ -149,6 +183,15 @@ export default function UniversalTextEditor({
           query={mentionQuery}
           onSelect={handleSelectMention}
           onClose={() => setShowMentionMenu(false)}
+        />
+      )}
+      {showTransclusionMenu && (
+        <BlockTransclusionMenu
+          editor={editor}
+          query={transclusionQuery}
+          currentBlockId={block.id}
+          onSelect={handleSelectTransclusion}
+          onClose={() => setShowTransclusionMenu(false)}
         />
       )}
     </div>

@@ -26,6 +26,18 @@ export function getMimeType(filename) {
     case 'bmp': return 'image/bmp';
     case 'ico': return 'image/x-icon';
     case 'pdf': return 'application/pdf';
+    case 'mp3': return 'audio/mpeg';
+    case 'wav': return 'audio/wav';
+    case 'ogg': return 'audio/ogg';
+    case 'm4a': return 'audio/mp4';
+    case 'mp4': return 'video/mp4';
+    case 'webm': return 'video/webm';
+    case 'mov': return 'video/quicktime';
+    case 'zip': return 'application/zip';
+    case 'txt': return 'text/plain';
+    case 'csv': return 'text/csv';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     default: return 'application/octet-stream';
   }
 }
@@ -76,11 +88,11 @@ export async function hashArrayBuffer(buffer) {
  */
 export async function extractAssets(zip: any, onProgress: (progress?: any) => void = () => {}, rootPrefix = '') {
   const assetFiles: any[] = [];
-  const imageRegex = /\.(png|jpg|jpeg|gif|webp|svg|bmp|ico|pdf)$/i;
+  const assetRegex = /\.(png|jpg|jpeg|gif|webp|svg|bmp|ico|pdf|mp3|wav|ogg|m4a|mp4|webm|mov|zip|txt|docx|xlsx)$/i;
 
   for (const [path, zipEntry] of Object.entries(zip.files)) {
     if ((zipEntry as any).dir) continue;
-    if (imageRegex.test(path)) {
+    if (assetRegex.test(path)) {
       assetFiles.push({ path, zipEntry });
     }
   }

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter, ArrowUpDown, X, Plus, ChevronDown, Table, Layout, Calendar as CalendarIcon, LayoutGrid, Search, MoreHorizontal, Zap, Maximize2 } from 'lucide-react';
+import { Filter, ArrowUpDown, X, Plus, ChevronDown, Table, Layout, Calendar as CalendarIcon, LayoutGrid, Search, MoreHorizontal, Zap, Maximize2, GanttChart, List, BarChart2 } from 'lucide-react';
 import { PROPERTY_TYPE_META } from '../../utils/constants';
 
 export default function DatabaseToolbar({ 
@@ -98,6 +98,24 @@ export default function DatabaseToolbar({
           onClick={() => onViewChange && onViewChange('gallery')}
         >
           <LayoutGrid size={14} /> Gallery
+        </button>
+        <button 
+          className={`db-toolbar-tab ${activeView === 'timeline' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('timeline')}
+        >
+          <GanttChart size={14} /> Timeline
+        </button>
+        <button 
+          className={`db-toolbar-tab ${activeView === 'list' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('list')}
+        >
+          <List size={14} /> List
+        </button>
+        <button 
+          className={`db-toolbar-tab ${activeView === 'chart' ? 'active' : ''}`}
+          onClick={() => onViewChange && onViewChange('chart')}
+        >
+          <BarChart2 size={14} /> Chart
         </button>
       </div>
 

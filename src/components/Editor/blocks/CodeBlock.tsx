@@ -1,10 +1,19 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, useId } from 'react';
 import { useBlockStore } from '../../../stores/blockStore';
 import { useEditorEngine } from '../../../hooks/useEditorEngine';
 import { debounce } from '../../../utils/helpers';
-import { Copy, Check, WrapText, AlignLeft, Terminal } from 'lucide-react';
+import { Copy, Check, WrapText, AlignLeft, Terminal, Eye, Code as CodeIcon, Columns, AlertCircle } from 'lucide-react';
+import mermaid from 'mermaid';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
+
+// Initialize mermaid once
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+  fontFamily: 'var(--font-sans, sans-serif)',
+});
 
 // Load key Prism languages safely
 import 'prismjs/components/prism-typescript';
@@ -20,7 +29,7 @@ import 'prismjs/components/prism-yaml';
 import 'prismjs/components/prism-markdown';
 
 const COMMON_LANGUAGES = [
-  'javascript', 'typescript', 'python', 'rust', 'go', 'cpp', 'c', 'sql', 'bash', 'json', 'yaml', 'css', 'html', 'markdown', 'plain'
+  'javascript', 'typescript', 'python', 'rust', 'go', 'cpp', 'c', 'sql', 'bash', 'json', 'yaml', 'css', 'html', 'markdown', 'mermaid', 'plain'
 ];
 
 const highlightCode = (code: string, lang: string) => {
@@ -47,6 +56,10 @@ export default function CodeBlock({ block }: { block: any }) {
   const [content, setContent] = useState(block.content || '');
   const [wrapLines, setWrapLines] = useState<boolean>(initialWrap);
   const [copied, setCopied] = useState(false);
+  const [mermaidMode, setMermaidMode] = useState<'code' | 'preview' | 'split'>('split');
+  const [mermaidSvg, setMermaidSvg] = useState<string>('');
+  const [mermaidError, setMermaidError] = useState<string | null>(null);
+  const renderId = useId().replace(/[:]/g, '_');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const preRef = useRef<HTMLPreElement | null>(null);
   
@@ -96,6 +109,34 @@ export default function CodeBlock({ block }: { block: any }) {
       textareaRef.current.focus();
     }
   }, [focusBlockId, block.id]);
+
+  // Live Mermaid diagram rendering when language is 'mermaid'
+  useEffect(() => {
+    if (language !== 'mermaid') return;
+    let cancelled = false;
+    const trimmed = content.trim();
+    if (!trimmed) {
+      setMermaidSvg('');
+      setMermaidError(null);
+      return;
+    }
+
+    const containerId = `code_mermaid_${renderId}_${Date.now()}`;
+    mermaid.render(containerId, trimmed)
+      .then(({ svg }) => {
+        if (!cancelled) {
+          setMermaidSvg(svg);
+          setMermaidError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setMermaidError(err?.message || 'Syntax error in Mermaid diagram');
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [content, language, renderId]);
 
   const handleCopy = async () => {
     try {
@@ -160,6 +201,38 @@ export default function CodeBlock({ block }: { block: any }) {
         </div>
 
         <div className="block-code-actions">
+          {language === 'mermaid' && (
+            <div className="block-code-mermaid-tabs">
+              <button
+                type="button"
+                className={`block-code-tool-btn ${mermaidMode === 'split' ? 'active' : ''}`}
+                onClick={() => setMermaidMode('split')}
+                title="Split view (Code & Preview)"
+              >
+                <Columns size={12} />
+                <span>Split</span>
+              </button>
+              <button
+                type="button"
+                className={`block-code-tool-btn ${mermaidMode === 'preview' ? 'active' : ''}`}
+                onClick={() => setMermaidMode('preview')}
+                title="Preview diagram only"
+              >
+                <Eye size={12} />
+                <span>Preview</span>
+              </button>
+              <button
+                type="button"
+                className={`block-code-tool-btn ${mermaidMode === 'code' ? 'active' : ''}`}
+                onClick={() => setMermaidMode('code')}
+                title="Code only"
+              >
+                <CodeIcon size={12} />
+                <span>Code</span>
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             className={`block-code-tool-btn ${wrapLines ? 'active' : ''}`}
@@ -192,44 +265,67 @@ export default function CodeBlock({ block }: { block: any }) {
       </div>
 
       {/* Editor & Highlighting Body with Line Gutter */}
-      <div className={`block-code-editor-area ${wrapLines ? 'is-wrapped' : 'is-scrolling'}`}>
-        {/* Line Numbers Gutter */}
-        <div className="code-line-gutter" aria-hidden="true">
-          {Array.from({ length: lineCount }).map((_, idx) => (
-            <span key={idx + 1} className="code-line-number">
-              {idx + 1}
-            </span>
-          ))}
-        </div>
+      {!(language === 'mermaid' && mermaidMode === 'preview') && (
+        <div className={`block-code-editor-area ${wrapLines ? 'is-wrapped' : 'is-scrolling'}`}>
+          {/* Line Numbers Gutter */}
+          <div className="code-line-gutter" aria-hidden="true">
+            {Array.from({ length: lineCount }).map((_, idx) => (
+              <span key={idx + 1} className="code-line-number">
+                {idx + 1}
+              </span>
+            ))}
+          </div>
 
-        {/* Code Canvas Container */}
-        <div className="code-canvas-container">
-          {/* Highlighted code rendering */}
-          <pre
-            ref={preRef}
-            className={`code-pre-layer language-${language}`}
-            dangerouslySetInnerHTML={{ __html: (highlightedHtml || ' ') + '\n' }}
-          />
+          {/* Code Canvas Container */}
+          <div className="code-canvas-container">
+            {/* Highlighted code rendering */}
+            <pre
+              ref={preRef}
+              className={`code-pre-layer language-${language}`}
+              dangerouslySetInnerHTML={{ __html: (highlightedHtml || ' ') + '\n' }}
+            />
 
-          {/* Interactive Textarea overlay */}
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onBlur={() => {
-              if (content !== block.content) {
-                engine.updateBlock(block.id, { content });
-              }
-            }}
-            placeholder="// Paste or write code snippet..."
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            className="code-textarea-overlay"
-          />
+            {/* Interactive Textarea overlay */}
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onBlur={() => {
+                if (content !== block.content) {
+                  engine.updateBlock(block.id, { content });
+                }
+              }}
+              placeholder={language === 'mermaid' ? "// Enter Mermaid syntax (e.g. graph TD...)" : "// Paste or write code snippet..."}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              className="code-textarea-overlay"
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Mermaid Live Preview for language === 'mermaid' */}
+      {language === 'mermaid' && (mermaidMode === 'split' || mermaidMode === 'preview') && (
+        <div className="block-code-mermaid-preview">
+          {mermaidError ? (
+            <div className="block-diagram-error-banner">
+              <AlertCircle size={14} />
+              <span>{mermaidError}</span>
+            </div>
+          ) : mermaidSvg ? (
+            <div 
+              className="block-code-svg-render"
+              dangerouslySetInnerHTML={{ __html: mermaidSvg }}
+            />
+          ) : (
+            <div className="block-code-mermaid-hint">
+              <span>Diagram will appear here as you type</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Caption footer */}
       <div className="block-code-caption-row">

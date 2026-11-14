@@ -174,6 +174,36 @@ export function parseMarkdownToBlocks(
       continue;
     }
 
+    // Standalone File / Audio / Video / PDF Attachment Link: [Title](file.ext)
+    const fileLinkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (fileLinkMatch && !fileLinkMatch[2].startsWith('http://') && !fileLinkMatch[2].startsWith('https://')) {
+      const linkTitle = fileLinkMatch[1].trim();
+      const linkHref = fileLinkMatch[2].trim();
+      const lowerHref = linkHref.toLowerCase();
+      
+      let detectedType: string | null = null;
+      if (lowerHref.endsWith('.pdf')) detectedType = 'pdf';
+      else if (/\.(mp3|wav|ogg|m4a)$/.test(lowerHref)) detectedType = 'audio';
+      else if (/\.(mp4|webm|mov)$/.test(lowerHref)) detectedType = 'video';
+      else if (/\.(zip|tar|gz|rar|7z|txt|docx|xlsx|pptx)$/.test(lowerHref)) detectedType = 'file';
+      
+      if (detectedType) {
+        const bId = generateBlockId(pageId, blockIndex++, detectedType);
+        rawBlocks.push({
+          id: bId,
+          pageId,
+          parentId: getParentId(currentIndent),
+          type: detectedType,
+          content: '',
+          properties: { name: linkTitle, caption: '' },
+          sortOrder: nextSort(),
+          _assetSrc: linkHref,
+        });
+        i++;
+        continue;
+      }
+    }
+
     // Headings (H1, H2, H3)
     const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
     if (headingMatch) {
@@ -314,21 +344,35 @@ export function parseMarkdownToBlocks(
       continue;
     }
 
-    // Image Reference
+    // Image / Media Reference
     const imgMatch = trimmed.match(/^!\[([^\]]*)\]\((.+)\)$/);
     if (imgMatch) {
       const alt = imgMatch[1].trim();
       const src = imgMatch[2].trim();
-      const bId = generateBlockId(pageId, blockIndex++, 'image');
+      const lowerSrc = src.toLowerCase();
+
+      let mediaType = 'image';
+      if (lowerSrc.endsWith('.pdf')) mediaType = 'pdf';
+      else if (/\.(mp3|wav|ogg|m4a)$/.test(lowerSrc)) mediaType = 'audio';
+      else if (/\.(mp4|webm|mov)$/.test(lowerSrc)) mediaType = 'video';
+
+      const bId = generateBlockId(pageId, blockIndex++, mediaType);
       rawBlocks.push({
         id: bId,
         pageId,
         parentId: getParentId(currentIndent),
-        type: 'image',
+        type: mediaType,
         content: '',
-        properties: { hash: '', caption: alt, width: null, alignment: 'center' },
+        properties: {
+          hash: '',
+          caption: alt,
+          name: alt || '',
+          width: (mediaType === 'image' || mediaType === 'video') ? null : undefined,
+          alignment: 'center'
+        },
         sortOrder: nextSort(),
-        _imageSrc: src,
+        _imageSrc: mediaType === 'image' ? src : undefined,
+        _assetSrc: mediaType !== 'image' ? src : undefined,
       });
       i++;
       continue;
@@ -381,6 +425,9 @@ export function parseMarkdownToBlocks(
     };
     if (b._imageSrc) {
       base._imageSrc = b._imageSrc;
+    }
+    if (b._assetSrc) {
+      base._assetSrc = b._assetSrc;
     }
     if (b._dbUuid) {
       base._dbUuid = b._dbUuid;

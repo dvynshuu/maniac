@@ -30,6 +30,14 @@ import ColumnListBlock from './blocks/ColumnListBlock';
 import ColumnBlock from './blocks/ColumnBlock';
 import PageBlock from './blocks/PageBlock';
 import SyncedBlock from './blocks/SyncedBlock';
+import FileBlock from './blocks/FileBlock';
+import AudioBlock from './blocks/AudioBlock';
+import VideoBlock from './blocks/VideoBlock';
+import PDFBlock from './blocks/PDFBlock';
+import ButtonBlock from './blocks/ButtonBlock';
+import BreadcrumbBlock from './blocks/BreadcrumbBlock';
+import TemplateBlock from './blocks/TemplateBlock';
+import FlashcardBlock from './blocks/FlashcardBlock';
 
 // Lazy load heavy blocks to keep core editor bundle ultra-fast
 const TableBlock = lazy(() => import('./blocks/TableBlock'));
@@ -37,6 +45,7 @@ const EmbedBlock = lazy(() => import('./blocks/EmbedBlock'));
 const DatabaseBlock = lazy(() => import('../Database/DatabaseBlock'));
 const TrackerBlock = lazy(() => import('../Tracker/TrackerBlock'));
 const MathBlock = lazy(() => import('./blocks/MathBlock'));
+const DiagramBlock = lazy(() => import('./blocks/DiagramBlock'));
 import ContextMenu from '../Common/ContextMenu';
 import { useBlockStore } from '../../stores/blockStore';
 import { dispatch } from '../../core/commandBus';
@@ -263,6 +272,54 @@ const BlockRenderer = memo<BlockRendererProps>(({ blockId, index }: BlockRendere
 
       case BLOCK_TYPES.PAGE:
         return <PageBlock block={block} />;
+
+      case 'file':
+      case BLOCK_TYPES.FILE:
+        return <FileBlock block={block} />;
+
+      case 'audio':
+      case BLOCK_TYPES.AUDIO:
+        return <AudioBlock block={block} />;
+
+      case 'video':
+      case BLOCK_TYPES.VIDEO:
+        return <VideoBlock block={block} />;
+
+      case 'pdf':
+      case BLOCK_TYPES.PDF:
+        return <PDFBlock block={block} />;
+
+      case 'button':
+      case BLOCK_TYPES.BUTTON:
+        return <ButtonBlock block={block} />;
+
+      case 'diagram':
+      case BLOCK_TYPES.DIAGRAM:
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 48 }} />}>
+            <DiagramBlock block={block} />
+          </Suspense>
+        );
+
+      case 'breadcrumb':
+      case BLOCK_TYPES.BREADCRUMB:
+        return <BreadcrumbBlock block={block} />;
+
+      case 'template':
+      case BLOCK_TYPES.TEMPLATE:
+        return <TemplateBlock block={block} />;
+
+      case 'flashcard':
+      case BLOCK_TYPES.FLASHCARD:
+        return <FlashcardBlock block={block} />;
+
+      case 'linked_database':
+      case BLOCK_TYPES.LINKED_DATABASE:
+        return (
+          <Suspense fallback={<div className="block-loading-placeholder" style={{ minHeight: 64 }} />}>
+            <DatabaseBlock block={block} />
+          </Suspense>
+        );
         
       default:
         return <TextBlock block={block} />;

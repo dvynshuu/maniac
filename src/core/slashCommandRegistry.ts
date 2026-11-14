@@ -143,15 +143,42 @@ registerProvider({
           extraScore = Math.max(fuzzyScore(query, 'url'), fuzzyScore(query, 'link'), fuzzyScore(query, 'preview'));
         } else if (type === 'synced_block' || type === 'synced_reference') {
           extraScore = Math.max(fuzzyScore(query, 'sync'), fuzzyScore(query, 'transclude'));
+        } else if (type === 'file') {
+          extraScore = Math.max(fuzzyScore(query, 'file'), fuzzyScore(query, 'attachment'), fuzzyScore(query, 'upload'));
+        } else if (type === 'audio') {
+          extraScore = Math.max(fuzzyScore(query, 'audio'), fuzzyScore(query, 'mp3'), fuzzyScore(query, 'music'), fuzzyScore(query, 'podcast'));
+        } else if (type === 'video') {
+          extraScore = Math.max(fuzzyScore(query, 'video'), fuzzyScore(query, 'mp4'), fuzzyScore(query, 'movie'), fuzzyScore(query, 'clip'));
+        } else if (type === 'pdf') {
+          extraScore = Math.max(fuzzyScore(query, 'pdf'), fuzzyScore(query, 'document'), fuzzyScore(query, 'reader'));
+        } else if (type === 'button') {
+          extraScore = Math.max(fuzzyScore(query, 'button'), fuzzyScore(query, 'action'), fuzzyScore(query, 'automation'));
+        } else if (type === 'diagram') {
+          extraScore = Math.max(fuzzyScore(query, 'mermaid'), fuzzyScore(query, 'diagram'), fuzzyScore(query, 'flowchart'), fuzzyScore(query, 'graph'));
+        } else if (type === 'breadcrumb') {
+          extraScore = Math.max(fuzzyScore(query, 'breadcrumb'), fuzzyScore(query, 'crumbs'), fuzzyScore(query, 'nav'));
+        } else if (type === 'template') {
+          extraScore = Math.max(fuzzyScore(query, 'template'), fuzzyScore(query, 'duplicate'), fuzzyScore(query, 'template button'));
+        } else if (type === 'linked_database') {
+          extraScore = Math.max(fuzzyScore(query, 'linked'), fuzzyScore(query, 'linked database'), fuzzyScore(query, 'linked view'), fuzzyScore(query, 'view'));
+        } else if (type === 'flashcard') {
+          extraScore = Math.max(
+            fuzzyScore(query, 'flashcard'),
+            fuzzyScore(query, 'card'),
+            fuzzyScore(query, 'cloze'),
+            fuzzyScore(query, 'recall'),
+            fuzzyScore(query, 'srs'),
+            fuzzyScore(query, 'quiz')
+          );
         }
 
         const score = Math.max(labelScore, typeScore, descScore * 0.5, extraScore);
 
         let category = 'Basic';
         if (['heading1', 'heading2', 'heading3', 'toggle_heading1', 'toggle_heading2', 'toggle_heading3'].includes(type)) category = 'Basic';
-        else if (['image', 'embed', 'code', 'math', 'bookmark'].includes(type)) category = 'Media & Code';
-        else if (['database', 'table', 'tracker'].includes(type)) category = 'Database';
-        else if (['toggle', 'callout', 'quote', 'divider', 'table_of_contents', 'synced_block', 'synced_reference'].includes(type)) category = 'Advanced';
+        else if (['image', 'embed', 'code', 'math', 'bookmark', 'file', 'audio', 'video', 'pdf', 'diagram'].includes(type)) category = 'Media & Code';
+        else if (['database', 'table', 'tracker', 'linked_database'].includes(type)) category = 'Database';
+        else if (['toggle', 'callout', 'quote', 'divider', 'table_of_contents', 'synced_block', 'synced_reference', 'button', 'breadcrumb', 'template', 'flashcard'].includes(type)) category = 'Advanced';
         else if (['countdown', 'pomodoro', 'progress_bar', 'widget'].includes(type)) category = 'Widgets';
 
         return {

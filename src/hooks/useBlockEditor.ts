@@ -15,6 +15,8 @@ import { DOMSerializer } from '@tiptap/pm/model';
 import { TiptapMention } from '../extensions/tiptapMention';
 import { TiptapBacklink } from '../extensions/tiptapBacklink';
 import { TiptapDatabaseChip } from '../extensions/tiptapDatabaseChip';
+import { TiptapTransclusion } from '../extensions/tiptapTransclusion';
+import { useIntelligenceStore } from '../stores/intelligenceStore';
 import { useEditorEngine } from './useEditorEngine';
 import { useSelectionStore } from '../core/editor/selectionStore';
 import { getBlockFragment, waitForDoc } from '../core/crdtManager';
@@ -138,7 +140,15 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     const cleanHtml = sanitize(rawHtml);
     lastSavedContentRef.current = cleanHtml;
     engine.startTransaction().updateBlock(blockId, { content: cleanHtml }).commit();
-  }, [engine]);
+
+    // Auto-sync cloze deletions & Q/A syntax into intelligenceStore
+    try {
+      const allBlocks = Object.values(useBlockStore.getState().blockMap);
+      useIntelligenceStore.getState().syncBlockFlashcards(block.pageId, allBlocks);
+    } catch (e) {
+      /* ignore sync error */
+    }
+  }, [engine, block.pageId]);
 
   const debouncedSaveRef = useRef<any>(null);
   if (!debouncedSaveRef.current) {
@@ -173,6 +183,7 @@ export function useBlockEditor(block: any, options: UseBlockEditorOptions = {}) 
     TiptapMention,
     TiptapBacklink,
     TiptapDatabaseChip,
+    TiptapTransclusion,
   ], [placeholder, starterKitConfig, block.id, block.pageId]);
 
   const editor = useEditor({

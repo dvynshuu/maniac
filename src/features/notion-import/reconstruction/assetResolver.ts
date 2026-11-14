@@ -35,9 +35,10 @@ export function resolveAssetReferences(blocks, pages, assetMap, diagnostics) {
   let resolvedCount = 0;
 
   for (const block of blocks) {
-    if (block.type !== 'image' || !block._imageSrc) continue;
+    const isMedia = ['image', 'file', 'audio', 'video', 'pdf'].includes(block.type);
+    const rawSrc = block._imageSrc || block._assetSrc;
+    if (!isMedia || !rawSrc) continue;
 
-    const rawSrc = block._imageSrc;
     const owningPage = pageMap.get(block.pageId);
     let matchedAsset = null;
 
@@ -76,8 +77,11 @@ export function resolveAssetReferences(blocks, pages, assetMap, diagnostics) {
         hash: matchedAsset.hash,
         assetId: matchedAsset.id,
         mimeType: matchedAsset.mimeType,
+        src: `blob://${matchedAsset.hash}`,
+        name: block.properties?.name || matchedAsset.filename || rawSrc.split('/').pop(),
       };
       delete block._imageSrc;
+      delete block._assetSrc;
       resolvedCount++;
     } else {
       diagnostics.warn(DIAGNOSTIC_CODES.UNRESOLVED_ASSET, `Could not resolve asset reference: ${rawSrc}`, {
